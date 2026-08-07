@@ -1,0 +1,339 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* The house palette. Purple-black velvet, champagne gold light — never
+   neon, never a gradient for its own sake. Identical in both themes so the
+   always-night sections read the same whichever way the toggle sits. */
+:root {
+  --night: #08050d; /* purple-black — the room with the lights down */
+  --night-2: #120a1f; /* deep royal purple — velvet, banquettes */
+  --violet: #2a123f; /* dark violet — the light in the far corner */
+  --gold: #c8a45d; /* soft champagne gold — brass, bottle foil */
+  --gold-light: #e8d8a8; /* warm golden light — the lamp itself */
+  --night-ink: #f4f0e6; /* warm white */
+  --night-ink-muted: rgba(244, 240, 230, 0.6);
+}
+
+/* Day: warm ivory, not white. Ink is purple-black, hairlines are gold. */
+:root {
+  --bg: #faf7f2;
+  --bg-2: #f2ede4;
+  --bg-3: #e9e2d5;
+  --fg: #171019;
+  --fg-muted: rgba(23, 16, 25, 0.58);
+  --fg-faint: rgba(23, 16, 25, 0.4);
+  --line: rgba(138, 109, 42, 0.24);
+  --rail: #8a6d2a;
+  --accent: #8a6d2a;
+}
+
+.dark {
+  --bg: var(--night);
+  --bg-2: var(--night-2);
+  --bg-3: #1b0f2b;
+  --fg: var(--night-ink);
+  --fg-muted: rgba(244, 240, 230, 0.6);
+  --fg-faint: rgba(244, 240, 230, 0.38);
+  --line: rgba(200, 164, 93, 0.2);
+  --rail: rgba(200, 164, 93, 0.78);
+  --accent: var(--gold);
+}
+
+@theme inline {
+  --color-surface: var(--bg);
+  --color-surface-2: var(--bg-2);
+  --color-surface-3: var(--bg-3);
+  --color-ink: var(--fg);
+  --color-ink-muted: var(--fg-muted);
+  --color-ink-faint: var(--fg-faint);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-night: var(--night);
+  --color-night-2: var(--night-2);
+  --color-violet: var(--violet);
+  --color-gold: var(--gold);
+  --color-gold-light: var(--gold-light);
+  --color-night-ink: var(--night-ink);
+  --font-serif: var(--font-playfair), Georgia, serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-script: var(--font-great-vibes), "Apple Chancery", cursive;
+}
+
+/* Lenis */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Ambient room light. Two pools — violet from the far corner, gold from the
+   bar — sitting behind the page so the open sections never read flat black.
+   Fixed, so it behaves like light in a room rather than a scrolling graphic. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      70% 55% at 82% 8%,
+      rgba(42, 18, 63, 0.55),
+      transparent 68%
+    ),
+    radial-gradient(
+      60% 50% at 10% 88%,
+      rgba(200, 164, 93, 0.09),
+      transparent 70%
+    ),
+    radial-gradient(
+      90% 70% at 50% 50%,
+      rgba(18, 10, 31, 0.65),
+      transparent 75%
+    );
+}
+:root:not(.dark) body::before {
+  background:
+    radial-gradient(70% 55% at 82% 8%, rgba(42, 18, 63, 0.05), transparent 68%),
+    radial-gradient(
+      60% 50% at 10% 88%,
+      rgba(200, 164, 93, 0.12),
+      transparent 70%
+    );
+}
+
+/* film grain over everything — unifies imagery and surfaces */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  pointer-events: none;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+::selection {
+  background: var(--gold);
+  color: var(--night);
+}
+
+:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 4px;
+}
+
+/* smooth theme switch — class is applied for the duration of the toggle only */
+.theme-transition,
+.theme-transition *,
+.theme-transition *::before,
+.theme-transition *::after {
+  transition:
+    background-color 0.55s ease,
+    color 0.55s ease,
+    border-color 0.55s ease,
+    fill 0.55s ease,
+    stroke 0.55s ease !important;
+}
+
+.container-x {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 1440px;
+  padding-inline: 1.5rem;
+}
+@media (min-width: 768px) {
+  .container-x {
+    padding-inline: 3rem;
+  }
+}
+@media (min-width: 1280px) {
+  .container-x {
+    padding-inline: 5rem;
+  }
+}
+
+.label {
+  font-size: 0.6875rem;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+/* The rails of the house mark — the wide-tracked small caps that sit above
+   and below every large serif line on the page. */
+.rail {
+  font-size: 0.6875rem;
+  letter-spacing: 0.46em;
+  text-transform: uppercase;
+  color: var(--rail);
+}
+/* The rails carry the house gold. On the always-night sections they sit on
+   purple rather than on the themed surface, so they get their own tone. */
+.rail-night {
+  color: rgba(200, 164, 93, 0.85);
+}
+
+/* The word standing behind a section. Barely there — closer to a light on a
+   wall than to type, and never bright enough to compete with the content. */
+.section-word {
+  color: rgba(255, 255, 255, 0.075);
+  letter-spacing: 0.05em;
+}
+:root:not(.dark) .section-word {
+  color: rgba(23, 16, 25, 0.08);
+}
+
+/* Trailing letter-spacing throws centred small caps off-axis; the indent
+   pays back half of it. Only ever pair this with text-align: center. */
+.rail-center {
+  text-indent: 0.46em;
+}
+
+/* One grade for all imagery — every photo reads as one campaign. Enough
+   saturation left in it for the club's own lights to carry the colour. */
+.img-grade {
+  filter: saturate(0.86) contrast(1.08) brightness(0.97);
+}
+
+/* A second grade, for the social wall only: nightlife photography rather than
+   the campaign stills elsewhere. Saturation goes up instead of down, and the
+   tint layer over it pushes the club's own purple, magenta and blue. */
+.club-grade {
+  filter: saturate(1.28) contrast(1.12) brightness(1.02);
+}
+
+/* The house button: purple velvet, a hairline of gold, and a slow warm glow
+   that comes up on hover like a lamp being turned toward you. */
+.btn-gold {
+  display: inline-block;
+  border: 1px solid rgba(200, 164, 93, 0.55);
+  background: rgba(42, 18, 63, 0.35);
+  color: var(--accent);
+  padding: 1rem 2.5rem;
+  font-size: 0.6875rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  box-shadow: 0 0 0 0 rgba(200, 164, 93, 0);
+  transition:
+    color 0.6s ease,
+    border-color 0.6s ease,
+    background-color 0.6s ease,
+    box-shadow 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.btn-gold:hover,
+.btn-gold:focus-visible {
+  transform: translateY(-2px);
+  color: var(--gold-light);
+  border-color: rgba(200, 164, 93, 0.9);
+  background: rgba(42, 18, 63, 0.6);
+  box-shadow:
+    0 0 34px -6px rgba(200, 164, 93, 0.42),
+    inset 0 0 26px -14px rgba(232, 216, 168, 0.6);
+}
+/* On ivory the velvet is only a whisper, and the gold goes deeper to hold
+   its contrast. */
+:root:not(.dark) .btn-gold {
+  background: rgba(42, 18, 63, 0.05);
+  color: #6f5620;
+}
+:root:not(.dark) .btn-gold:hover,
+:root:not(.dark) .btn-gold:focus-visible {
+  background: rgba(42, 18, 63, 0.09);
+  color: #4c3a12;
+  box-shadow: 0 0 30px -8px rgba(138, 109, 42, 0.4);
+}
+
+/* Sections that are always night keep the night button whichever way the
+   theme toggle sits. Declared last so it outranks the ivory override. */
+.btn-gold.btn-gold-night {
+  background: rgba(42, 18, 63, 0.45);
+  color: var(--gold);
+}
+.btn-gold.btn-gold-night:hover,
+.btn-gold.btn-gold-night:focus-visible {
+  background: rgba(42, 18, 63, 0.7);
+  color: var(--gold-light);
+  box-shadow:
+    0 0 34px -6px rgba(200, 164, 93, 0.42),
+    inset 0 0 26px -14px rgba(232, 216, 168, 0.6);
+}
+
+/* Compact variant for the header. */
+.btn-gold-sm {
+  padding: 0.625rem 1.25rem;
+  letter-spacing: 0.24em;
+}
+
+.link-underline {
+  position: relative;
+}
+.link-underline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -3px;
+  height: 1px;
+  width: 100%;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.link-underline:hover::after,
+.link-underline:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 100;
+  padding: 0.5rem 1rem;
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  transform: translateY(-300%);
+  transition: transform 0.3s ease;
+}
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
