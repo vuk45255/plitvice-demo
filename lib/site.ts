@@ -11,6 +11,9 @@ export const site = {
   town: "Inđija",
   city: "Inđija, Srbija",
   street: "Cara Dušana 14",
+  /* The number on the door. Written the way it is said, and dialled by
+     stripping the spaces — see the INFO line in the reservation room. */
+  phone: "069 60 60 50",
   instagramHandle: "@plitviceclub",
   instagramUrl: "https://www.instagram.com/plitviceclub/",
   facebookUrl:

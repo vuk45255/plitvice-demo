@@ -248,6 +248,32 @@ export function ReservationRoom({
                     />
                     <PosterTicker text={selected.artist} />
                   </div>
+
+                  {/* What the night says for itself, set under its own poster
+                      and to the poster's own left edge — a note in the margin
+                      of the bill, not a caption on a photograph. It travels
+                      with the artwork, so it is still there when the guest is
+                      halfway down the form on the right. */}
+                  {selected.description ? (
+                    <div className="mt-8 md:mt-9">
+                      <p className="max-w-[30rem] text-[0.875rem] leading-[1.9] text-night-ink/60">
+                        {t(selected.description)}
+                      </p>
+
+                      <p className="mt-6 text-[0.625rem] uppercase tracking-[0.3em] text-gold/55">
+                        {t("event.info")}
+                        <span className="mx-2 text-gold/30" aria-hidden="true">
+                          —
+                        </span>
+                        <a
+                          href={`tel:${site.phone.replace(/\s/g, "")}`}
+                          className="tabular-nums text-gold-light/90 transition-colors duration-500 hover:text-gold-light"
+                        >
+                          {site.phone}
+                        </a>
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               </div>
 

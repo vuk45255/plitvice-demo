@@ -77,6 +77,10 @@ export type PartyEvent = {
   /* A performer's name is a name — never translated, never restyled. */
   artist: string;
   date: MessageKey;
+  /* A few lines about the night — who is playing, what the house is doing,
+     what a table takes. Set under the poster in the reservation room, and only
+     when the club has written one; a night without one shows nothing there. */
+  description?: MessageKey;
   /* When the doors open, on a 24-hour clock — "22:00". The same in every
      language, so it is a plain string rather than a dictionary key. Undefined
      until the club confirms it, and then simply not shown. */
@@ -119,6 +123,7 @@ export const events: PartyEvent[] = [
     slug: "vodka-experience",
     artist: "Vodka Experience",
     date: "date.aug22",
+    description: "event.about.vodkaExperience",
     startTime: "22:00",
     ticketPrice: 500,
     poster: posterVodka,

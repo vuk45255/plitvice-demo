@@ -47,6 +47,13 @@ const sr = {
   /* The two facts that stand under the date of a night. */
   "event.doors": "Početak",
   "event.ticket": "Karta",
+  /* The label on the number under the poster. The number itself lives in
+     lib/site.ts — it is the same in every language. */
+  "event.info": "Info",
+
+  /* What a night says for itself, set under its poster. One key per night. */
+  "event.about.vodkaExperience":
+    "Vodka Experience by Plitvice. Music by Dave Pavlo, posebna atmosfera i boca vodke gratis za ekipe koje stignu do ponoći. Minimalno 4 gosta za barski sto, 4–5 za visoki sto i 6 za separe. Ulaz 16+ uz lični dokument.",
 
   "gallery.title": "Naše *žurke*.",
   "gallery.caption": "Svake subote",
@@ -237,6 +244,10 @@ const en: Record<MessageKey, string> = {
 
   "event.doors": "Doors",
   "event.ticket": "Ticket",
+  "event.info": "Info",
+
+  "event.about.vodkaExperience":
+    "Vodka Experience by Plitvice. Music by Dave Pavlo, an atmosphere of its own, and a bottle of vodka on the house for groups arriving before midnight. Minimum 4 guests for a bar table, 4–5 for a high table and 6 for a booth. Entry 16+ with photo ID.",
 
   "gallery.title": "Our *parties*.",
   "gallery.caption": "Every Saturday",
