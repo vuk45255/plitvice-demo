@@ -1,13 +1,15 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { Reveal } from "@/components/reveal";
 import { ImageReveal } from "@/components/image-reveal";
 import { SectionWord } from "@/components/section-word";
 import { Ambient } from "@/components/ambient";
 import { useLang } from "@/components/providers/language";
-import { useReservation } from "@/components/providers/reservation";
 import { ReserveButton } from "@/components/reservation/reserve-button";
+import { nextEvent } from "@/lib/events";
+import { reserveHref } from "@/lib/events";
 import { site } from "@/lib/site";
 import reservationImg from "@/public/images/rezervacija.jpg";
 
@@ -16,7 +18,6 @@ import reservationImg from "@/public/images/rezervacija.jpg";
    magazine-narrow, and the reservation beside it. */
 export function Vip() {
   const { t, tRich } = useLang();
-  const { openReservation } = useReservation();
 
   return (
     <section
@@ -40,13 +41,11 @@ export function Vip() {
         <div className="grid items-center gap-16 md:grid-cols-12 md:gap-8">
           <div className="md:col-span-5 md:col-start-1">
             <ImageReveal delay={0.05}>
-              {/* The whole frame is the reservation: it darkens under the
-                  cursor and the invitation comes up out of it. */}
-              {/* The whole photograph opens the reservation room. A button,
-                  not a link — it opens a dialog, it does not travel. */}
-              <button
-                type="button"
-                onClick={openReservation}
+              {/* The whole photograph is the way in: it darkens under the
+                  cursor and the invitation comes up out of it. It travels to
+                  the reservation room, on the night ahead where there is one. */}
+              <Link
+                href={reserveHref(nextEvent?.slug, "stolovi")}
                 aria-label={t("common.reserveTable")}
                 className="group relative mx-auto block w-full max-w-[26rem] overflow-hidden md:mx-0"
               >
@@ -81,7 +80,7 @@ export function Vip() {
                 <span className="absolute inset-x-0 bottom-0 pb-6 text-center text-[0.625rem] uppercase tracking-[0.34em] text-gold-light indent-[0.34em] md:hidden">
                   {t("common.reserveTable")}
                 </span>
-              </button>
+              </Link>
             </ImageReveal>
           </div>
 
@@ -117,6 +116,8 @@ export function Vip() {
                 <ReserveButton
                   label="common.reserveTable"
                   night
+                  event={nextEvent?.slug}
+                  choice="stolovi"
                   className="w-full text-center sm:w-auto"
                 />
               </div>

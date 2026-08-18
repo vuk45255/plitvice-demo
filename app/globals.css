@@ -304,6 +304,32 @@ body::after {
   transform: scaleX(1);
 }
 
+/* The name printed along the hem of the artwork.
+   The track carries the same run of names twice, so sliding it exactly half its
+   own width lands on a frame identical to the one it started from — the loop
+   has no seam and never pauses. The duration is set per poster from the length
+   of the name, so a short name and a long one travel at the same speed. */
+@keyframes marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+.marquee-track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: marquee var(--marquee-duration, 24s) linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+    will-change: auto;
+  }
+}
+
 .no-scrollbar {
   scrollbar-width: none;
 }

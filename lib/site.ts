@@ -1,4 +1,8 @@
-import type { MessageKey } from "@/lib/i18n";
+import type { Lang, MessageKey } from "@/lib/i18n";
+
+/* The club, as Google knows it. One query behind both the link out and the map
+   drawn into the page, so the two can never point at different doors. */
+const MAPS_QUERY = "Plitvice+Club+Cara+Du%C5%A1ana+14+In%C4%91ija";
 
 export const site = {
   name: "Plitvice",
@@ -12,12 +16,10 @@ export const site = {
   facebookUrl:
     "https://www.facebook.com/p/Plitvice-Indjija-100064319426600/",
   tiktokUrl: "https://www.tiktok.com/@plitviceindjija",
-  mapsUrl:
-    "https://maps.google.com/?q=Plitvice+Club+Cara+Du%C5%A1ana+14+In%C4%91ija",
-  /* The reservation is taken on the site now, not in an Instagram DM. Every
-     "Rezervacija" opens the reservation room — see
-     components/providers/reservation.tsx — and /rezervacija is the same room
-     as a page, for anyone who arrives on the link directly. */
+  mapsUrl: `https://maps.google.com/?q=${MAPS_QUERY}`,
+  /* One reservation room, one address. Every "Rezervacija", every "Kupi kartu"
+     and every "Rezerviši sto" on the site is a link here; a night is carried in
+     the query (/rezervacija?event=<slug>) so the room opens on the right one. */
   reservePath: "/rezervacija",
   founded: "1965",
   /* Vertical heritage film for the About section. The folder name contains a
@@ -38,37 +40,23 @@ export const site = {
   ],
 };
 
+/* The map itself, for the frame in the Location section.
+ *
+ * `output=embed` is Google's own keyless embed — no API key, no billing account
+ * and no script on the page, just an iframe that pans, zooms and hands the
+ * visitor over to Google Maps for the route. The place is named rather than
+ * pinned by coordinate: the club's address is the thing we know, and Google
+ * resolves it to the same door `mapsUrl` opens. */
+export function mapsEmbedUrl(lang: Lang) {
+  return `https://maps.google.com/maps?q=${MAPS_QUERY}&hl=${lang}&t=&z=17&ie=UTF8&iwloc=&output=embed`;
+}
+
 /* Same order as the page itself. The interlude band is a transition between
-   chapters, not a destination, so it has no entry here. */
-export const navigation: {
-  label: MessageKey;
-  href: string;
-  /* Opens the reservation room instead of travelling down the page. The href
-     stays a real destination so the entry still works without JavaScript. */
-  reserve?: true;
-}[] = [
+   chapters, not a destination, so it has no entry here. Entries beginning with
+   "#" travel down the page; the rest are pages. */
+export const navigation: { label: MessageKey; href: string }[] = [
   { label: "nav.events", href: "#events" },
   { label: "nav.parties", href: "#gallery" },
   { label: "nav.about", href: "#about" },
-  { label: "nav.reserve", href: "/rezervacija", reserve: true },
-];
-
-export type ClubEvent = {
-  slug: string;
-  /* The date is the name of the night — no performer is ever billed here. */
-  date?: MessageKey;
-  alt: MessageKey;
-};
-
-/* The night ahead — the one the section is built around. */
-export const featuredEvent: ClubEvent = {
-  slug: "dara",
-  date: "events.featuredDate",
-  alt: "events.featuredAlt",
-};
-
-/* Nights that have already happened, kept as a record. */
-export const pastEvents: ClubEvent[] = [
-  { slug: "kaca", alt: "events.pastAlt" },
-  { slug: "semafor", alt: "events.pastAlt" },
+  { label: "nav.reserve", href: "/rezervacija" },
 ];

@@ -3,7 +3,7 @@ import { SkipLink } from "@/components/skip-link";
 import Hero from "@/components/hero";
 import { About } from "@/components/sections/about";
 import { Events } from "@/components/sections/events";
-import { Gallery } from "@/components/sections/gallery";
+import { Portals } from "@/components/sections/portals";
 import { Interlude } from "@/components/sections/interlude";
 import { Vip } from "@/components/sections/vip";
 import { Location } from "@/components/sections/location";
@@ -17,7 +17,7 @@ export default function Home() {
       <main id="main">
         <Hero />
         <Events />
-        <Gallery />
+        <Portals />
         {/* the signature band, leading straight into the story it belongs to */}
         <Interlude />
         <About />

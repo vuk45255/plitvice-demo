@@ -16,17 +16,24 @@ const sr = {
   "nav.events": "Događaji",
   "nav.parties": "Naše žurke",
   "nav.about": "O nama",
+  /* The phone's menu carries one door the wide bar does not — see
+     components/site-header-mobile.tsx. */
+  "nav.location": "Lokacija",
   "nav.reserve": "Rezervacija",
 
   "common.reserve": "Rezervacija",
   "common.reserveTable": "Rezerviši sto",
   "common.openMenu": "Otvori meni",
-  "common.closeReservation": "Zatvori rezervaciju",
   "common.closeMenu": "Zatvori meni",
+  /* The two words written on the controls themselves, on a phone. The pair
+     above stays where it is: those are what a screen reader announces. */
+  "common.menu": "Meni",
+  "common.close": "Zatvori",
   "common.skip": "Preskoči na sadržaj",
   "common.toTop": "na vrh strane",
   "common.language": "Jezik",
   "common.openInstagram": "otvori Instagram",
+  "common.back": "Nazad na sajt",
 
   "hero.scroll": "Skroluj da uđeš",
   "hero.heading": "Plitvice — Grand Club, Inđija",
@@ -34,23 +41,56 @@ const sr = {
   "events.title": "Naši *događaji*.",
   "events.next": "Naredna žurka",
   "events.past": "Prošli događaji",
-  "events.more": "Saznaj više",
-  "events.passed": "Prošlo",
-  "events.featuredDate": "15. avgust",
-  "events.featuredAlt": "Najava naredne žurke u klubu Plitvice",
-  "events.pastAlt": "Fotografija sa prošle žurke u klubu Plitvice",
+  "events.buy": "Kupi kartu",
+  "events.none": "Trenutno nema najavljene žurke.",
+
+  /* The two facts that stand under the date of a night. */
+  "event.doors": "Početak",
+  "event.ticket": "Karta",
 
   "gallery.title": "Naše *žurke*.",
   "gallery.caption": "Svake subote",
   "gallery.cta": "Pogledaj na Instagram",
-  "gallery.alt.1": "Puna sala pred nastup",
-  "gallery.alt.2": "Nastup uživo pod reflektorima",
-  "gallery.alt.3": "Publika u prvim redovima",
-  "gallery.alt.4": "Bina i svetla usred večeri",
-  "gallery.alt.5": "Ruke u vazduhu pred binom",
-  "gallery.alt.6": "Topli odsjaj nad podijumom",
-  "gallery.alt.7": "Poslednji set pred jutro",
-  "gallery.alt.8": "Noć u punom zamahu",
+
+  /* The three windows on the home page, and the rooms behind them. */
+  "portals.heading": "Tri prozora u svet Plitvica",
+  "portals.atmosfera": "Atmosfera",
+  "portals.zurke": "Žurke",
+  "portals.trenutci": "Trenutci",
+
+  /* Captions for the room stills. Written to work read aloud as well as set
+     under a photograph — they are the alt text too. */
+  "shot.crowd": "Nastup pod punim svetlima, publika u sali",
+  "shot.lights": "Podijum pod ljubičastim svetlima",
+  "shot.booth": "DJ pult pred vrhunac večeri",
+
+  "date.aug22": "22. avgust",
+  "date.aug15": "15. avgust",
+  "date.oct25": "25. oktobar",
+  "date.jul18": "18. jul",
+  "date.jul11": "11. jul",
+  "date.jul04": "4. jul",
+  "date.jun27": "27. jun",
+  "date.may30": "30. maj",
+  "date.may16": "16. maj",
+  "date.may09": "9. maj",
+  "date.apr18": "18. april",
+
+  "atmosfera.title": "*Atmosfera*.",
+  "atmosfera.lead":
+    "Sala, svetla i ljudi u jednoj prostoriji. Ovako izgleda subota u Plitvicama.",
+  "atmosfera.caption": "Iz sale",
+
+  "zurke.title": "Naše *žurke*.",
+  "zurke.lead":
+    "Svaka subota ima svoje ime. Ovde stoje sva — ona koja dolazi i sve one iza nje.",
+  "zurke.upcoming": "Naredna žurka",
+  "zurke.past": "Prošle noći",
+  "zurke.archive": "Arhiva",
+
+  "trenutci.title": "*Trenutci*.",
+  "trenutci.lead": "Sve ono što se ne može prepričati.",
+  "trenutci.caption": "Od 1965.",
 
   "interlude.top": "Plitvice",
   "interlude.title": "Od 1965 sa vama",
@@ -115,13 +155,25 @@ const sr = {
 
   /* The reservation room. Copy is the doorman's, not a contact form's. */
   "reserve.title": "Rezervacija",
-  "reserve.lead1": "Mesto za noći koje se pamte.",
-  "reserve.lead2": "Vi okupite ekipu, ostalo prepustite nama.",
+  /* The headline types its way through the three things the room is for. */
+  "reserve.headline": "Rezerviši",
+  "reserve.word.table": "sto",
+  "reserve.word.ticket": "kartu",
+  "reserve.word.booth": "separe",
+  "reserve.pageLead":
+    "Karte i stolovi za noći u Plitvicama. Izaberite žurku, pa način na koji dolazite.",
+  "reserve.which": "Za koju žurku?",
+  "reserve.tickets": "Karte",
+  "reserve.ticketsLead": "Ulaznice bez rezervacije stola.",
+  "reserve.tables": "Stolovi",
+  "reserve.tablesLead": "Rezervacija stola za ovu žurku.",
+  "reserve.tablesCta": "Izaberi sto",
+  "reserve.close": "Zatvori",
   "reserve.name": "Ime i prezime",
   "reserve.phone": "Broj telefona",
+  "reserve.phoneShort": "Telefon",
   "reserve.email": "Email",
   "reserve.guests": "Broj osoba",
-  "reserve.date": "Datum rezervacije",
   "reserve.time": "Vreme dolaska",
   "reserve.note": "Napomena / posebni zahtevi",
   "reserve.noteHint": "Rođendan, mesto u sali, flaša na stolu — recite nam.",
@@ -133,15 +185,24 @@ const sr = {
   "reserve.successTitle": "Vaša rezervacija je poslata.",
   "reserve.successBody": "Javićemo vam se uskoro.",
   "reserve.successAgain": "Nova rezervacija",
-  "reserve.back": "Nazad na sajt",
 
   "reserve.err.name": "Upišite ime i prezime.",
   "reserve.err.phone": "Upišite ispravan broj telefona.",
   "reserve.err.email": "Upišite ispravnu email adresu.",
   "reserve.err.guests": "Broj osoba mora biti između 1 i 50.",
-  "reserve.err.date": "Izaberite datum — današnji ili kasniji.",
   "reserve.err.time": "Izaberite vreme dolaska.",
   "reserve.err.summary": "Proverite označena polja.",
+
+  /* Karte. */
+  "tickets.announcements": "Najave idu preko Instagrama:",
+  "tickets.type": "Vrsta karte",
+  "tickets.entry": "Ulaznica",
+  "tickets.count": "Broj karata",
+  "tickets.fewer": "Jedna karta manje",
+  "tickets.more": "Jedna karta više",
+  "tickets.total": "Ukupno",
+  "tickets.pay": "Nastavi na plaćanje",
+  "tickets.soldOut": "Rasprodato",
 } as const;
 
 export type MessageKey = keyof typeof sr;
@@ -150,17 +211,20 @@ const en: Record<MessageKey, string> = {
   "nav.events": "Events",
   "nav.parties": "Our parties",
   "nav.about": "About us",
+  "nav.location": "Location",
   "nav.reserve": "Reservations",
 
   "common.reserve": "Reserve",
   "common.reserveTable": "Book a table",
   "common.openMenu": "Open menu",
-  "common.closeReservation": "Close reservation",
   "common.closeMenu": "Close menu",
+  "common.menu": "Menu",
+  "common.close": "Close",
   "common.skip": "Skip to content",
   "common.toTop": "back to top",
   "common.language": "Language",
   "common.openInstagram": "open Instagram",
+  "common.back": "Back to the site",
 
   "hero.scroll": "Scroll to enter",
   "hero.heading": "Plitvice — Grand Club, Inđija",
@@ -168,23 +232,52 @@ const en: Record<MessageKey, string> = {
   "events.title": "Our *nights*.",
   "events.next": "Next party",
   "events.past": "Past events",
-  "events.more": "Find out more",
-  "events.passed": "Past",
-  "events.featuredDate": "15 August",
-  "events.featuredAlt": "Announcement of the next party at Plitvice club",
-  "events.pastAlt": "Photograph from a past party at Plitvice club",
+  "events.buy": "Buy a ticket",
+  "events.none": "No party is announced right now.",
+
+  "event.doors": "Doors",
+  "event.ticket": "Ticket",
 
   "gallery.title": "Our *parties*.",
   "gallery.caption": "Every Saturday",
   "gallery.cta": "See it on Instagram",
-  "gallery.alt.1": "A full room before the show",
-  "gallery.alt.2": "Live on stage under the lights",
-  "gallery.alt.3": "The crowd in the front rows",
-  "gallery.alt.4": "Stage and lights mid-evening",
-  "gallery.alt.5": "Hands in the air at the stage",
-  "gallery.alt.6": "Warm glow over the dance floor",
-  "gallery.alt.7": "The last set before morning",
-  "gallery.alt.8": "The night in full swing",
+
+  "portals.heading": "Three windows into the world of Plitvice",
+  "portals.atmosfera": "Atmosphere",
+  "portals.zurke": "Nights",
+  "portals.trenutci": "Moments",
+
+  "shot.crowd": "On stage under full lights, the room watching",
+  "shot.lights": "The dance floor under violet lights",
+  "shot.booth": "The booth before the peak of the night",
+
+  "date.aug22": "22 August",
+  "date.aug15": "15 August",
+  "date.oct25": "25 October",
+  "date.jul18": "18 July",
+  "date.jul11": "11 July",
+  "date.jul04": "4 July",
+  "date.jun27": "27 June",
+  "date.may30": "30 May",
+  "date.may16": "16 May",
+  "date.may09": "9 May",
+  "date.apr18": "18 April",
+
+  "atmosfera.title": "*Atmosphere*.",
+  "atmosfera.lead":
+    "Music, light and people in one room. This is what a Saturday at Plitvice looks like.",
+  "atmosfera.caption": "From the room",
+
+  "zurke.title": "Our *parties*.",
+  "zurke.lead":
+    "Every Saturday has a name. All of them are here — the one ahead, and every one behind it.",
+  "zurke.upcoming": "Next party",
+  "zurke.past": "Past nights",
+  "zurke.archive": "Archive",
+
+  "trenutci.title": "*Moments*.",
+  "trenutci.lead": "Everything that cannot be retold.",
+  "trenutci.caption": "Since 1965",
 
   "interlude.top": "Plitvice",
   "interlude.title": "With you since 1965",
@@ -245,13 +338,24 @@ const en: Record<MessageKey, string> = {
   "feed.reel.3": "The booth before the peak of the night",
 
   "reserve.title": "Reservations",
-  "reserve.lead1": "A place for nights worth remembering.",
-  "reserve.lead2": "You gather the crew, leave the rest to us.",
+  "reserve.headline": "Reserve",
+  "reserve.word.table": "a table",
+  "reserve.word.ticket": "a ticket",
+  "reserve.word.booth": "a booth",
+  "reserve.pageLead":
+    "Tickets and tables for nights at Plitvice. Choose the party, then how you are coming.",
+  "reserve.which": "Which party?",
+  "reserve.tickets": "Tickets",
+  "reserve.ticketsLead": "Entry without a table.",
+  "reserve.tables": "Tables",
+  "reserve.tablesLead": "A table for this party.",
+  "reserve.tablesCta": "Choose a table",
+  "reserve.close": "Close",
   "reserve.name": "Full name",
   "reserve.phone": "Phone number",
+  "reserve.phoneShort": "Phone",
   "reserve.email": "Email",
   "reserve.guests": "Number of guests",
-  "reserve.date": "Date",
   "reserve.time": "Arrival time",
   "reserve.note": "Note / special requests",
   "reserve.noteHint": "A birthday, a spot in the room, a bottle on the table — tell us.",
@@ -262,15 +366,23 @@ const en: Record<MessageKey, string> = {
   "reserve.successTitle": "Your reservation has been sent.",
   "reserve.successBody": "We will get back to you shortly.",
   "reserve.successAgain": "New reservation",
-  "reserve.back": "Back to the site",
 
   "reserve.err.name": "Please enter your full name.",
   "reserve.err.phone": "Please enter a valid phone number.",
   "reserve.err.email": "Please enter a valid email address.",
   "reserve.err.guests": "The number of guests must be between 1 and 50.",
-  "reserve.err.date": "Choose a date — today or later.",
   "reserve.err.time": "Choose your arrival time.",
   "reserve.err.summary": "Please check the marked fields.",
+
+  "tickets.announcements": "Announcements go out on Instagram:",
+  "tickets.type": "Ticket type",
+  "tickets.entry": "Entry",
+  "tickets.count": "Number of tickets",
+  "tickets.fewer": "One ticket fewer",
+  "tickets.more": "One ticket more",
+  "tickets.total": "Total",
+  "tickets.pay": "Continue to payment",
+  "tickets.soldOut": "Sold out",
 };
 
 export const messages: Record<Lang, Record<MessageKey, string>> = { sr, en };

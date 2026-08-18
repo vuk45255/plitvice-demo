@@ -19,6 +19,9 @@ const LETTERS = site.name.toUpperCase().split("");
 
 /* The three beats of the mark, in seconds after the first scroll intent. */
 const T_TAGLINE = 0.25;
+/* The signature's own hairlines draw while it is still landing, and are done
+   by the time the town's rules begin — one gesture, not two. */
+const T_TAGLINE_RULES = 0.6;
 const T_NAME = 0.85;
 const T_RULES = 2.0;
 const T_TOWN = 2.35;
@@ -212,18 +215,51 @@ export default function Hero() {
       <div className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-night-ink">
         <div className="flex flex-col items-center">
           {/* On a phone the tagline is signed rather than set: a script hand
-              above the mark. The mask needs a deeper foot there — the script
-              descends below its baseline where the small caps never did. */}
-          <div className="overflow-hidden pb-[0.3em] sm:pb-[0.25em]" aria-hidden="true">
-            <motion.p
-              variants={rail}
-              initial="hidden"
-              animate={revealed ? "show" : "hidden"}
-              custom={d(T_TAGLINE)}
-              className="font-script text-[1.5rem] leading-[1.15] tracking-[0.02em] text-gold-light/85 sm:font-sans sm:text-[0.75rem] sm:uppercase sm:leading-normal sm:tracking-[0.62em] sm:indent-[0.62em]"
-            >
-              {site.tagline}
-            </motion.p>
+              above the mark, with its own pair of hairlines — shorter than the
+              town's, so the signature is framed without being announced.
+
+              The mask has to be cut wide of the script on both sides. Great
+              Vibes carries about 1.5em of ink between its ascent and descent,
+              so a 1.15em line box leaves the swashes of the G and the C
+              standing proud of it and the clip shears their tops. The line box
+              is opened up to hold the ink, and the frame is given a head as
+              well as a foot — the script climbs above its ascenders where the
+              small caps never did, and descends below its baseline. */}
+          <div
+            className="flex items-center justify-center gap-4"
+            aria-hidden="true"
+          >
+            <motion.span
+              initial={false}
+              animate={{ scaleX: revealed ? 1 : 0 }}
+              transition={{
+                duration: d(1.4),
+                delay: d(T_TAGLINE_RULES),
+                ease: EASE,
+              }}
+              className="h-px w-[11vw] max-w-24 origin-right bg-gradient-to-l from-gold/60 to-transparent sm:hidden"
+            />
+            <div className="overflow-hidden pb-[0.3em] pt-[0.5em] sm:pb-[0.25em] sm:pt-0">
+              <motion.p
+                variants={rail}
+                initial="hidden"
+                animate={revealed ? "show" : "hidden"}
+                custom={d(T_TAGLINE)}
+                className="font-script text-[1.5rem] leading-[1.45] tracking-[0.02em] text-gold-light/85 sm:font-sans sm:text-[0.75rem] sm:uppercase sm:leading-normal sm:tracking-[0.62em] sm:indent-[0.62em]"
+              >
+                {site.tagline}
+              </motion.p>
+            </div>
+            <motion.span
+              initial={false}
+              animate={{ scaleX: revealed ? 1 : 0 }}
+              transition={{
+                duration: d(1.4),
+                delay: d(T_TAGLINE_RULES),
+                ease: EASE,
+              }}
+              className="h-px w-[11vw] max-w-24 origin-left bg-gradient-to-r from-gold/60 to-transparent sm:hidden"
+            />
           </div>
 
           <div className="overflow-hidden py-[0.06em]" aria-hidden="true">

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { Reveal } from "@/components/reveal";
 import { ImageReveal } from "@/components/image-reveal";
 import { SectionHead } from "@/components/section-head";
@@ -8,11 +7,10 @@ import { SectionWord } from "@/components/section-word";
 import { SocialLinks } from "@/components/social-links";
 import { useLang } from "@/components/providers/language";
 import { ReserveButton } from "@/components/reservation/reserve-button";
-import { site } from "@/lib/site";
-import locationImg from "@/public/lokacija/nadjime.jpg";
+import { mapsEmbedUrl, site } from "@/lib/site";
 
 export function Location() {
-  const { t, tRich } = useLang();
+  const { t, tRich, lang } = useLang();
 
   return (
     <section
@@ -91,22 +89,20 @@ export function Location() {
 
           <div className="md:col-span-6 md:col-start-7">
             <ImageReveal delay={0.1}>
-              <a
-                href={site.mapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={t("location.mapAria")}
-                className="group block overflow-hidden rounded-[6px] shadow-[0_18px_50px_-24px_rgba(8,5,13,0.85)]"
-              >
-                {/* 16:9 is the file's own ratio, so nothing is cropped away. */}
-                <Image
-                  src={locationImg}
-                  alt={t("location.imgAlt")}
-                  placeholder="blur"
-                  sizes="(min-width: 768px) 50vw, 100vw"
-                  className="img-grade aspect-video h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.02]"
+              {/* The map stands where the photograph of the door stood, in the
+                  same frame: the same corner, the same shadow under it, and the
+                  same 16:9 on a wide screen. On a phone that ratio would leave a
+                  strip too shallow to read a street off, so the frame keeps a
+                  floor under it and the map fills whatever is taller. */}
+              <div className="relative aspect-video min-h-[248px] w-full overflow-hidden rounded-[6px] shadow-[0_18px_50px_-24px_rgba(8,5,13,0.85)] md:min-h-0">
+                <iframe
+                  src={mapsEmbedUrl(lang)}
+                  title={t("location.mapAria")}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  className="absolute inset-0 h-full w-full border-0"
                 />
-              </a>
+              </div>
             </ImageReveal>
           </div>
         </div>

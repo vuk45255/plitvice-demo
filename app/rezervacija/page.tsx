@@ -1,22 +1,30 @@
 import type { Metadata } from "next";
-import { ReservationPage } from "@/components/reservation/reservation-page";
+import { ReservationRoom } from "@/components/reservation/reservation-room";
+import type { ReserveChoice } from "@/lib/events";
 
 export const metadata: Metadata = {
   title: "Rezervacija",
   description:
-    "Rezervišite sto u klubu Plitvice, Inđija. Vi okupite ekipu, ostalo prepustite nama.",
+    "Karte i stolovi za žurke u klubu Plitvice, Inđija. Izaberite žurku, pa kartu ili sto.",
   openGraph: {
     title: "Rezervacija — Plitvice",
     description:
-      "Rezervišite sto u klubu Plitvice, Inđija. Vi okupite ekipu, ostalo prepustite nama.",
+      "Karte i stolovi za žurke u klubu Plitvice, Inđija. Izaberite žurku, pa kartu ili sto.",
     url: "/rezervacija",
   },
 };
 
-/* The same room as the overlay, standing on its own — for the link shared in
-   a message, the QR on a flyer, or a visitor arriving straight here. Inside
-   the site the reservation is an overlay instead, so the hero's entrance
-   ceremony is never replayed on the way back. */
-export default function Rezervacija() {
-  return <ReservationPage />;
+/* The room is opened with the night already chosen whenever the link carried
+   one — from a poster on the wall, from the archive, from anywhere. The query
+   is read here, on the server, so a shared link renders correctly on arrival
+   rather than snapping into place after hydration. */
+export default async function Rezervacija(props: PageProps<"/rezervacija">) {
+  const params = await props.searchParams;
+
+  const event = typeof params.event === "string" ? params.event : undefined;
+  const asked = typeof params.izbor === "string" ? params.izbor : undefined;
+  const choice: ReserveChoice | undefined =
+    asked === "karte" || asked === "stolovi" ? asked : undefined;
+
+  return <ReservationRoom initialSlug={event} initialChoice={choice} />;
 }

@@ -5,8 +5,6 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { SmoothScroll } from "@/components/providers/smooth-scroll";
 import { EntranceProvider } from "@/components/providers/entrance";
 import { LanguageProvider } from "@/components/providers/language";
-import { ReservationProvider } from "@/components/providers/reservation";
-import { ReservationModal } from "@/components/reservation/reservation-modal";
 
 const playfair = Playfair_Display({
   subsets: ["latin", "latin-ext"],
@@ -74,12 +72,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ThemeProvider>
           <SmoothScroll>
             <LanguageProvider>
-              <ReservationProvider>
-                <EntranceProvider>{children}</EntranceProvider>
-                {/* Mounted once, outside the page, so it can be opened from
-                    the header, the hero, a section or the footer alike. */}
-                <ReservationModal />
-              </ReservationProvider>
+              <EntranceProvider>{children}</EntranceProvider>
             </LanguageProvider>
           </SmoothScroll>
         </ThemeProvider>
