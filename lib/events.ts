@@ -55,20 +55,15 @@ export type Ticketing = {
   maxPerOrder: number;
 };
 
-/* The seam for the table map. Today no night has one, so the table step asks
-   for a party size in words. When the club measures the room, a plan goes here
-   and the step renders it instead — first as a 2D floor plan, later as the 3D
-   room — without the surrounding flow changing. */
-export type TableZone = {
-  id: string;
-  name: MessageKey;
-  tables: { id: string; seats: number; x: number; y: number }[];
-};
-
+/* Whether this night takes tables at all.
+ *
+ * The room itself is not described here. The club has one floor and it is the
+ * same floor every night, so it is drawn once in lib/floor-plan.ts rather than
+ * hung off each event; which of its tables are still free on a given night is
+ * lib/floor-availability.ts, keyed by the slug above. A night that takes no
+ * tables simply has no table line, and neither file is consulted. */
 export type TableBooking = {
   enabled: boolean;
-  /* Undefined until the room has been drawn. */
-  plan?: { width: number; height: number; zones: TableZone[] };
 };
 
 export type PartyEvent = {
