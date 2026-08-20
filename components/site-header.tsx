@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useLenis } from "lenis/react";
 import { Lockup } from "@/components/lockup";
@@ -26,6 +27,12 @@ const navItem =
 
 export function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
+  /* The bar is the same bar everywhere. The one thing it has to know is
+     whether the page under it is one of the always-night ones: there its
+     surface, its mark and its rules carry the night's colours whichever way
+     the theme toggle sits, and its "#" doors lead back to that place on the
+     home page rather than at nothing. */
+  const night = usePathname() !== "/";
   const [open, setOpen] = useState(false);
   const { entered } = useEntrance();
   const { t } = useLang();
@@ -144,7 +151,7 @@ export function SiteHeader() {
                       >
                         {/* "#" entries travel down the page; the rest are real
                             destinations and stay real links. */}
-                        {item.href.startsWith("#") ? (
+                        {item.href.startsWith("#") && !night ? (
                           <a
                             href={item.href}
                             onClick={(e) => {
@@ -157,7 +164,11 @@ export function SiteHeader() {
                           </a>
                         ) : (
                           <Link
-                            href={item.href}
+                            href={
+                              item.href.startsWith("#")
+                                ? `/${item.href}`
+                                : item.href
+                            }
                             onClick={() => setOpen(false)}
                             className={navItem}
                           >
@@ -204,7 +215,9 @@ export function SiteHeader() {
           <div
             className={`transition-[background-color,border-color,backdrop-filter] duration-700 ${
               scrolled && !open
-                ? "border-b border-line bg-surface/70 backdrop-blur-md"
+                ? `border-b border-line backdrop-blur-md ${
+                    night ? "bg-night/75" : "bg-surface/70"
+                  }`
                 : "border-b border-transparent bg-transparent"
             }`}
           >
@@ -221,14 +234,14 @@ export function SiteHeader() {
                 <span className="relative block h-4 w-6">
                   <motion.span
                     className={`absolute left-0 top-[5px] block h-px w-6 origin-center transition-colors duration-500 group-hover:bg-accent ${
-                      open ? "bg-night-ink" : "bg-ink"
+                      open || night ? "bg-night-ink" : "bg-ink"
                     }`}
                     animate={{ rotate: open ? 45 : 0, y: open ? 2.5 : 0 }}
                     transition={{ duration: reduced ? 0 : 0.45, ease: EASE }}
                   />
                   <motion.span
                     className={`absolute left-0 top-[10px] block h-px w-6 origin-center transition-colors duration-500 group-hover:bg-accent ${
-                      open ? "bg-night-ink" : "bg-ink"
+                      open || night ? "bg-night-ink" : "bg-ink"
                     }`}
                     animate={{ rotate: open ? -45 : 0, y: open ? -2.5 : 0 }}
                     transition={{ duration: reduced ? 0 : 0.45, ease: EASE }}
@@ -246,7 +259,7 @@ export function SiteHeader() {
                 }}
                 aria-label={`${site.tagline} ${site.name}, ${site.town} — ${t("common.toTop")}`}
                 className={`absolute left-1/2 -translate-x-1/2 transition-colors duration-500 ${
-                  open ? "text-night-ink" : "text-ink"
+                  open || night ? "text-night-ink" : "text-ink"
                 }`}
               >
                 <Lockup size="xs" />
@@ -257,9 +270,9 @@ export function SiteHeader() {
                   the panel instead (navigation carries it). */}
               <div className="ml-auto flex items-center gap-3 md:gap-5">
                 <div className="hidden md:block">
-                  <ReserveButton />
+                  <ReserveButton night={night} />
                 </div>
-                <LanguageSwitcher />
+                <LanguageSwitcher tone={night || open ? "night" : "ink"} />
               </div>
             </div>
           </div>

@@ -330,6 +330,30 @@ body::after {
   }
 }
 
+/* The record on the right-hand edge — see components/mix/vinyl-player.tsx.
+   One turn every nine seconds, and the pause is `animation-play-state` rather
+   than a stopped React animation: the disc holds the angle it was at, and
+   starts again from there. Opening or closing the controls never touches it. */
+@keyframes vinyl-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.vinyl-spin {
+  animation: vinyl-spin 9s linear infinite;
+  animation-play-state: paused;
+  will-change: transform;
+}
+.vinyl-spin[data-spinning="true"] {
+  animation-play-state: running;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vinyl-spin {
+    animation: none;
+    will-change: auto;
+  }
+}
+
 .no-scrollbar {
   scrollbar-width: none;
 }

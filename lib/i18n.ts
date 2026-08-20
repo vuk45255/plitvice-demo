@@ -123,6 +123,51 @@ const sr = {
   "about.story5":
     "Danas klub spaja tradiciju sa novom energijom. Moderna produkcija, pažljivo birana muzika i atmosfera koja se gradi zajedno sa ljudima koji dolaze čine da Plitvice ostanu deo noćnog života Inđije i okoline.",
 
+  /* The story, at /o-nama. Every line on that page is one of the sentences
+     that used to sit on the home page, given the room to be read one at a
+     time — the copy was moved, not rewritten. */
+  /* The record behind the right edge of every page. Only the labels a screen
+     reader reads are here — the mix's name is a title and stays as written. */
+  "mix.open": "Otvori plejer",
+  "mix.close": "Zatvori plejer",
+  "mix.play": "Pusti miks",
+  "mix.pause": "Pauziraj miks",
+  "mix.seek": "Pozicija u miksu",
+
+  "story.place": "Plitvice · Inđija",
+  "story.year": "1965",
+  "story.notJust": "Mi nismo samo",
+  "story.notJustWord": "klub.",
+
+  "story.chapter": "Arhiva",
+  "story.chapterLead": "Ista sala pamti šezdesete, devedesete i sinoć.",
+  "story.scene1": "Scena 01",
+  "story.scene2": "Scena 02",
+  "story.scene3": "Scena 03",
+  "story.era1": "Šezdesete.",
+  "story.era1Copy": "Prve večeri, prve priče.",
+  "story.era2": "Devedesete.",
+  "story.era2Copy": "Menjali su se zvuk, gosti i povodi.",
+  "story.era3": "Sinoć.",
+  "story.era3Copy": "Noći ispunjene novom energijom.",
+  "story.chapterClose":
+    "Ostalo je mesto na koje se dolazi kad noć treba da znači nešto.",
+
+  /* The three marks on the thin gold line the chapter is read along. */
+  "story.mark1": "1965",
+  "story.mark2": "90-e",
+  "story.mark3": "Danas",
+
+  "story.quote1": "Pravo mesto.",
+  "story.quote2": "Pravi trenutak.",
+
+  "story.since": "Od 1965.",
+  "story.sameEnergy": "Ista energija.",
+  "story.newGeneration": "Nova generacija.",
+
+  "story.house": "Inđija · od 1965.",
+  "story.toEvents": "Pogledaj događaje",
+
   "vip.title": "Tvoj *sto*.",
   "vip.p1": "Mesto za noći koje se pamte.",
   "vip.p2": "Vi okupite ekipu, ostalo prepustite nama.",
@@ -168,7 +213,7 @@ const sr = {
   "reserve.word.ticket": "kartu",
   "reserve.word.booth": "separe",
   "reserve.pageLead":
-    "Karte i stolovi za noći u Plitvicama. Izaberite žurku, pa način na koji dolazite.",
+    "Izaberi događaj. Rezerviši svoje mesto. Ostalo prepusti nama.",
   "reserve.which": "Za koju žurku?",
   "reserve.tickets": "Karte",
   "reserve.ticketsLead": "Ulaznice bez rezervacije stola.",
@@ -372,6 +417,46 @@ const en: Record<MessageKey, string> = {
   "about.story5":
     "Today the club holds its tradition alongside a new energy. Modern production, carefully chosen music and a room built together with the people in it keep Plitvice part of the nightlife of Inđija and everything around it.",
 
+  "mix.open": "Open the player",
+  "mix.close": "Close the player",
+  "mix.play": "Play the mix",
+  "mix.pause": "Pause the mix",
+  "mix.seek": "Position in the mix",
+
+  "story.place": "Plitvice · Inđija",
+  "story.year": "1965",
+  "story.notJust": "We are more than",
+  "story.notJustWord": "a club.",
+
+  "story.chapter": "Archive",
+  "story.chapterLead":
+    "The same room remembers the sixties, the nineties and last night.",
+  "story.scene1": "Scene 01",
+  "story.scene2": "Scene 02",
+  "story.scene3": "Scene 03",
+  "story.era1": "The sixties.",
+  "story.era1Copy": "The first evenings, the first stories.",
+  "story.era2": "The nineties.",
+  "story.era2Copy": "The sound, the crowd and the occasions changed.",
+  "story.era3": "Last night.",
+  "story.era3Copy": "Rooms full of new energy.",
+  "story.chapterClose":
+    "What stayed is the place you come to when a night is meant to mean something.",
+
+  "story.mark1": "1965",
+  "story.mark2": "90s",
+  "story.mark3": "Today",
+
+  "story.quote1": "The right place.",
+  "story.quote2": "The right moment.",
+
+  "story.since": "Since 1965.",
+  "story.sameEnergy": "Same energy.",
+  "story.newGeneration": "New generation.",
+
+  "story.house": "Inđija · since 1965.",
+  "story.toEvents": "See the events",
+
   "vip.title": "Your *table*.",
   "vip.p1": "A place for nights worth remembering.",
   "vip.p2": "You gather the crew, leave the rest to us.",
@@ -412,7 +497,7 @@ const en: Record<MessageKey, string> = {
   "reserve.word.ticket": "a ticket",
   "reserve.word.booth": "a booth",
   "reserve.pageLead":
-    "Tickets and tables for nights at Plitvice. Choose the party, then how you are coming.",
+    "Choose the event. Reserve your place. Leave the rest to us.",
   "reserve.which": "Which party?",
   "reserve.tickets": "Tickets",
   "reserve.ticketsLead": "Entry without a table.",

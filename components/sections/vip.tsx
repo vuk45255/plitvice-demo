@@ -5,12 +5,12 @@ import Link from "next/link";
 import { Reveal } from "@/components/reveal";
 import { ImageReveal } from "@/components/image-reveal";
 import { SectionWord } from "@/components/section-word";
+import { GrandClubSignature } from "@/components/grand-club";
 import { Ambient } from "@/components/ambient";
 import { useLang } from "@/components/providers/language";
 import { ReserveButton } from "@/components/reservation/reserve-button";
 import { nextEvent } from "@/lib/events";
 import { reserveHref } from "@/lib/events";
-import { site } from "@/lib/site";
 import reservationImg from "@/public/images/rezervacija.jpg";
 
 /* The one page that is always night — and the deepest velvet on the site:
@@ -94,12 +94,8 @@ export function Vip() {
               </h2>
             </Reveal>
             <Reveal delay={0.08}>
-              <div className="mt-8 flex items-center gap-5">
-                <span className="rail rail-night">{site.tagline}</span>
-                <span
-                  className="h-px w-16 bg-gradient-to-r from-gold/55 to-transparent"
-                  aria-hidden="true"
-                />
+              <div className="mt-8">
+                <GrandClubSignature size="md" tone="light" rules="right" />
               </div>
             </Reveal>
             <Reveal delay={0.16}>

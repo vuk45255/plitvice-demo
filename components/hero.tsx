@@ -11,6 +11,11 @@ import { useLenis } from "lenis/react";
 import { EASE } from "@/components/reveal";
 import { useEntrance } from "@/components/providers/entrance";
 import { useLang } from "@/components/providers/language";
+import {
+  SIGNATURE_BOX,
+  SIGNATURE_FACE,
+  SIGNATURE_INK,
+} from "@/components/grand-club";
 import { site } from "@/lib/site";
 
 type Phase = "atmosphere" | "revealing" | "done";
@@ -214,17 +219,18 @@ export default function Hero() {
       {/* THE MARK — grand club / plitvice / inđija */}
       <div className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-night-ink">
         <div className="flex flex-col items-center">
-          {/* On a phone the tagline is signed rather than set: a script hand
-              above the mark, with its own pair of hairlines — shorter than the
-              town's, so the signature is framed without being announced.
+          {/* The tagline is signed rather than set, at every width: a script
+              hand above the mark, with its own pair of hairlines — shorter than
+              the town's, so the signature is framed without being announced.
+              The face and the rules are the site's, from components/grand-club.
 
               The mask has to be cut wide of the script on both sides. Great
               Vibes carries about 1.5em of ink between its ascent and descent,
-              so a 1.15em line box leaves the swashes of the G and the C
+              so an ordinary line box leaves the swashes of the G and the C
               standing proud of it and the clip shears their tops. The line box
               is opened up to hold the ink, and the frame is given a head as
-              well as a foot — the script climbs above its ascenders where the
-              small caps never did, and descends below its baseline. */}
+              well as a foot — the script climbs above its ascenders and
+              descends below its baseline. */}
           <div
             className="flex items-center justify-center gap-4"
             aria-hidden="true"
@@ -237,15 +243,15 @@ export default function Hero() {
                 delay: d(T_TAGLINE_RULES),
                 ease: EASE,
               }}
-              className="h-px w-[11vw] max-w-24 origin-right bg-gradient-to-l from-gold/60 to-transparent sm:hidden"
+              className="h-px w-[11vw] max-w-24 origin-right bg-gradient-to-l from-gold/60 to-transparent"
             />
-            <div className="overflow-hidden pb-[0.3em] pt-[0.5em] sm:pb-[0.25em] sm:pt-0">
+            <div className={`overflow-hidden ${SIGNATURE_INK}`}>
               <motion.p
                 variants={rail}
                 initial="hidden"
                 animate={revealed ? "show" : "hidden"}
                 custom={d(T_TAGLINE)}
-                className="font-script text-[1.5rem] leading-[1.45] tracking-[0.02em] text-gold-light/85 sm:font-sans sm:text-[0.75rem] sm:uppercase sm:leading-normal sm:tracking-[0.62em] sm:indent-[0.62em]"
+                className={`${SIGNATURE_FACE} ${SIGNATURE_BOX} text-[clamp(1.5rem,3.2vw,2.5rem)] text-gold-light/85`}
               >
                 {site.tagline}
               </motion.p>
@@ -258,7 +264,7 @@ export default function Hero() {
                 delay: d(T_TAGLINE_RULES),
                 ease: EASE,
               }}
-              className="h-px w-[11vw] max-w-24 origin-left bg-gradient-to-r from-gold/60 to-transparent sm:hidden"
+              className="h-px w-[11vw] max-w-24 origin-left bg-gradient-to-r from-gold/60 to-transparent"
             />
           </div>
 

@@ -1,3 +1,7 @@
+import {
+  GrandClubSignature,
+  type SignatureSize,
+} from "@/components/grand-club";
 import { site } from "@/lib/site";
 
 type Size = "xs" | "sm" | "md" | "lg";
@@ -30,8 +34,19 @@ type LockupProps = {
   tone?: "ink" | "light";
 };
 
+/* The tagline is signed at whatever size the mark is being set at. */
+const signature: Record<Size, SignatureSize> = {
+  xs: "xs",
+  sm: "sm",
+  md: "md",
+  lg: "lg",
+};
+
 /* The house mark, exactly as it reads on the door:
-   GRAND CLUB / PLITVICE / INĐIJA. Never reorder, never drop a rail. */
+   Grand Club / PLITVICE / INĐIJA. Never reorder, never drop a rail.
+   The first line is written rather than set — see components/grand-club.tsx.
+   The other two are untouched by that: the name and the town are typography,
+   and only the tagline is a signature. */
 export function Lockup({ size = "md", className, tone = "ink" }: LockupProps) {
   const railTone =
     tone === "light" ? "text-[#f4f1ea]/55" : "text-ink-muted";
@@ -40,9 +55,7 @@ export function Lockup({ size = "md", className, tone = "ink" }: LockupProps) {
     <div
       className={`flex flex-col items-center text-center uppercase ${gap[size]} ${className ?? ""}`}
     >
-      <span className={`${rail[size]} ${railTone} indent-[0.5em]`}>
-        {site.tagline}
-      </span>
+      <GrandClubSignature size={signature[size]} tone={tone} />
       <span
         className={`font-serif leading-[0.92] tracking-[0.02em] ${word[size]}`}
       >

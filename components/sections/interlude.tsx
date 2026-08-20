@@ -67,6 +67,18 @@ export function Interlude() {
             {t("interlude.bottom")}
           </p>
         </Reveal>
+
+        {/* HIDDEN FOR THE DEMO — the way into the story goes here, and the
+            band grows by roughly 72px at each breakpoint to hold it:
+
+              <Reveal y={16} delay={0.32}>
+                <div className="mt-9 sm:mt-11">
+                  <QuietLink href={site.aboutPath} label={t("nav.about")} />
+                </div>
+              </Reveal>
+
+            Restore it together with the navigation entry in lib/site.ts and
+            the redirect in next.config.ts. Nothing else was removed. */}
       </div>
     </section>
   );

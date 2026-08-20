@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useLenis } from "lenis/react";
 import { Arrow } from "@/components/arrow";
@@ -57,14 +58,21 @@ const LINK =
    room's own address. It is a section of the home page rather than a route, so
    it costs nothing to offer — and on a phone, where the footer is a long way
    down, it is the one thing a guest standing in the street actually wants.
-   `navigation` itself is not touched; the wide bar keeps the four it has. */
+   `navigation` itself is not touched; the wide bar keeps the ones it has.
+
+   It is hung off the reservation rather than counted in, so that whichever
+   doors the menu happens to be carrying, the address always arrives in the
+   same place: last but one, immediately before the way in. */
 const HERE = { label: "nav.location", href: "#location" } as const;
 const doors = navigation.flatMap((item) =>
-  item.label === "nav.about" ? [item, HERE] : [item],
+  item.label === "nav.reserve" ? [HERE, item] : [item],
 );
 
 export function MobileHeader() {
   const { t } = useLang();
+  /* Off the home page a "#" door has nothing to travel to, so it becomes a
+     link back to that place on the home page instead. */
+  const night = usePathname() !== "/";
   const reduced = useReducedMotion();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -264,7 +272,7 @@ export function MobileHeader() {
                     >
                       {/* "#" entries travel down the page; the rest are real
                           destinations and stay real links. */}
-                      {item.href.startsWith("#") ? (
+                      {item.href.startsWith("#") && !night ? (
                         <a
                           href={item.href}
                           onClick={(e) => {
@@ -277,7 +285,11 @@ export function MobileHeader() {
                         </a>
                       ) : (
                         <Link
-                          href={item.href}
+                          href={
+                            item.href.startsWith("#")
+                              ? `/${item.href}`
+                              : item.href
+                          }
                           onClick={() => setOpen(false)}
                           className="group inline-flex items-center gap-4"
                         >

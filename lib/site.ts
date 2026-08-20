@@ -24,6 +24,9 @@ export const site = {
      and every "Rezerviši sto" on the site is a link here; a night is carried in
      the query (/rezervacija?event=<slug>) so the room opens on the right one. */
   reservePath: "/rezervacija",
+  /* The story of the house — the section that used to sit under the band on
+     the home page, now a page of its own. */
+  aboutPath: "/o-nama",
   founded: "1965",
   /* Vertical heritage film for the About section. The folder name contains a
      space, so the URL is encoded. If it fails to load, the frame falls back to
@@ -60,6 +63,13 @@ export function mapsEmbedUrl(lang: Lang) {
 export const navigation: { label: MessageKey; href: string }[] = [
   { label: "nav.events", href: "#events" },
   { label: "nav.parties", href: "#gallery" },
-  { label: "nav.about", href: "#about" },
+  /* HIDDEN FOR THE DEMO — the story is not finished, so its door is off every
+     menu on the site until it is. Put this line back, in this position, to
+     restore it in both languages at once:
+
+       { label: "nav.about", href: "/o-nama" },
+
+     The page itself, its route and its dictionary entries are all untouched;
+     see the redirect in next.config.ts. */
   { label: "nav.reserve", href: "/rezervacija" },
 ];

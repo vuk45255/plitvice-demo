@@ -1,7 +1,6 @@
 import { SiteHeader } from "@/components/site-header";
 import { SkipLink } from "@/components/skip-link";
 import Hero from "@/components/hero";
-import { About } from "@/components/sections/about";
 import { Events } from "@/components/sections/events";
 import { Portals } from "@/components/sections/portals";
 import { Interlude } from "@/components/sections/interlude";
@@ -18,9 +17,9 @@ export default function Home() {
         <Hero />
         <Events />
         <Portals />
-        {/* the signature band, leading straight into the story it belongs to */}
+        {/* the signature band — and the one door on the home page into the
+            story of the house, which has a page of its own at /o-nama */}
         <Interlude />
-        <About />
         <Vip />
         <Location />
       </main>

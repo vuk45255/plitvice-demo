@@ -5,6 +5,8 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { SmoothScroll } from "@/components/providers/smooth-scroll";
 import { EntranceProvider } from "@/components/providers/entrance";
 import { LanguageProvider } from "@/components/providers/language";
+import { MixProvider } from "@/components/providers/mix";
+import { VinylPlayer } from "@/components/mix/vinyl-player";
 
 const playfair = Playfair_Display({
   subsets: ["latin", "latin-ext"],
@@ -18,8 +20,8 @@ const inter = Inter({
   display: "swap",
 });
 
-/* The hero's "Grand Club" on a phone, and nowhere else. One weight is all
-   the family ships. */
+/* The hand the tagline is signed in, wherever the house mark is set — see
+   components/grand-club.tsx. One weight is all the family ships. */
 const greatVibes = Great_Vibes({
   subsets: ["latin", "latin-ext"],
   weight: "400",
@@ -72,7 +74,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ThemeProvider>
           <SmoothScroll>
             <LanguageProvider>
-              <EntranceProvider>{children}</EntranceProvider>
+              {/* The mix belongs to the site, not to a page. Both the element
+                  and the record that drives it are mounted here, above
+                  everything the router swaps out, so internal navigation never
+                  interrupts what is playing. */}
+              <MixProvider>
+                <EntranceProvider>{children}</EntranceProvider>
+                <VinylPlayer />
+              </MixProvider>
             </LanguageProvider>
           </SmoothScroll>
         </ThemeProvider>
