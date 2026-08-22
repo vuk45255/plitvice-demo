@@ -6,6 +6,7 @@ import { Portals } from "@/components/sections/portals";
 import { Interlude } from "@/components/sections/interlude";
 import { Vip } from "@/components/sections/vip";
 import { Location } from "@/components/sections/location";
+import { LocalInfo } from "@/components/sections/local-info";
 import { SiteFooter } from "@/components/site-footer";
 
 export default function Home() {
@@ -21,9 +22,18 @@ export default function Home() {
             story of the house, which has a page of its own at /o-nama */}
         <Interlude />
         <Vip />
+        {/* The concierge: the town rather than the club, and one section
+            rather than two — the TREBA VAM questions and the six pictures are
+            the two halves of a single pinned scene inside it. */}
+        <LocalInfo />
+        {/* And then the address itself, last, so the page ends on the door.
+            It stands where the feed used to — see `wall` below. */}
         <Location />
       </main>
-      <SiteFooter />
+      {/* The home page ends on the address, so the feed under the mark comes
+          off this page only. Every other page's footer is untouched, and so is
+          every Instagram link on the site including the one in this footer. */}
+      <SiteFooter wall={false} />
     </>
   );
 }

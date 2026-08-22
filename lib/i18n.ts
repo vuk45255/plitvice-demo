@@ -15,6 +15,7 @@ export const LANG_STORAGE_KEY = "plitvice-lang";
 const sr = {
   "nav.events": "Događaji",
   "nav.parties": "Naše žurke",
+  "nav.gallery": "Galerija",
   "nav.about": "O nama",
   /* The phone's menu carries one door the wide bar does not — see
      components/site-header-mobile.tsx. */
@@ -43,6 +44,10 @@ const sr = {
   "events.past": "Prošli događaji",
   "events.buy": "Kupi kartu",
   "events.none": "Trenutno nema najavljene žurke.",
+  /* Under the night ahead, when the doors close; and the one word under a
+     night that has already happened. */
+  "events.lastGuest": "Poslednji gost",
+  "events.archived": "Prošlo",
 
   /* The two facts that stand under the date of a night. */
   "event.doors": "Početak",
@@ -64,6 +69,43 @@ const sr = {
   "portals.atmosfera": "Atmosfera",
   "portals.zurke": "Žurke",
   "portals.trenutci": "Trenutci",
+
+  /* THE CONCIERGE — the six things a visitor coming into Inđija for the night
+     actually has to solve. The order is lib/local-info.ts; these are only the
+     words. Each category is written twice: the name over the card, and the
+     word the pinned intro asks its question with, which is not always the same
+     one — a card says RESTORANI, the question asks RESTORAN? */
+  "info.heading": "Korisne informacije za Inđiju",
+  "info.asking": "Treba vam",
+
+  "info.smestaj": "Smeštaj",
+  "info.restorani": "Restorani",
+  "info.nonstop": "Non-stop shop",
+  "info.prevoz": "Prevoz",
+  "info.prvaPomoc": "Prva pomoć",
+  "info.kakoDoNas": "Kako do nas",
+
+  "info.ask.smestaj": "Smeštaj",
+  "info.ask.restorani": "Restoran",
+  "info.ask.nonstop": "Non-stop shop",
+  "info.ask.prevoz": "Prevoz",
+  "info.ask.prvaPomoc": "Prva pomoć",
+  "info.ask.kakoDoNas": "Kako do nas",
+
+  /* Alt text for the six photographs. Written to work read aloud. */
+  "info.alt.smestaj": "Soba u hotelu u Inđiji, spremljena za noćenje",
+  "info.alt.restorani": "Postavljen sto u restoranu u Inđiji",
+  "info.alt.nonstop": "Osvetljena non-stop prodavnica noću",
+  "info.alt.prevoz": "Taksi na ulici Inđije posle ponoći",
+  "info.alt.prvaPomoc": "Ulaz u dežurnu ambulantu",
+  "info.alt.kakoDoNas": "Put ka Inđiji noću",
+
+  /* The word under a card that leads somewhere. */
+  "info.discover": "Pogledaj",
+
+  /* The way back out of the guide, set beside the rail over the grid. */
+  "info.restart": "Na početak",
+
 
   /* Captions for the room stills. Written to work read aloud as well as set
      under a photograph — they are the alt text too. */
@@ -103,29 +145,28 @@ const sr = {
   "interlude.title": "Od 1965 sa vama",
   "interlude.bottom": "Ista energija · Nova generacija",
 
-  "about.title": "Mi nismo samo *klub*.",
-  "about.p1": "Od 1965. godine priča o Plitvicama traje kroz generacije.",
-  "about.p2":
-    "Ista sala pamti šezdesete, devedesete i sinoć. Menjali su se zvuk, gosti i povodi — ostalo je mesto na koje se dolazi kad noć treba da znači nešto.",
   "about.p3a": "Godine se smenjuju.",
   "about.p3b": "Ime ostaje isto.",
   "about.caption": "Plitvice · od 1965.",
   "about.videoAlt": "Snimci iz kluba Plitvice kroz generacije",
 
-  "about.story1":
-    "Plitvice nisu nastale preko noći. Kroz decenije su postale mesto gde se spajaju generacije, muzika i uspomene.",
-  "about.story2":
-    "Od prvih večeri kada su se stvarale prve priče, do današnjih noći ispunjenih novom energijom — ideja je ostala ista: napraviti prostor zbog kog ljudi dolaze, vraćaju se i pamte trenutke.",
-  "about.story3":
-    "Kroz godine menjali su se trendovi, muzika i generacije gostiju, ali ono najvažnije nije promenjeno — osećaj da si na pravom mestu u pravom trenutku.",
-  "about.story4":
-    "Plitvice su mesto gde počinje vikend, gde se slave posebni trenuci i gde obična noć može postati uspomena.",
-  "about.story5":
-    "Danas klub spaja tradiciju sa novom energijom. Moderna produkcija, pažljivo birana muzika i atmosfera koja se gradi zajedno sa ljudima koji dolaze čine da Plitvice ostanu deo noćnog života Inđije i okoline.",
+  /* THE ARCHIVE, at /o-nama — the pinned chapter the whole page is now made
+     of. Three headlines and, under them, what a screen reader is told each
+     film and each photograph shows. Nothing here dates a specific picture:
+     the only year it claims is the one on the door. */
+  "wall.title1": "Plitvice nisu nastale preko noći.",
+  "wall.title2": "Menjali su se zvuk i generacije.",
+  "wall.title3": "Od prvih večeri do danas.",
 
-  /* The story, at /o-nama. Every line on that page is one of the sentences
-     that used to sit on the home page, given the room to be read one at a
-     time — the copy was moved, not rewritten. */
+  "wall.altOrigin": "Arhivski snimak Plitvica iz šezdesetih",
+  "wall.altStaff": "Konobari Plitvica na arhivskom snimku",
+  "wall.altNight": "Žurka u Plitvicama pod svetlima",
+
+  /* The three photographs the composition is built to receive. */
+  "wall.alt2013": "Plitvice 2013. godine",
+  "wall.alt2019": "Plitvice 2019. godine",
+  "wall.alt2026": "Plitvice 2026. godine",
+
   /* The record behind the right edge of every page. Only the labels a screen
      reader reads are here — the mix's name is a title and stays as written. */
   "mix.open": "Otvori plejer",
@@ -135,38 +176,9 @@ const sr = {
   "mix.seek": "Pozicija u miksu",
 
   "story.place": "Plitvice · Inđija",
-  "story.year": "1965",
-  "story.notJust": "Mi nismo samo",
-  "story.notJustWord": "klub.",
-
-  "story.chapter": "Arhiva",
-  "story.chapterLead": "Ista sala pamti šezdesete, devedesete i sinoć.",
-  "story.scene1": "Scena 01",
-  "story.scene2": "Scena 02",
-  "story.scene3": "Scena 03",
-  "story.era1": "Šezdesete.",
-  "story.era1Copy": "Prve večeri, prve priče.",
-  "story.era2": "Devedesete.",
-  "story.era2Copy": "Menjali su se zvuk, gosti i povodi.",
-  "story.era3": "Sinoć.",
-  "story.era3Copy": "Noći ispunjene novom energijom.",
-  "story.chapterClose":
-    "Ostalo je mesto na koje se dolazi kad noć treba da znači nešto.",
-
-  /* The three marks on the thin gold line the chapter is read along. */
-  "story.mark1": "1965",
-  "story.mark2": "90-e",
-  "story.mark3": "Danas",
-
-  "story.quote1": "Pravo mesto.",
-  "story.quote2": "Pravi trenutak.",
-
   "story.since": "Od 1965.",
   "story.sameEnergy": "Ista energija.",
   "story.newGeneration": "Nova generacija.",
-
-  "story.house": "Inđija · od 1965.",
-  "story.toEvents": "Pogledaj događaje",
 
   "vip.title": "Tvoj *sto*.",
   "vip.p1": "Mesto za noći koje se pamte.",
@@ -179,6 +191,7 @@ const sr = {
   "location.address": "Adresa",
   "location.hours": "Radno vreme",
   "location.social": "Društvene mreže",
+  "location.follow": "*Zapratite* nas!",
   "location.maps": "Otvori u Google mapama",
   "location.mapAria": "Otvori lokaciju kluba Plitvice u Google mapama",
   "location.imgAlt": "Ulaz u klub Plitvice u Inđiji",
@@ -191,7 +204,6 @@ const sr = {
   "footer.contact": "Social",
   "footer.hours": "Radno vreme",
   "footer.location": "Lokacija",
-  "footer.maps": "Google mape",
   "footer.rights": "© 2026 Plitvice. Sva prava zadržana.",
   /* A studio credit — the name stays as written in both languages. */
   "footer.credit": "Powered by VAntage",
@@ -206,6 +218,22 @@ const sr = {
   "feed.reel.3": "DJ pult pred vrhunac večeri",
 
   /* The reservation room. Copy is the doorman's, not a contact form's. */
+  /* THE ADMISSION NOTICE, shown over the reservation room before anything in
+     it can be touched. House rules, not legalese: what to bring to the door,
+     and what the club does and does not refund. */
+  "gate.label": "Važne informacije",
+  "gate.title": "Pre nego što nastavite",
+  "gate.p1":
+    "Ulaz je dozvoljen osobama starijim od 16 godina. Prilikom ulaska obavezno je pokazati originalni važeći lični dokument sa fotografijom. Fotografije, skenirane kopije i fotokopije dokumenata se ne prihvataju.",
+  "gate.p2":
+    "Ukoliko originalni važeći lični dokument nije prisutan, ulazak može biti odbijen i povraćaj novca se ne vrši.",
+  "gate.p3":
+    "Najavljeni izvođači, program i satnica događaja podložni su promenama. Promena izvođača ili programa sama po sebi ne predstavlja osnov za povraćaj novca za već kupljenu ulaznicu.",
+  "gate.p4":
+    "Cena ulaznica koje se prodaju direktno u klubu može se razlikovati od cene online ulaznica i može biti promenjena.",
+  "gate.accept": "Pročitao/la sam i prihvatam navedene uslove.",
+  "gate.continue": "Nastavi",
+
   "reserve.title": "Rezervacija",
   /* The headline types its way through the three things the room is for. */
   "reserve.headline": "Rezerviši",
@@ -217,6 +245,9 @@ const sr = {
   "reserve.which": "Za koju žurku?",
   "reserve.tickets": "Karte",
   "reserve.ticketsLead": "Ulaznice bez rezervacije stola.",
+  /* Shown in place of the ticket call when a night is not sold online. */
+  "reserve.ticketsOffline": "Nema online prodaje karata",
+  "reserve.ticketsOfflineLead": "Rezervacija stolova je dostupna.",
   "reserve.tables": "Stolovi",
   "reserve.tablesLead": "Rezervacija stola za ovu žurku.",
   "reserve.tablesCta": "Izaberi sto",
@@ -320,6 +351,7 @@ export type MessageKey = keyof typeof sr;
 const en: Record<MessageKey, string> = {
   "nav.events": "Events",
   "nav.parties": "Our parties",
+  "nav.gallery": "Gallery",
   "nav.about": "About us",
   "nav.location": "Location",
   "nav.reserve": "Reservations",
@@ -344,6 +376,8 @@ const en: Record<MessageKey, string> = {
   "events.past": "Past events",
   "events.buy": "Buy a ticket",
   "events.none": "No party is announced right now.",
+  "events.lastGuest": "Last guest",
+  "events.archived": "Past",
 
   "event.doors": "Doors",
   "event.ticket": "Ticket",
@@ -360,6 +394,34 @@ const en: Record<MessageKey, string> = {
   "portals.atmosfera": "Atmosphere",
   "portals.zurke": "Nights",
   "portals.trenutci": "Moments",
+
+  "info.heading": "Useful information for Inđija",
+  "info.asking": "Do you need",
+
+  "info.smestaj": "Stay",
+  "info.restorani": "Restaurants",
+  "info.nonstop": "24h shop",
+  "info.prevoz": "Transport",
+  "info.prvaPomoc": "First aid",
+  "info.kakoDoNas": "Finding us",
+
+  "info.ask.smestaj": "A bed",
+  "info.ask.restorani": "A restaurant",
+  "info.ask.nonstop": "A 24h shop",
+  "info.ask.prevoz": "A ride",
+  "info.ask.prvaPomoc": "First aid",
+  "info.ask.kakoDoNas": "The way here",
+
+  "info.alt.smestaj": "A made-up hotel room in Inđija",
+  "info.alt.restorani": "A laid table in a restaurant in Inđija",
+  "info.alt.nonstop": "A lit twenty-four-hour shop at night",
+  "info.alt.prevoz": "A taxi on an Inđija street after midnight",
+  "info.alt.prvaPomoc": "The door of the night surgery",
+  "info.alt.kakoDoNas": "The road into Inđija at night",
+
+  "info.discover": "Look",
+  "info.restart": "Back to the start",
+
 
   "shot.crowd": "On stage under full lights, the room watching",
   "shot.lights": "The dance floor under violet lights",
@@ -397,25 +459,22 @@ const en: Record<MessageKey, string> = {
   "interlude.title": "With you since 1965",
   "interlude.bottom": "Same energy · New generation",
 
-  "about.title": "We are more than a *club*.",
-  "about.p1": "Since 1965, the story of Plitvice has run through generations.",
-  "about.p2":
-    "The same room remembers the sixties, the nineties and last night. The sound, the crowd and the occasions changed — what stayed is the place you come to when a night is meant to mean something.",
   "about.p3a": "The years keep turning.",
   "about.p3b": "The name stays the same.",
   "about.caption": "Plitvice · since 1965",
   "about.videoAlt": "Footage from Plitvice club across the generations",
 
-  "about.story1":
-    "Plitvice was not built overnight. Over the decades it became the place where generations, music and memories meet.",
-  "about.story2":
-    "From the first evenings, when the first stories were made, to tonight's rooms full of new energy — the idea has not changed: build a place people come to, come back to, and remember.",
-  "about.story3":
-    "Trends changed, the music changed, the crowd changed. What did not is the feeling of being in the right place at the right moment.",
-  "about.story4":
-    "Plitvice is where the weekend starts, where the occasions worth marking are celebrated, and where an ordinary night can turn into a memory.",
-  "about.story5":
-    "Today the club holds its tradition alongside a new energy. Modern production, carefully chosen music and a room built together with the people in it keep Plitvice part of the nightlife of Inđija and everything around it.",
+  "wall.title1": "Plitvice was not built overnight.",
+  "wall.title2": "The sound and the generations changed.",
+  "wall.title3": "From the first evenings to tonight.",
+
+  "wall.altOrigin": "Archival footage of Plitvice in the sixties",
+  "wall.altStaff": "The Plitvice waiters in archival footage",
+  "wall.altNight": "A party at Plitvice under the lights",
+
+  "wall.alt2013": "Plitvice in 2013",
+  "wall.alt2019": "Plitvice in 2019",
+  "wall.alt2026": "Plitvice in 2026",
 
   "mix.open": "Open the player",
   "mix.close": "Close the player",
@@ -424,38 +483,9 @@ const en: Record<MessageKey, string> = {
   "mix.seek": "Position in the mix",
 
   "story.place": "Plitvice · Inđija",
-  "story.year": "1965",
-  "story.notJust": "We are more than",
-  "story.notJustWord": "a club.",
-
-  "story.chapter": "Archive",
-  "story.chapterLead":
-    "The same room remembers the sixties, the nineties and last night.",
-  "story.scene1": "Scene 01",
-  "story.scene2": "Scene 02",
-  "story.scene3": "Scene 03",
-  "story.era1": "The sixties.",
-  "story.era1Copy": "The first evenings, the first stories.",
-  "story.era2": "The nineties.",
-  "story.era2Copy": "The sound, the crowd and the occasions changed.",
-  "story.era3": "Last night.",
-  "story.era3Copy": "Rooms full of new energy.",
-  "story.chapterClose":
-    "What stayed is the place you come to when a night is meant to mean something.",
-
-  "story.mark1": "1965",
-  "story.mark2": "90s",
-  "story.mark3": "Today",
-
-  "story.quote1": "The right place.",
-  "story.quote2": "The right moment.",
-
   "story.since": "Since 1965.",
   "story.sameEnergy": "Same energy.",
   "story.newGeneration": "New generation.",
-
-  "story.house": "Inđija · since 1965.",
-  "story.toEvents": "See the events",
 
   "vip.title": "Your *table*.",
   "vip.p1": "A place for nights worth remembering.",
@@ -468,6 +498,7 @@ const en: Record<MessageKey, string> = {
   "location.address": "Address",
   "location.hours": "Opening hours",
   "location.social": "Social",
+  "location.follow": "*Follow* us!",
   "location.maps": "Open in Google Maps",
   "location.mapAria": "Open the location of Plitvice club in Google Maps",
   "location.imgAlt": "The entrance to Plitvice club in Inđija",
@@ -478,7 +509,6 @@ const en: Record<MessageKey, string> = {
   "footer.contact": "Social",
   "footer.hours": "Opening hours",
   "footer.location": "Location",
-  "footer.maps": "Google Maps",
   "footer.rights": "© 2026 Plitvice. All rights reserved.",
   "footer.credit": "Powered by VAntage",
 
@@ -491,6 +521,19 @@ const en: Record<MessageKey, string> = {
   "feed.reel.2": "The room mid-set",
   "feed.reel.3": "The booth before the peak of the night",
 
+  "gate.label": "Important information",
+  "gate.title": "Before you continue",
+  "gate.p1":
+    "Entry is permitted to persons over 16. A valid original photo ID must be shown at the door. Photographs, scans and photocopies of documents are not accepted.",
+  "gate.p2":
+    "Without a valid original photo ID entry may be refused, and no refund is given.",
+  "gate.p3":
+    "Announced performers, the programme and the schedule are subject to change. A change of performer or programme is not in itself grounds for a refund on a ticket already bought.",
+  "gate.p4":
+    "Tickets sold at the door may differ in price from online tickets, and that price may change.",
+  "gate.accept": "I have read and accept these conditions.",
+  "gate.continue": "Continue",
+
   "reserve.title": "Reservations",
   "reserve.headline": "Reserve",
   "reserve.word.table": "a table",
@@ -501,6 +544,8 @@ const en: Record<MessageKey, string> = {
   "reserve.which": "Which party?",
   "reserve.tickets": "Tickets",
   "reserve.ticketsLead": "Entry without a table.",
+  "reserve.ticketsOffline": "No online ticket sales",
+  "reserve.ticketsOfflineLead": "Table reservations are available.",
   "reserve.tables": "Tables",
   "reserve.tablesLead": "A table for this party.",
   "reserve.tablesCta": "Choose a table",

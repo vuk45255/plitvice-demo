@@ -86,19 +86,41 @@ export type PartyEvent = {
   ticketPrice?: number;
   /* Nights are at the house unless the club takes one somewhere else. */
   location?: string;
+  /* The colour this night's artwork throws into the room around it — the light
+     the poster is spilling onto the dark, not a brand colour and not a theme.
+     Sampled off the artwork itself and written here as a plain CSS hex, so a
+     red night, an amber one or a purple one is one line in this file and no
+     change anywhere else. Undefined means the poster stands in the house's own
+     light and no glow is drawn behind it. */
+  ambient?: string;
   poster: StaticImageData;
   status: "upcoming" | "past";
   tickets: Ticketing;
   tables: TableBooking;
 };
 
-/* A night on sale: entry at `ticketPrice`, ten to an order. Give a night named
-   types here — packages, early birds — and the panel offers those instead. */
-const ticketsOnSale: Ticketing = {
+/* The two ways an upcoming night can stand towards tickets. Exported because
+   they are the vocabulary for configuring one — a night is switched between
+   them here and nowhere else.
+
+   On sale: entry at `ticketPrice`, ten to an order. Give a night named types
+   here — packages, early birds — and the panel offers those instead. */
+export const ticketsOnSale: Ticketing = {
   enabled: true,
   sale: "open",
   types: [],
   maxPerOrder: 10,
+};
+
+/* A night the club is not selling online — the door takes the money, or the
+   tickets go somewhere that is not this site. The reservation room still shows
+   the ticket line for a night like this, unavailable rather than absent, so the
+   guest reads that entry exists and only the online sale does not. */
+export const ticketsOffline: Ticketing = {
+  enabled: false,
+  sale: "closed",
+  types: [],
+  maxPerOrder: 0,
 };
 
 /* A night that has happened sells nothing. */
@@ -122,8 +144,12 @@ export const events: PartyEvent[] = [
     startTime: "22:00",
     ticketPrice: 500,
     poster: posterVodka,
+    /* The cold blue off the bottle and the sky behind it. */
+    ambient: "#6ea3d5",
     status: "upcoming",
-    tickets: ticketsOnSale,
+    /* Entry is sold at the door for this one. Flip to `ticketsOnSale`
+       to put the purchase panel back. */
+    tickets: ticketsOffline,
     tables: tablesOpen,
   },
   {
@@ -258,6 +284,29 @@ export function entryPrice(event: PartyEvent): number | undefined {
   let lowest = types[0].price;
   for (const type of types) if (type.price < lowest) lowest = type.price;
   return lowest;
+}
+
+/* What the reservation room does with a night's ticket line.
+ *
+ *   "open"         — the purchase panel is live
+ *   "unavailable"  — the club is not selling this night online; the line is
+ *                    shown, dimmed and inert, so the guest sees that tickets
+ *                    exist and that this night is not one of them
+ *   "none"         — there is no ticket line to draw at all
+ *
+ * Turning a night's online sale on or off is `tickets.enabled` in the entry
+ * above and nothing else — no surface decides this by looking at a name. */
+export type TicketAvailability = "open" | "unavailable" | "none";
+
+export function ticketAvailability(event: PartyEvent): TicketAvailability {
+  /* A night that has passed says nothing about tickets either way. */
+  if (event.status !== "upcoming") return "none";
+  if (!event.tickets.enabled) return "unavailable";
+  /* Announced but not on sale yet, or priced by nobody — both are silence
+     rather than a refusal, so the line stays off. */
+  if (event.tickets.sale === "soon" || event.tickets.sale === "closed")
+    return "none";
+  return entryPrice(event) === undefined ? "none" : "open";
 }
 
 /* What the artwork of every night cycles through in the middle portal. */

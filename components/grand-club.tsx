@@ -58,6 +58,11 @@ type GrandClubSignatureProps = {
   tone?: "ink" | "light";
   /* A rule on each side, one trailing rule, or none at all. */
   rules?: "both" | "right" | "none";
+  /* What the hand writes. The house tagline unless a caller says otherwise —
+     the reservation section signs the name in full. Whatever is passed is set
+     in the same script, at the same size and in the same gold: this is the
+     words, never the treatment. */
+  text?: string;
   className?: string;
 };
 
@@ -65,6 +70,7 @@ export function GrandClubSignature({
   size = "md",
   tone = "ink",
   rules = "both",
+  text,
   className,
 }: GrandClubSignatureProps) {
   const ink = tone === "light" ? "text-gold-light/85" : "text-accent";
@@ -83,7 +89,7 @@ export function GrandClubSignature({
       <span
         className={`${SIGNATURE_FACE} ${SIGNATURE_SIZE[size]} ${SIGNATURE_BOX} ${ink}`}
       >
-        {site.tagline}
+        {text ?? site.tagline}
       </span>
       {rules !== "none" && (
         <span

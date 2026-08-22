@@ -19,6 +19,7 @@ import {
   findEvent,
   isBookable,
   reserveHref,
+  ticketAvailability,
   upcomingEvents,
   type PartyEvent,
   type ReserveChoice,
@@ -106,7 +107,13 @@ export function ReservationRoom({
     const asked = findEvent(initialSlug);
     return asked && isBookable(asked) ? asked : undefined;
   });
-  const [open, setOpen] = useState<ReserveChoice | undefined>(initialChoice);
+  /* A link that asks for the ticket line on a night the club is not selling
+     online opens nothing — that line is there to be read, not to be opened. */
+  const [open, setOpen] = useState<ReserveChoice | undefined>(() => {
+    if (initialChoice !== "karte") return initialChoice;
+    const asked = findEvent(initialSlug);
+    return asked && ticketAvailability(asked) === "open" ? "karte" : undefined;
+  });
 
   /* The URL follows the room without a round trip to the server: the state the
      guest is looking at is always the state the address bar describes. */

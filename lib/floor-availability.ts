@@ -1,6 +1,6 @@
+import { seatCapacity } from "@/lib/floor-capacity";
 import {
   SEATS,
-  SEAT_KINDS,
   seatNumber,
   seatSize,
   type CornerSide,
@@ -88,7 +88,7 @@ function resolve(seat: FloorSeat, taken: ReadonlySet<string>): Seat {
     rotation: seat.rotation ?? 0,
     corner: seat.corner,
     depth: seat.depth,
-    capacity: SEAT_KINDS[seat.type].capacity,
+    capacity: seatCapacity(seat),
     status: taken.has(seat.id) ? "reserved" : "available",
   };
 }

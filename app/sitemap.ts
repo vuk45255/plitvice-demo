@@ -1,7 +1,5 @@
 import type { MetadataRoute } from "next";
 
-/* HIDDEN FOR THE DEMO — /o-nama is not listed while it redirects. Add it
-   back here when the story goes live. */
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
@@ -15,6 +13,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.8,
+    },
+    {
+      url: "https://plitviceclub.com/o-nama",
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.7,
     },
     {
       url: "https://plitviceclub.com/zurke",

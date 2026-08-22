@@ -11,6 +11,7 @@ import { useLang } from "@/components/providers/language";
 import { ReserveButton } from "@/components/reservation/reserve-button";
 import { nextEvent } from "@/lib/events";
 import { reserveHref } from "@/lib/events";
+import { site } from "@/lib/site";
 import reservationImg from "@/public/images/rezervacija.jpg";
 
 /* The one page that is always night — and the deepest velvet on the site:
@@ -95,7 +96,16 @@ export function Vip() {
             </Reveal>
             <Reveal delay={0.08}>
               <div className="mt-8">
-                <GrandClubSignature size="md" tone="light" rules="right" />
+                {/* Signed in full here, and only here: the reservation is the
+                    one place on the page where the house gives its whole name.
+                    Composed from the two facts in lib/site rather than written
+                    out, so it cannot drift from the mark in the header. */}
+                <GrandClubSignature
+                  size="md"
+                  tone="light"
+                  rules="right"
+                  text={`${site.tagline} ${site.name}`}
+                />
               </div>
             </Reveal>
             <Reveal delay={0.16}>

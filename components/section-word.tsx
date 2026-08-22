@@ -21,8 +21,21 @@ import {
    distance the section itself covers on screen — so the word holds its place in
    front of the visitor while sliding through the entire section, and goes
    behind the next one like something passing behind a wall. Nothing fades and
-   nothing scales; the section's `overflow: hidden` does all the hiding. */
-export function SectionWord({ word }: { word: string }) {
+   nothing scales; the section's `overflow: hidden` does all the hiding.
+
+   `speed` is how much of that travel the word takes. At 1 — the default, and
+   what every section had before there was a choice — the two cancel exactly
+   and the word holds still on screen while the section slides past it. Below 1
+   it drifts: at 0.72 the word climbs the screen at a bit over a quarter of the
+   page's rate, which is far enough back to read as depth and slow enough never
+   to pull the eye off what is in front of it. */
+export function SectionWord({
+  word,
+  speed = 1,
+}: {
+  word: string;
+  speed?: number;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const reduced = useReducedMotion();
   const [travel, setTravel] = useState(0);
@@ -45,7 +58,8 @@ export function SectionWord({ word }: { word: string }) {
     target: ref,
     offset: ["start end", "end start"],
   });
-  const y = useTransform(scrollYProgress, [0, 1], [-travel / 2, travel / 2]);
+  const reach = (travel / 2) * speed;
+  const y = useTransform(scrollYProgress, [0, 1], [-reach, reach]);
 
   return (
     <div

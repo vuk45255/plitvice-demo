@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ReservationGate } from "@/components/reservation/reservation-gate";
 import { ReservationRoom } from "@/components/reservation/reservation-room";
 import type { ReserveChoice } from "@/lib/events";
 
@@ -26,5 +27,13 @@ export default async function Rezervacija(props: PageProps<"/rezervacija">) {
   const choice: ReserveChoice | undefined =
     asked === "karte" || asked === "stolovi" ? asked : undefined;
 
-  return <ReservationRoom initialSlug={event} initialChoice={choice} />;
+  /* The room is rendered whole, and the admission notice is laid over it —
+     the guest reads the conditions with the night they came for already
+     visible behind the glass. Nothing about the room itself changes. */
+  return (
+    <>
+      <ReservationRoom initialSlug={event} initialChoice={choice} />
+      <ReservationGate />
+    </>
+  );
 }

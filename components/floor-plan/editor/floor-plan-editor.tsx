@@ -83,6 +83,7 @@ import {
   type Envelope,
   type Snapshot,
 } from "@/components/floor-plan/editor/editor-storage";
+import { seatCapacity } from "@/lib/floor-capacity";
 import {
   PLAN,
   REFERENCE_IMAGE,
@@ -1226,7 +1227,7 @@ export function FloorPlanEditor() {
   const previewSeats: Seat[] = seatsOf(doc).map((s) => ({
     id: s.id, display: numberOf(s), type: s.type, zone: s.zone, x: s.x, y: s.y, w: s.w, h: s.h,
     rotation: s.rotation, corner: s.corner, depth: s.depth,
-    capacity: SEAT_KINDS[s.type].capacity,
+    capacity: seatCapacity(s),
     status: taken.has(s.id) ? "reserved" : "available",
   }));
   const previewArchitecture = useMemo(() => docToArchitecture(doc), [doc]);

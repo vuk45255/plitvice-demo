@@ -32,8 +32,11 @@ import type { MessageKey } from "@/lib/i18n";
  *   fan, ladder, hatching      → stairs and structure, never a table
  *
  * WHAT IS NOT HERE. Whether a table is free is not geometry — see
- * lib/floor-availability.ts. Capacities belong to the kind of table and are
- * stated once, in SEAT_KINDS, never repeated per table. */
+ * lib/floor-availability.ts. Neither is what a table seats: the default for
+ * each kind is stated once in SEAT_KINDS below, and the tables the club has
+ * settled individually are listed in lib/floor-capacity.ts. Neither figure is
+ * ever written into a seat line here, because the exporter above would drop it
+ * on the next round trip. */
 
 export type SeatType = "bar" | "high" | "booth";
 

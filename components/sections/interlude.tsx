@@ -1,6 +1,7 @@
 "use client";
 
 import { useReducedMotion } from "framer-motion";
+import { QuietLink } from "@/components/quiet-link";
 import { Reveal } from "@/components/reveal";
 import { useLang } from "@/components/providers/language";
 import { site } from "@/lib/site";
@@ -68,17 +69,16 @@ export function Interlude() {
           </p>
         </Reveal>
 
-        {/* HIDDEN FOR THE DEMO — the way into the story goes here, and the
-            band grows by roughly 72px at each breakpoint to hold it:
-
-              <Reveal y={16} delay={0.32}>
-                <div className="mt-9 sm:mt-11">
-                  <QuietLink href={site.aboutPath} label={t("nav.about")} />
-                </div>
-              </Reveal>
-
-            Restore it together with the navigation entry in lib/site.ts and
-            the redirect in next.config.ts. Nothing else was removed. */}
+        {/* The way into the story — the only door to it anywhere on the site,
+            and closed for as long as the archive behind it is being rebuilt.
+            See `aboutLinked` in lib/site.ts. */}
+        {site.aboutLinked ? (
+          <Reveal y={16} delay={0.32}>
+            <div className="mt-9 sm:mt-11">
+              <QuietLink href={site.aboutPath} label={t("nav.about")} />
+            </div>
+          </Reveal>
+        ) : null}
       </div>
     </section>
   );

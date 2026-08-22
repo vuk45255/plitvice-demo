@@ -1,6 +1,7 @@
 import { validateField } from "@/lib/booking";
 import { findEvent, isBookable } from "@/lib/events";
-import { SEATS, SEAT_KINDS, seatNumber } from "@/lib/floor-plan";
+import { seatCapacity } from "@/lib/floor-capacity";
+import { SEATS, seatNumber } from "@/lib/floor-plan";
 import { reservedSeats } from "@/lib/floor-availability";
 import { normalizeEmail, normalizePhone } from "@/lib/reservations/identity";
 import { takeAttempt } from "@/lib/reservations/rate-limit";
@@ -90,7 +91,7 @@ export function requestReservation(
 
   const guests = Number(body.guests);
   if (seat) {
-    const { min, max } = SEAT_KINDS[seat.type].capacity;
+    const { min, max } = seatCapacity(seat);
     if (!Number.isInteger(guests) || guests < min || guests > max) {
       fields.guests = "out-of-range";
     }
