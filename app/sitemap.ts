@@ -1,4 +1,7 @@
 import type { MetadataRoute } from "next";
+import { INFO, infoHref } from "@/lib/local-info";
+
+const HOST = "https://plitviceclub.com";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
@@ -38,5 +41,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly",
       priority: 0.6,
     },
+    /* The concierge, read off the same list the cards and the routes are read
+       off — six pages that can never fall out of step with the six cards. */
+    ...INFO.map((category) => ({
+      url: `${HOST}${infoHref(category)}`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.5,
+    })),
   ];
 }

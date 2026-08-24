@@ -27,12 +27,10 @@ export const site = {
   /* The story of the house — the section that used to sit under the band on
      the home page, now a page of its own. */
   aboutPath: "/o-nama",
-  /* TEMPORARY — the archive on /o-nama is being rebuilt, so the house is not
-     showing anyone in yet. The page, its route and all of its work are intact;
-     this only decides whether the site offers a door to it. Set it back to
-     true and the way in returns exactly where it was, in the interlude band on
-     the home page. */
-  aboutLinked: false,
+  /* Whether the site offers a door to the story. The archive behind it is
+     finished, so it does: the way in sits in the interlude band on the home
+     page, and the menu carries it on every screen. */
+  aboutLinked: true,
   founded: "1965",
   /* Vertical heritage film for the About section. The folder name contains a
      space, so the URL is encoded. If it fails to load, the frame falls back to
@@ -72,5 +70,8 @@ export const navigation: { label: MessageKey; href: string }[] = [
      GALERIJA on the page; the menu now says the same word. Same door as before,
      same place in the order — only the name over it has changed. */
   { label: "nav.gallery", href: "#gallery" },
+  /* The story of the house — a page of its own rather than a place on this
+     one, and the only entry in the menu that is not on the home page. */
+  { label: "nav.about", href: "/o-nama" },
   { label: "nav.reserve", href: "/rezervacija" },
 ];

@@ -8,7 +8,6 @@ import {
   useReducedMotion,
 } from "framer-motion";
 import { EASE } from "@/components/reveal";
-import { useLang } from "@/components/providers/language";
 import { site } from "@/lib/site";
 
 /* What the house says about itself, said over and over.
@@ -100,7 +99,6 @@ const STEP_MS = 1000;
 export function ClaimHero() {
   const ref = useRef<HTMLElement>(null);
   const reduced = useReducedMotion();
-  const { t } = useLang();
 
   /* Counts every word shown rather than which of the four is up, so the turn
      from the last word back to the first is the same hand-over as any other —
@@ -215,21 +213,6 @@ export function ClaimHero() {
         </AnimatePresence>
       )}
 
-      {/* The two anchors. They hold still while the type moves, and unlike the
-          statement they are copy, so they follow the site's language. */}
-      <div
-        className="pointer-events-none absolute inset-x-0 top-[15vh] z-10"
-        aria-hidden="true"
-      >
-        <div className="container-x flex items-start justify-between gap-6">
-          <span className="rail rail-night !text-[0.5rem] sm:!text-[0.5625rem]">
-            {t("story.place")}
-          </span>
-          <span className="rail rail-night !text-[0.5rem] sm:!text-[0.5625rem]">
-            {t("story.since")}
-          </span>
-        </div>
-      </div>
     </section>
   );
 }

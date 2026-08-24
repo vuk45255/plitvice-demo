@@ -106,6 +106,73 @@ const sr = {
   /* The way back out of the guide, set beside the rail over the grid. */
   "info.restart": "Na početak",
 
+  /* ─────────── THE SIX PAGES BEHIND THE CARDS — /info/<slug> ───────────
+     The rail over every one of them, the way back to the six, and the two
+     things a row can offer. What each place IS lives under info.d.* below;
+     its name and its address are proper nouns and are not in here. */
+  "info.page.eyebrow": "Info",
+  "info.page.back": "Info",
+  "info.action.call": "Pozovi",
+  "info.action.openMap": "Otvori mapu",
+
+  /* Two lines each: the headline breaks where it is written to break. */
+  "info.page.smestaj.a": "Smeštaj",
+  "info.page.smestaj.b": "u Inđiji.",
+  "info.page.smestaj.lead": "Predlog smeštaja za goste Plitvica.",
+  "info.page.restorani.a": "Restorani",
+  "info.page.restorani.b": "u Inđiji.",
+  "info.page.restorani.lead": "Gde na večeru pre ili posle Plitvica.",
+  "info.page.nonstop.a": "Otvoreno",
+  "info.page.nonstop.b": "00—24.",
+  "info.page.nonstop.lead": "Kad vam nešto zatreba posle ponoći.",
+  "info.page.prevoz.a": "Prevoz",
+  "info.page.prevoz.b": "u Inđiji.",
+  "info.page.prevoz.lead": "Sve što vam treba da stignete i vratite se.",
+  "info.page.prva-pomoc.a": "Prva pomoć",
+  "info.page.prva-pomoc.b": "u Inđiji.",
+  "info.page.prva-pomoc.lead": "Dežurna služba i apoteke u Inđiji.",
+  "info.page.kako-do-nas.a": "Kako",
+  "info.page.kako-do-nas.b": "do nas.",
+  "info.page.kako-do-nas.lead":
+    "Inđija je na sat vremena od Beograda i pola sata od Novog Sada.",
+
+  /* WHAT EACH PLACE IS. One line, never a review — see lib/info-places.ts. */
+  "info.d.central": "Moderan hotel u samom centru Inđije.",
+  "info.d.inClub": "Prenoćište i doručak u Inđiji.",
+  "info.d.mvMonogram":
+    "Hotel i restoran na Beščanskom krstu, u mirnijem okruženju nadomak Inđije.",
+  "info.d.kord2": "Apartmani u centru Inđije, u okviru kompleksa TQ Vegas.",
+  "info.d.monogram": "Smeštaj u mirnijem delu Inđije, u blizini parka i jezera.",
+  "info.d.perlaLux": "Apartmani u centru Inđije.",
+  "info.d.galerija":
+    "Pizzeria u centru Inđije sa ponudom pizza i italijanske kuhinje.",
+  "info.d.gotti":
+    "Restoran u centru Inđije sa tradicionalnom i internacionalnom kuhinjom.",
+  "info.d.corso": "Restoran-pizzeria u centru Inđije.",
+  "info.d.perla": "Tradicionalna i internacionalna kuhinja.",
+  "info.d.pekara": "Pekara sa slanim i slatkim pecivima.",
+  "info.d.zeleznicka": "Stanica se nalazi u širem centru Inđije.",
+  "info.d.autobuska": "Autobuska stanica u širem centru Inđije.",
+  "info.d.aerodrom": "Aerodrom je približno 40 km od Inđije.",
+  "info.d.taxi": "Taxi prevoz dostupan 00—24.",
+  "info.d.domZdravlja":
+    "Dom zdravlja u centru Inđije sa dežurnom službom hitne pomoći.",
+  "info.d.apoteka": "Apoteka.",
+
+  /* KAKO DO NAS — the one page that is not a directory. */
+  "info.route.here": "Adresa",
+  "info.route.car": "Automobilom",
+  "info.route.carNote":
+    "Inđija je povezana auto-putem E75/E70 i starim putem Beograd—Novi Sad.",
+  "info.route.train": "Vozom",
+  "info.route.trainNote":
+    "Inđija je na pruzi Beograd—Novi Sad, a stanica je u širem centru.",
+  "info.route.plane": "Avionom",
+  "info.route.planeNote":
+    "Aerodrom Nikola Tesla je približno 40 km od Inđije.",
+  "info.route.open": "Otvori navigaciju",
+
+
 
   /* Captions for the room stills. Written to work read aloud as well as set
      under a photograph — they are the alt text too. */
@@ -162,9 +229,11 @@ const sr = {
   "wall.altStaff": "Konobari Plitvica na arhivskom snimku",
   "wall.altNight": "Žurka u Plitvicama pod svetlima",
 
-  /* The three photographs the composition is built to receive. */
-  "wall.alt2013": "Plitvice 2013. godine",
-  "wall.alt2019": "Plitvice 2019. godine",
+  /* The three photographs at the hinge of the story — the house at three
+     distances rather than three dated pictures. Nothing here claims a year;
+     the only one the page claims is the one on the door. */
+  "wall.alt1965": "Plitvice 1965. godine",
+  "wall.alt2017": "Plitvice 2017. godine",
   "wall.alt2026": "Plitvice 2026. godine",
 
   /* The record behind the right edge of every page. Only the labels a screen
@@ -422,6 +491,67 @@ const en: Record<MessageKey, string> = {
   "info.discover": "Look",
   "info.restart": "Back to the start",
 
+  "info.page.eyebrow": "Info",
+  "info.page.back": "Info",
+  "info.action.call": "Call",
+  "info.action.openMap": "Open map",
+
+  "info.page.smestaj.a": "Where to",
+  "info.page.smestaj.b": "stay in Inđija.",
+  "info.page.smestaj.lead": "Somewhere to sleep, for guests of Plitvice.",
+  "info.page.restorani.a": "Restaurants",
+  "info.page.restorani.b": "in Inđija.",
+  "info.page.restorani.lead": "Dinner before the night, or after it.",
+  "info.page.nonstop.a": "Open",
+  "info.page.nonstop.b": "00—24.",
+  "info.page.nonstop.lead": "For whatever you need after midnight.",
+  "info.page.prevoz.a": "Getting",
+  "info.page.prevoz.b": "around Inđija.",
+  "info.page.prevoz.lead": "Everything you need to arrive, and to get home.",
+  "info.page.prva-pomoc.a": "First aid",
+  "info.page.prva-pomoc.b": "in Inđija.",
+  "info.page.prva-pomoc.lead":
+    "The out-of-hours clinic, and the pharmacies in town.",
+  "info.page.kako-do-nas.a": "Finding",
+  "info.page.kako-do-nas.b": "us.",
+  "info.page.kako-do-nas.lead":
+    "Inđija is an hour from Belgrade and half an hour from Novi Sad.",
+
+  "info.d.central": "A modern hotel in the very centre of Inđija.",
+  "info.d.inClub": "Rooms and breakfast in Inđija.",
+  "info.d.mvMonogram":
+    "A hotel and restaurant at the Beščanski krst, in quieter country just outside Inđija.",
+  "info.d.kord2": "Apartments in the centre of Inđija, inside the TQ Vegas complex.",
+  "info.d.monogram":
+    "Rooms in a quieter part of Inđija, near the park and the lake.",
+  "info.d.perlaLux": "Apartments in the centre of Inđija.",
+  "info.d.galerija": "A pizzeria in the centre of Inđija, Italian kitchen.",
+  "info.d.gotti":
+    "A restaurant in the centre of Inđija, traditional and international.",
+  "info.d.corso": "A restaurant and pizzeria in the centre of Inđija.",
+  "info.d.perla": "Traditional and international kitchen.",
+  "info.d.pekara": "A bakery, savoury and sweet.",
+  "info.d.zeleznicka": "The station sits just outside the centre of Inđija.",
+  "info.d.autobuska": "The bus station, just outside the centre of Inđija.",
+  "info.d.aerodrom": "The airport is around 40 km from Inđija.",
+  "info.d.taxi": "Taxis available 00—24.",
+  "info.d.domZdravlja":
+    "The town clinic in the centre of Inđija, with an out-of-hours emergency service.",
+  "info.d.apoteka": "Pharmacy.",
+
+  "info.route.here": "Address",
+  "info.route.car": "By car",
+  "info.route.carNote":
+    "Inđija is on the E75/E70 motorway and the old Belgrade—Novi Sad road.",
+  "info.route.train": "By train",
+  "info.route.trainNote":
+    "Inđija is on the Belgrade—Novi Sad line; the station is just outside the centre.",
+  "info.route.plane": "By air",
+  "info.route.planeNote":
+    "Nikola Tesla airport is around 40 km from Inđija.",
+  "info.route.open": "Open navigation",
+
+
 
   "shot.crowd": "On stage under full lights, the room watching",
   "shot.lights": "The dance floor under violet lights",
@@ -472,8 +602,8 @@ const en: Record<MessageKey, string> = {
   "wall.altStaff": "The Plitvice waiters in archival footage",
   "wall.altNight": "A party at Plitvice under the lights",
 
-  "wall.alt2013": "Plitvice in 2013",
-  "wall.alt2019": "Plitvice in 2019",
+  "wall.alt1965": "Plitvice in 1965",
+  "wall.alt2017": "Plitvice in 2017",
   "wall.alt2026": "Plitvice in 2026",
 
   "mix.open": "Open the player",

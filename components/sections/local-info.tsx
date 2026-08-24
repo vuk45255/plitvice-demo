@@ -206,6 +206,27 @@ export function LocalInfo() {
             : { height: `calc(100svh + ${WORDS_VH + HANDOVER_VH}vh)` }
         }
       >
+        {/* WHERE THE SIX PAGES COME BACK TO.
+         *
+         * `#info` is the section, and the section BEGINS with five thousand
+         * pixels of pinned questions — so a visitor returning from
+         * /info/restorani would land on the first question and have to read
+         * the whole story again to reach the cards they were just looking at.
+         *
+         * This is the last frame of the pin instead: a box exactly one screen
+         * tall, pinned to the foot of the track, whose top edge sits at the
+         * scroll position where the grid has finished assembling. An anchor to
+         * it puts that frame at the top of the viewport, which is the six
+         * pictures, complete. When the story has been told and the track has
+         * collapsed it spans the scene itself and lands in the same place.
+         *
+         * It has no height of its own and nothing in it — it exists to be a
+         * scroll target and for no other reason. */}
+        <div
+          id="info-cards"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[100svh]"
+          aria-hidden="true"
+        />
         <div
           ref={scene}
           className={

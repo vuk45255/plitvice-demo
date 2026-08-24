@@ -6,20 +6,16 @@ import type { InfoCategory } from "@/lib/local-info";
 
 /* The photograph for one category, and the plate it sits on.
  *
- * None of the six pictures are in the repository yet, so the plate is what a
- * visitor sees today: the house velvet with one violet lamp behind it and a
- * little gold off the top corner. It is drawn rather than borrowed — putting
- * the club's own dance floor behind the word RESTORANI would be worse than an
- * honest empty frame.
+ * The plate is always underneath: the house velvet with one violet lamp behind
+ * it and a little gold off the top corner, drawn rather than borrowed. It is
+ * what shows if a photograph ever fails to load — the picture takes itself out
+ * of the document on error rather than leaving a broken frame.
  *
- * The plate is always underneath. The photograph lays over it and takes itself
- * out of the document again if the file is not there, which means dropping the
- * six files into /public/info is the whole of the work — nothing here has to
- * be edited for them to appear.
- *
- * The plate is deliberately built out of colour rather than grey: the cards
- * grade everything above them to grayscale at rest and let it back in on
- * hover, and a plate with no colour in it would make that look broken. */
+ * COVER, AND THE SUBJECT PLACED BY HAND. The frame this sits in is a square on
+ * the cards and a whole screen in the intro, and none of the six pictures is
+ * either shape, so every one of them is cropped. `focus` is where that crop is
+ * taken from — see `lib/local-info.ts` — and it is the difference between a
+ * card showing the bed and a card showing the ceiling above it. */
 export function InfoPhoto({
   category,
   sizes,
@@ -59,6 +55,7 @@ export function InfoPhoto({
           fill
           sizes={sizes}
           onError={() => setMissing(true)}
+          style={{ objectPosition: category.focus }}
           className="img-grade object-cover"
         />
       )}

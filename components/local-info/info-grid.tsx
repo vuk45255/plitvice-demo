@@ -12,7 +12,7 @@ import {
 import { Arrow } from "@/components/arrow";
 import { InfoPhoto } from "@/components/local-info/info-photo";
 import { useLang } from "@/components/providers/language";
-import { INFO, type InfoCategory } from "@/lib/local-info";
+import { INFO, infoHref, type InfoCategory } from "@/lib/local-info";
 
 /* The six, as pictures — and a pressure wave travelling down them.
  *
@@ -141,12 +141,19 @@ const CONTACT_CURVE = 1.2;
 const AMBIENT_CURVE = 2;
 
 /* How much of the resting grade comes back at the middle of the screen. These
-   MULTIPLY the grade the card already wears, so 1.206 takes a brightness of
-   0.68 to 0.82 and 1.08 takes a contrast of 1.06 to 1.145. THE ROW DOES NOT
-   REGAIN ITS COLOUR HERE — being looked at is not the same as being reached
-   for, and only hover, focus and touch take the grey out. */
-const CLEARER = 0.206;
-const CRISPER = 0.08;
+   MULTIPLY the grade the card already wears, so 1.064 takes a brightness of
+   0.94 to 1.0 and 1.05 takes a contrast of 1.03 to 1.082. BEING LOOKED AT IS
+   NOT THE SAME AS BEING REACHED FOR: the row passing the middle of the screen
+   comes up to about its own true exposure and no further, and the small lift
+   above that belongs to hover, focus and touch alone.
+ *
+ * These were three times larger, back when the cards sat at two thirds
+ * brightness because their pictures had not arrived yet. Against the
+ * photographs' own resting grade the same numbers would have blown a row out
+ * as it crossed the middle of the screen. They move with that grade — change
+ * one and check the other. */
+const CLEARER = 0.064;
+const CRISPER = 0.05;
 
 /* The most rows six cards can ever form: the grid never drops below two
    columns, so three is the ceiling, and it is the number of value sets the
@@ -753,28 +760,33 @@ function ShadowCast({ box, depth }: { box: RowBox; depth: Depth }) {
 
 /* ─────────────────────────────── one card ─────────────────────────────── */
 
-/* Grey at rest — an archive of the town rather than six adverts — and the
-   whole picture comes back the moment it is reached for.
+/* The grade the pictures wear at rest, and the small lift they get when one is
+   reached for.
  *
- * THE GREY IS NOT THE DARK. Those are two separate jobs and they were fighting
- * each other: a picture dimmed far enough to carry type anywhere on it has no
- * tonal range left once the colour has been taken out of it too, and six tiles
- * that all read as the same near-black rectangle tell a visitor nothing about
- * what is behind them. So the grade keeps its brightness up and pushes contrast
- * past 1 to buy back the separation greyscale costs, and the darkening the
- * label needs is done by the gradient under the label — locally, where it is
- * wanted, rather than across the whole picture.
+ * SIX WINDOWS, NOT SIX PLACEHOLDERS. The tiles used to sit at greyscale and
+ * two thirds brightness, which was the right treatment for the drawn plates
+ * that were standing in for the photographs and the wrong one for the
+ * photographs themselves: the six pictures are already night-lit and already
+ * quiet, and taking the colour out of them left a wall of near-black squares
+ * telling a visitor nothing about what was behind them. So the rest state is
+ * now barely a grade at all — a little off the brightness, a little on the
+ * contrast — and the darkening the label needs is done by the gradient under
+ * the label, locally, where it is wanted.
+ *
+ * The lift is deliberately small. A picture that jumps into colour under the
+ * cursor is a slideshow effect; a picture that comes up a few per cent is a
+ * light being turned up in the room it shows.
  *
  * Hover is only one of three ways in. A keyboard gets the same picture on
  * focus and a finger gets it on the press. All three set the same one thing,
  * and the styles are written once against it. */
 const LIT =
-  "group-hover:grayscale-0 group-hover:saturate-[1.15] group-hover:brightness-[1.06] group-hover:contrast-[1.02] " +
-  "group-focus-visible:grayscale-0 group-focus-visible:saturate-[1.15] group-focus-visible:brightness-[1.06] group-focus-visible:contrast-[1.02] " +
-  "group-data-[lit=true]:grayscale-0 group-data-[lit=true]:saturate-[1.15] group-data-[lit=true]:brightness-[1.06] group-data-[lit=true]:contrast-[1.02]";
+  "group-hover:brightness-[1.03] group-hover:saturate-[1.06] " +
+  "group-focus-visible:brightness-[1.03] group-focus-visible:saturate-[1.06] " +
+  "group-data-[lit=true]:brightness-[1.03] group-data-[lit=true]:saturate-[1.06]";
 
 const ZOOM =
-  "group-hover:scale-[1.03] group-focus-visible:scale-[1.03] group-data-[lit=true]:scale-[1.02]";
+  "group-hover:scale-[1.025] group-focus-visible:scale-[1.025] group-data-[lit=true]:scale-[1.025]";
 
 const SHIFT =
   "group-hover:translate-x-[5px] group-focus-visible:translate-x-[5px] group-data-[lit=true]:translate-x-[5px]";
@@ -813,10 +825,10 @@ function Card({
     <>
       {/* the picture, and the grade it wears at rest */}
       <div
-        className={`absolute inset-0 grayscale contrast-[1.06] brightness-[0.68] transition-[filter] duration-[620ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${LIT}`}
+        className={`absolute inset-0 brightness-[0.94] contrast-[1.03] transition-[filter] duration-[820ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${LIT}`}
       >
         <div
-          className={`absolute inset-0 transition-transform duration-[620ms] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform ${ZOOM}`}
+          className={`absolute inset-0 transition-transform duration-[820ms] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform ${ZOOM}`}
         >
           <InfoPhoto
             category={category}
@@ -830,16 +842,16 @@ function Card({
           the darkening the label needs happens here rather than over the whole
           tile */}
       <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-[58%]"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-[62%]"
         style={{
           background:
-            "linear-gradient(to top, rgba(8,5,13,0.9), rgba(8,5,13,0.42) 44%, transparent)",
+            "linear-gradient(to top, rgba(8,5,13,0.72) 0%, rgba(8,5,13,0.26) 42%, transparent 74%)",
         }}
         aria-hidden="true"
       />
 
       <span
-        className={`pointer-events-none absolute inset-x-0 bottom-0 flex items-center gap-2.5 p-4 transition-transform duration-[620ms] ease-[cubic-bezier(0.16,1,0.3,1)] sm:gap-3 md:p-5 ${SHIFT}`}
+        className={`pointer-events-none absolute inset-x-0 bottom-0 flex items-center gap-2.5 p-4 transition-transform duration-[820ms] ease-[cubic-bezier(0.16,1,0.3,1)] sm:gap-3 md:p-5 ${SHIFT}`}
       >
         <span className="text-[0.5625rem] font-medium uppercase leading-none tracking-[0.22em] text-[#f7f0dd] [text-shadow:0_1px_2px_rgba(6,3,11,0.9),0_3px_12px_rgba(6,3,11,0.75)] sm:text-[0.625rem] sm:tracking-[0.26em] md:text-[0.6875rem] md:tracking-[0.28em]">
           {label}
@@ -851,23 +863,17 @@ function Card({
     </>
   );
 
-  /* A card with somewhere to go is a link, and announces itself as one. A card
-     without one is a picture with a name under it — the five pages behind
-     these do not exist yet, and a control that does nothing is worse to land
-     on with a screen reader than a plain figure is. Give the entry an href in
-     lib/local-info.ts and it becomes a real link, focus treatment and all,
-     with nothing here to change. */
-  if (!category.href) {
-    return (
-      <figure className={skin} data-lit={lit} {...press}>
-        {inside}
-        <figcaption className="sr-only">{alt}</figcaption>
-      </figure>
-    );
-  }
-
+  /* Every card is a door now — all six have a page behind them — so every one
+     of them is a link and announces itself as one. Where it goes is worked out
+     in lib/local-info.ts rather than written here, so the grid and the routes
+     cannot come apart. */
   return (
-    <Link href={category.href} className={skin} data-lit={lit} {...press}>
+    <Link
+      href={infoHref(category)}
+      className={skin}
+      data-lit={lit}
+      {...press}
+    >
       {inside}
       <span className="sr-only">{alt}</span>
     </Link>
