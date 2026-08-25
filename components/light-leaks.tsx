@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import {
   motion,
+  useInView,
   useReducedMotion,
   useScroll,
   useTransform,
@@ -101,6 +102,12 @@ export function LightLeaks({
   const ref = useRef<HTMLDivElement>(null);
   const reduced = useReducedMotion();
 
+  /* The beams travel only while their section is anywhere near the screen.
+     Four of these rigs used to cross their rooms for the whole visit — see
+     the same note in components/ambient.tsx. */
+  const near = useInView(ref, { margin: "200px" });
+  const live = !reduced && near;
+
   const leaks = intensity === "strong" ? LEAKS : LEAKS.slice(0, 2);
   const strength =
     intensity === "strong"
@@ -135,21 +142,28 @@ export function LightLeaks({
               background: `radial-gradient(closest-side, ${leak.color}, transparent 78%)`,
               rotate: leak.tilt,
             }}
+            /* Stopped by being replaced rather than by being taken away —
+               see the same note in components/ambient.tsx. */
             animate={
-              reduced
-                ? undefined
-                : {
+              live
+                ? {
                     x: leak.travel.x,
                     y: leak.travel.y,
                     opacity: [0.45, 1, 0.45],
+                    transition: {
+                      duration: leak.duration,
+                      delay: leak.delay,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    },
+                  }
+                : {
+                    x: leak.travel.x[0],
+                    y: leak.travel.y[0],
+                    opacity: 0.7,
+                    transition: { duration: 0 },
                   }
             }
-            transition={{
-              duration: leak.duration,
-              delay: leak.delay,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
           />
         ))}
 
@@ -162,20 +176,25 @@ export function LightLeaks({
               background: `radial-gradient(closest-side, ${bank.color}, transparent 80%)`,
             }}
             animate={
-              reduced
-                ? undefined
-                : {
+              live
+                ? {
                     x: bank.travel.x,
                     y: bank.travel.y,
                     opacity: [0.6, 1, 0.6],
+                    transition: {
+                      duration: bank.duration,
+                      delay: bank.delay,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    },
+                  }
+                : {
+                    x: bank.travel.x[0],
+                    y: bank.travel.y[0],
+                    opacity: 0.8,
+                    transition: { duration: 0 },
                   }
             }
-            transition={{
-              duration: bank.duration,
-              delay: bank.delay,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
           />
         ))}
       </div>

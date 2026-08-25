@@ -3,10 +3,12 @@
 import { useRef } from "react";
 import {
   motion,
+  useInView,
   useReducedMotion,
   useScroll,
   useTransform,
 } from "framer-motion";
+import { useCoarsePointer } from "@/lib/use-media";
 
 /* Purple lamps behind the page, and the haze that makes their beams visible.
 
@@ -125,6 +127,20 @@ type AmbientProps = {
 export function Ambient({ variant = "full", fadeOut = false }: AmbientProps) {
   const ref = useRef<HTMLDivElement>(null);
   const reduced = useReducedMotion();
+  const phone = useCoarsePointer();
+
+  /* NOTHING BREATHES IN A ROOM NOBODY IS STANDING IN.
+
+     There are two of these rigs on the home page and two light-leak rigs
+     besides, and every lamp in all four used to run its loop for the whole
+     visit whether its section was on screen or five screens above. Twenty-odd
+     infinite animations, each writing a style every frame, on a phone that is
+     trying to scroll. They now run only while their own section is anywhere
+     near the viewport and hold their last frame otherwise — which nobody can
+     see, because the wrapper opacity has already taken the rig to nought by
+     then. */
+  const near = useInView(ref, { margin: "200px" });
+  const live = !reduced && near;
 
   const lamps = variant === "full" ? LAMPS : LAMPS.slice(0, 3);
   const haze = variant === "full" ? HAZE : HAZE.slice(0, 2);
@@ -166,21 +182,40 @@ export function Ambient({ variant = "full", fadeOut = false }: AmbientProps) {
               filter: lamp.blur[0],
               x: reduced ? undefined : lamp.track === "a" ? xA : xB,
             }}
+            /* THE BLUR RADIUS IS NOT ANIMATED ON A PHONE, and it was the
+               single most expensive thing in this file. Opacity and scale are
+               compositor work on a layer the GPU already holds; changing the
+               radius throws that layer away and blurs a seventy-viewport-high
+               circle again from scratch, sixty times a second, five lamps at
+               once. The lamp still swells and still fades — it simply softens
+               by a fixed amount instead of a moving one, which at this size
+               and this opacity is a difference nobody can point to. */
+            /* A LOOP IS STOPPED BY BEING REPLACED, not by being taken away.
+               Handing `animate` undefined leaves whatever is already running
+               exactly where it is — still ticking, still writing a style every
+               frame, off screen and forever. A resting pose supersedes it. */
             animate={
-              reduced
-                ? undefined
-                : {
+              live
+                ? {
                     opacity: [0.35, 1, 0.35],
                     scale: [0.92, 1.16, 0.92],
-                    filter: [lamp.blur[0], lamp.blur[1], lamp.blur[0]],
+                    ...(phone
+                      ? null
+                      : { filter: [lamp.blur[0], lamp.blur[1], lamp.blur[0]] }),
+                    transition: {
+                      duration: lamp.duration,
+                      delay: lamp.delay,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    },
+                  }
+                : {
+                    opacity: 0.7,
+                    scale: 1,
+                    filter: lamp.blur[0],
+                    transition: { duration: 0 },
                   }
             }
-            transition={{
-              duration: lamp.duration,
-              delay: lamp.delay,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
           />
         ))}
 
@@ -195,21 +230,27 @@ export function Ambient({ variant = "full", fadeOut = false }: AmbientProps) {
               background: `radial-gradient(circle, ${bank.color}, transparent 72%)`,
             }}
             animate={
-              reduced
-                ? undefined
-                : {
+              live
+                ? {
                     opacity: [0.5, 1, 0.5],
                     scale: [1, 1.12, 1],
                     x: bank.drift.x,
                     y: bank.drift.y,
+                    transition: {
+                      duration: bank.duration,
+                      delay: bank.delay,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    },
+                  }
+                : {
+                    opacity: 0.75,
+                    scale: 1,
+                    x: bank.drift.x[0],
+                    y: bank.drift.y[0],
+                    transition: { duration: 0 },
                   }
             }
-            transition={{
-              duration: bank.duration,
-              delay: bank.delay,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
           />
         ))}
       </div>

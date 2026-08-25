@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
+import { useCoarsePointer } from "@/lib/use-media";
 
 /* The room the reservation is taken in.
 
@@ -63,6 +64,7 @@ const HAZE: { place: string; color: string; duration: number; delay: number; dri
 
 export function ReservationAtmosphere() {
   const reduced = useReducedMotion();
+  const phone = useCoarsePointer();
 
   return (
     <div
@@ -89,13 +91,19 @@ export function ReservationAtmosphere() {
               background: `radial-gradient(circle, ${lamp.color}, transparent 70%)`,
               filter: lamp.blur[0],
             }}
+            /* The radius holds still on a phone — see the note on the same
+               animation in components/ambient.tsx. This rig sits under a form
+               people are typing into, which is the worst place on the site to
+               be re-blurring an eighty-viewport circle every frame. */
             animate={
               reduced
                 ? undefined
                 : {
                     opacity: [0.4, 1, 0.4],
                     scale: [0.94, 1.14, 0.94],
-                    filter: [lamp.blur[0], lamp.blur[1], lamp.blur[0]],
+                    ...(phone
+                      ? null
+                      : { filter: [lamp.blur[0], lamp.blur[1], lamp.blur[0]] }),
                   }
             }
             transition={{

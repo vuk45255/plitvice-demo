@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image, { type StaticImageData } from "next/image";
+import { useFilmInView } from "@/lib/use-film";
 
 type StoryVideoProps = {
   src: string | null;
@@ -14,6 +15,7 @@ type StoryVideoProps = {
    file will not load, the still quietly takes its place instead. */
 export function StoryVideo({ src, poster, fallback, alt }: StoryVideoProps) {
   const [failed, setFailed] = useState(false);
+  const film = useFilmInView<HTMLVideoElement>();
 
   if (!src || failed) {
     return (
@@ -29,9 +31,9 @@ export function StoryVideo({ src, poster, fallback, alt }: StoryVideoProps) {
 
   return (
     <video
+      ref={film}
       src={src}
       poster={poster}
-      autoPlay
       muted
       loop
       playsInline

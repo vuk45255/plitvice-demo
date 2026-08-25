@@ -8,6 +8,7 @@ import {
   useSpring,
   useTransform,
 } from "framer-motion";
+import { useCoarsePointer } from "@/lib/use-media";
 
 /* A card with a little depth: it leans a few degrees toward the cursor and
    lifts as you reach for it. The angles are deliberately small — enough for
@@ -22,6 +23,11 @@ export function TiltCard({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const reduced = useReducedMotion();
+  /* A CARD ONLY LEANS TOWARD A CURSOR. On a touch screen there is nothing for
+     it to lean toward, and `pointermove` still fires — through every scroll
+     and every tap — so the card was reading its own box and running two
+     springs for a gesture that was never aimed at it. */
+  const coarse = useCoarsePointer();
 
   const px = useMotionValue(0);
   const py = useMotionValue(0);
@@ -29,7 +35,7 @@ export function TiltCard({
   const rotateX = useSpring(useTransform(py, [-0.5, 0.5], [4.5, -4.5]), spring);
   const rotateY = useSpring(useTransform(px, [-0.5, 0.5], [-4.5, 4.5]), spring);
 
-  if (reduced) return <div className={className}>{children}</div>;
+  if (reduced || coarse) return <div className={className}>{children}</div>;
 
   return (
     <motion.div

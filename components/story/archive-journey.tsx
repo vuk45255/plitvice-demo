@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   motion,
   useInView,
@@ -14,6 +14,7 @@ import Image from "next/image";
 import { useScrollTrack } from "@/components/story/use-scroll-track";
 import { useLang } from "@/components/providers/language";
 import type { MessageKey } from "@/lib/i18n";
+import { useWideScreen } from "@/lib/use-media";
 
 /* THE ARCHIVE — /o-nama, and the one chapter of the site that is travelled
  * rather than scrolled.
@@ -148,7 +149,7 @@ type Layout = {
   stops: [number, number, number, number];
   origin: { title: Block; film: Box };
   sound: { film: Box; title: Block };
-  years: { title: Block; anchors: Anchor[] };
+  years: { title: Block | Box; anchors: Anchor[] };
   nights: { title: Block; film: Box };
 };
 
@@ -204,32 +205,58 @@ const WIDE: Layout = {
     /* THE STATEMENT IS THE SCENE, and it is two lines: GODINE SE SMENJUJU. /
        IME OSTAJE ISTO. Seventy-six vw is what holds each of them on one line
        at this size — narrow the box and the first line wraps, which turns one
-       editorial statement into four stacked fragments. Centred on the screen,
-       and high enough that both lines are in the frame together. */
-    title: { x: 248, y: 28, w: 76 },
-    /* TWO ANCHORS AND A BACKGROUND. 1965 and this year are equal frames low on
-       opposite sides — the archive holding the two corners of the scene. 2017
-       is not a third frame beside them: it is a wide, shallow crop that sits
-       BEHIND the statement, in the middle of the type, so the room reads
-       through the letters rather than sitting above them as a card.
+       editorial statement into four stacked fragments.
      *
-     * The layering is DOM order, not z-index: the anchors are rendered before
-     * the title in SceneYears, so the type is over the photograph and the
-     * photograph is over the threads. Screen positions at the stop — 1965 at
-     * 9..25, 2017 at 34..65 behind the words, this year at 75..91. */
+     * AND IT IS CENTRED ON THE SCREEN RATHER THAN HUNG FROM A TOP MARGIN.
+     * The box is the full height of the stage — y 0, h 100 — and the two
+     * lines are centred inside it by SceneYears, which is the layout answer
+     * to translate(-50%, -50%): the middle of the sentence lands on 50vh at
+     * every window height and every step of the type's clamp, instead of a
+     * fixed top that reads centred at one size and high at the next. The
+     * whole composition is then measured from that centre.
+     *
+     * Screen 12..88 across at the stop, so the sentence is centred on 50vw.
+     *
+     * AND IT IS THE MIDDLE BAND OF THREE. Nothing is behind these words and
+     * nothing crosses them: the archive is above and below, and the
+     * sentence has the middle of the screen to itself. The block runs 37..63
+     * down at the deepest the type's clamp can reach, and the two bands are
+     * placed off those edges — see the anchors. */
+    title: { x: 248, y: 0, w: 76, h: 100 },
+    /* THREE BANDS DOWN THE SCREEN, AND NOTHING SHARES A ROW WITH THE TYPE.
+     *
+     * 2017 used to sit behind the statement. It does not any more: it is a
+     * band of its own across the top — screen 33..67 across, 11..30 down —
+     * clear of the header above it and five vh clear of the tallest the
+     * sentence can grow to below it. Which is why it is nineteen vh rather
+     * than twenty-six: the space between a header that ends around 7 and a
+     * statement that begins at 37 is all there is, and a photograph that
+     * fills it edge to edge is not a band, it is a collision waiting for a
+     * shorter window. It has also lost `behind` — no wash, no sideways
+     * shutter, no wide crop pretending to be a ground for type. It is a
+     * frame now, like the other two, because that is what it is.
+     *
+     * 1965 and this year are the floor: screen 10..28 and 72..90, opening at
+     * 69 and 71, six vh under the last line of the sentence and outside the
+     * centre band's column as well. Set at slightly different heights on
+     * purpose — the floor of the composition is asymmetric, not a shelf.
+     *
+     * THE THREE BANDS ARE THE WHOLE RULE OF THIS SCENE. A horizontal line
+     * drawn above the statement and another below it are crossed by nothing.
+     * The type's height is the one thing here that moves on its own — it is
+     * set in vw and read on windows of every height — so the gaps are sized
+     * for the top of its clamp on a short wide window, not for a comfortable
+     * one. Anything that grows a photograph toward the middle spends that
+     * margin.
+     *
+     * The layering is still DOM order rather than z-index: the anchors are
+     * rendered before the title in SceneYears, so type would be over a
+     * photograph if the two ever met. Nothing here relies on that any
+     * more. */
     anchors: [
-      { photo: "y1965", x: 245, y: 57, w: 16, h: 31, depth: 0.5, from: [-16, 12] },
-      {
-        photo: "y2017",
-        x: 270,
-        y: 24,
-        w: 31,
-        h: 28,
-        depth: -0.3,
-        from: [0, -10],
-        behind: true,
-      },
-      { photo: "y2026", x: 311, y: 57, w: 16, h: 31, depth: 0.45, from: [16, 12] },
+      { photo: "y1965", x: 246, y: 69, w: 18, h: 20, depth: 0.5, from: [-16, 12] },
+      { photo: "y2017", x: 269, y: 11, w: 34, h: 19, depth: -0.3, from: [0, -10] },
+      { photo: "y2026", x: 308, y: 71, w: 18, h: 20, depth: 0.45, from: [16, 12] },
     ],
   },
   nights: {
@@ -361,19 +388,8 @@ const NARROW: Layout = {
    which is a shadow of a difference and exactly as much as is wanted. */
 const DEPTH = 0.075;
 
-const WIDE_QUERY = "(min-width: 768px)";
-
-function useWide() {
-  return useSyncExternalStore(
-    (notify) => {
-      const query = window.matchMedia(WIDE_QUERY);
-      query.addEventListener("change", notify);
-      return () => query.removeEventListener("change", notify);
-    },
-    () => window.matchMedia(WIDE_QUERY).matches,
-    () => false,
-  );
-}
+/* The site keeps one media-query hook — see lib/use-media.ts. */
+const useWide = useWideScreen;
 
 /* ─────────────────────────── the camera itself ─────────────────────── */
 
@@ -894,22 +910,36 @@ function SceneYears({
 
       {/* Centred, and after the photographs in the DOM so the type is the
           layer over them. Words are masked individually, so a centred line
-          still rises out of its own mask exactly as a left-set one does. */}
+          still rises out of its own mask exactly as a left-set one does.
+
+          ON THE WIDE WALL THE BOX IS THE WHOLE STAGE and the sentence is
+          centred inside it, which is the only way the middle of the type
+          lands on the middle of the screen at every window height: the two
+          lines are between three and eight rem tall depending on the width,
+          and any fixed top that reads centred at one end of that reads high
+          at the other. The phone's box has no height and is positioned the
+          way it always was — the wrapper is inert there. */}
       <Piece camera={camera} at={title} stop={stop} depth={0}>
-        <p
-          className={`text-center font-serif uppercase leading-[1.02] tracking-[-0.01em] text-night-ink [text-shadow:0_2px_40px_rgba(8,5,13,0.75)] ${
-            wide ? "text-[clamp(3rem,6vw,8rem)]" : "text-[clamp(1.5rem,8.2vw,2.5rem)]"
-          }`}
-        >
-          <Words text={t("about.p3a")} enter={heading} />
-        </p>
-        <p
-          className={`mt-1 text-center font-serif uppercase leading-[1.02] tracking-[-0.01em] text-night-ink/60 [text-shadow:0_2px_40px_rgba(8,5,13,0.75)] md:mt-3 ${
-            wide ? "text-[clamp(3rem,6vw,8rem)]" : "text-[clamp(1.5rem,8.2vw,2.5rem)]"
-          }`}
-        >
-          <Words text={t("about.p3b")} enter={heading} />
-        </p>
+        <div className={wide ? "flex h-full flex-col justify-center" : undefined}>
+          <p
+            className={`text-center font-serif uppercase leading-[1.02] tracking-[-0.01em] text-night-ink [text-shadow:0_2px_40px_rgba(8,5,13,0.75)] ${
+              wide
+                ? "text-[clamp(3rem,6vw,8rem)]"
+                : "text-[clamp(1.5rem,8.2vw,2.5rem)]"
+            }`}
+          >
+            <Words text={t("about.p3a")} enter={heading} />
+          </p>
+          <p
+            className={`mt-1 text-center font-serif uppercase leading-[1.02] tracking-[-0.01em] text-night-ink/60 [text-shadow:0_2px_40px_rgba(8,5,13,0.75)] md:mt-3 ${
+              wide
+                ? "text-[clamp(3rem,6vw,8rem)]"
+                : "text-[clamp(1.5rem,8.2vw,2.5rem)]"
+            }`}
+          >
+            <Words text={t("about.p3b")} enter={heading} />
+          </p>
+        </div>
       </Piece>
     </>
   );

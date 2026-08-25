@@ -35,6 +35,16 @@ export type Place = {
   /* Hours exactly as the old page gave them: a literal, not copy, and the same
      in both languages. */
   hours?: string;
+  /* A REAL PHOTOGRAPH OF THE PLACE, where we have one. Set it and the card
+   * shows the picture in the window the map otherwise fills; leave it off and
+   * the card falls back to the map, which is what every entry without a
+   * photograph still does. It changes nothing else on the card — the address,
+   * the telephone and the OTVORI MAPU link out are untouched, and OTVORI MAPU
+   * still opens the same Google Maps location it always did.
+   *
+   * A path under /public. See components/local-info/info-place-photo.tsx. */
+  photo?: string;
+
   /* Overrides what the map searches for.
    *
    * THE PIN IS THE POINT, so the rule is: leave this alone wherever Google
@@ -99,6 +109,7 @@ export const PLACES: Record<string, Place[]> = {
   smestaj: [
     {
       name: "Hotel Central",
+      photo: "/smestaj/central.jpg",
       address: "Vojvode Stepe 2",
       phone: "+381 69 551 5511",
       note: "info.d.central",
@@ -107,6 +118,7 @@ export const PLACES: Record<string, Place[]> = {
     },
     {
       name: "Monogram Lux",
+      photo: "/smestaj/monogram.jpg",
       address: "Novosadski put 2",
       phone: "+381 (0)69 140 04 04",
       note: "info.d.monogram",
@@ -118,6 +130,7 @@ export const PLACES: Record<string, Place[]> = {
          name and nothing else, and merging them would send anyone following
          the map link about ten kilometres out of town. */
       name: "Hotel MV Monogram",
+      photo: "/smestaj/mvmonogram.jpg",
       address: "Inđijska 3, Maradik",
       phone: "+381 62 400 404",
       note: "info.d.mvMonogram",
@@ -141,6 +154,7 @@ export const PLACES: Record<string, Place[]> = {
       /* SUSPECT — this is the club's own number, digit for digit. Inherited
          from the old page as given; worth a call before it is trusted. */
       name: "Gotti",
+      photo: "/restorani/gotti.jpg",
       address: "Vojvode Stepe 6",
       phone: "+381 (0)69 606 050",
       note: "info.d.gotti",
@@ -150,6 +164,7 @@ export const PLACES: Record<string, Place[]> = {
          placeholder and not a telephone number. It is therefore not here, and
          the card offers the map alone. */
       name: 'Pizzeria "Galerija"',
+      photo: "/restorani/galeria.jpg",
       address: "Vojvode Stepe 2",
       note: "info.d.galerija",
       mapQuery: "Pizzeria Galerija Vojvode Stepe 2 Inđija",

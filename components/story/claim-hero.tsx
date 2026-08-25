@@ -8,6 +8,7 @@ import {
   useReducedMotion,
 } from "framer-motion";
 import { EASE } from "@/components/reveal";
+import { useFilmInView } from "@/lib/use-film";
 import { site } from "@/lib/site";
 
 /* What the house says about itself, said over and over.
@@ -99,6 +100,10 @@ const STEP_MS = 1000;
 export function ClaimHero() {
   const ref = useRef<HTMLElement>(null);
   const reduced = useReducedMotion();
+  /* The room behind the words, and it stops the moment the archive wall
+     takes over — that wall has films of its own and a phone decodes one at a
+     time. */
+  const film = useFilmInView<HTMLVideoElement>(!reduced);
 
   /* Counts every word shown rather than which of the four is up, so the turn
      from the last word back to the first is the same hand-over as any other —
@@ -138,9 +143,9 @@ export function ClaimHero() {
       {/* The room, running on its own clock — it belongs to the hero, not to
           any one word, and is never remounted when the word changes. */}
       <video
+        ref={film}
         src={site.reelVideo}
         poster="/images/interlude.jpg"
-        autoPlay={!reduced}
         muted
         loop
         playsInline

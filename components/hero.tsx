@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   motion,
+  useInView,
   useReducedMotion,
   useScroll,
   useTransform,
@@ -16,6 +17,8 @@ import {
   SIGNATURE_FACE,
   SIGNATURE_INK,
 } from "@/components/grand-club";
+import { useFilmInView } from "@/lib/use-film";
+import { useCoarsePointer } from "@/lib/use-media";
 import { site } from "@/lib/site";
 
 type Phase = "atmosphere" | "revealing" | "done";
@@ -38,6 +41,14 @@ export default function Hero() {
   const [phase, setPhase] = useState<Phase>("atmosphere");
   const reduced = useReducedMotion();
   const sectionRef = useRef<HTMLElement>(null);
+  /* The hero film is the one video on this page that is worth having ready
+     before it is asked for — but it is still stopped once it has scrolled
+     away, which on the home page is most of the visit. */
+  const film = useFilmInView<HTMLVideoElement>(!reduced);
+  const phone = useCoarsePointer();
+  /* The room only breathes while somebody is in it. Left to itself the haze
+     kept its loop for the whole visit, six sections below the fold. */
+  const onScreen = useInView(sectionRef);
   const lenis = useLenis();
   const { enter } = useEntrance();
   const { t } = useLang();
@@ -136,13 +147,19 @@ export default function Hero() {
               poster — a native first frame, not a layer of its own — so the
               room is never empty while the file arrives. */}
           <video
+            ref={film}
             src={site.heroVideo}
             poster="/images/hero.jpg"
-            autoPlay={!reduced}
             muted
             loop
             playsInline
-            preload="auto"
+            /* A PHONE IS NOT GIVEN THE WHOLE FILM UP FRONT. `auto` asks the
+               browser to pull the entire file down before anything else on
+               the page has finished, which on a phone is the hero competing
+               with its own type for the radio. The poster is already the
+               first frame; metadata is enough to start, and the rest streams
+               in behind it. */
+            preload={phone ? "metadata" : "auto"}
             aria-hidden="true"
             className="img-grade absolute inset-0 h-full w-full object-cover object-center"
           />
@@ -168,8 +185,18 @@ export default function Hero() {
             background:
               "radial-gradient(60% 45% at 50% 72%, rgba(200,164,93,0.2), transparent 70%)",
           }}
-          animate={{ opacity: [0.35, 0.8, 0.35] }}
-          transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}
+          animate={
+            onScreen
+              ? {
+                  opacity: [0.35, 0.8, 0.35],
+                  transition: {
+                    duration: 11,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  },
+                }
+              : { opacity: 0.6, transition: { duration: 0 } }
+          }
           aria-hidden="true"
         />
       )}

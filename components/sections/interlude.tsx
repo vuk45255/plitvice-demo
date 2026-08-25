@@ -1,6 +1,7 @@
 "use client";
 
 import { useReducedMotion } from "framer-motion";
+import { useFilmInView } from "@/lib/use-film";
 import { QuietLink } from "@/components/quiet-link";
 import { Reveal } from "@/components/reveal";
 import { useLang } from "@/components/providers/language";
@@ -12,6 +13,10 @@ import { site } from "@/lib/site";
 export function Interlude() {
   const reduced = useReducedMotion();
   const { t } = useLang();
+  /* The band sits in the middle of the home page with five sections of
+     scrolling either side of it. It runs while it is on screen and not a
+     frame longer — see lib/use-film.ts. */
+  const film = useFilmInView<HTMLVideoElement>(!reduced);
 
   return (
     <section
@@ -19,8 +24,9 @@ export function Interlude() {
       className="relative isolate h-[320px] w-full overflow-hidden bg-night sm:h-[400px] md:h-[460px] lg:h-[500px]"
     >
       <video
+        ref={film}
         src={site.reelVideo}
-        autoPlay={!reduced}
+        poster="/images/interlude.jpg"
         muted
         loop
         playsInline

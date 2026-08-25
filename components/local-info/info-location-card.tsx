@@ -2,6 +2,7 @@
 
 import { Arrow } from "@/components/arrow";
 import { InfoMap } from "@/components/local-info/info-map";
+import { InfoPlacePhoto } from "@/components/local-info/info-place-photo";
 import { useLang } from "@/components/providers/language";
 import { dial, placeEmbed, placeMap, type Place } from "@/lib/info-places";
 
@@ -100,12 +101,31 @@ export function InfoLocationCard({ place }: { place: Place }) {
           </div>
         </div>
 
-        {/* ── where it actually is ── */}
-        <InfoMap
-          embed={placeEmbed(place, lang)}
-          href={map}
-          className="order-2 h-[200px] md:order-none md:col-start-2 md:row-span-2 md:row-start-1 md:h-auto md:min-h-[252px]"
-        />
+        {/* ── where it actually is ──
+         *
+         * ONE WINDOW, TWO THINGS THAT CAN BE IN IT. Where we have a real
+         * photograph of the place it goes here, at exactly the size and in
+         * exactly the position the map otherwise takes; every entry without
+         * one still shows the map. The window is the same object either way:
+         * same cell, same 200px on a phone, same full right-hand column from
+         * md — so a page of cards keeps one shape whichever it is holding.
+         *
+         * The map link is untouched by this. It is read off the same Place,
+         * the OTVORI MAPU action below still carries it, and the panel
+         * itself still opens it. */}
+        {place.photo ? (
+          <InfoPlacePhoto
+            src={place.photo}
+            href={map}
+            className="order-2 h-[200px] md:order-none md:col-start-2 md:row-span-2 md:row-start-1 md:h-auto md:min-h-[252px]"
+          />
+        ) : (
+          <InfoMap
+            embed={placeEmbed(place, lang)}
+            href={map}
+            className="order-2 h-[200px] md:order-none md:col-start-2 md:row-span-2 md:row-start-1 md:h-auto md:min-h-[252px]"
+          />
+        )}
 
         {/* ── and the two things a guest will do about it ── */}
         <div className="order-3 flex flex-wrap items-center gap-x-7 gap-y-3 px-6 pb-6 pt-5 sm:px-8 sm:pb-8 md:order-none md:col-start-1 md:row-start-2 md:px-9 md:pb-9 md:pt-0">
