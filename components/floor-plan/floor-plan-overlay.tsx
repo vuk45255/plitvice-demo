@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useLenis } from "lenis/react";
@@ -11,7 +11,12 @@ import { FloorPlanTooltip } from "@/components/floor-plan/floor-plan-tooltip";
 import { INK } from "@/components/floor-plan/plan-ink";
 import { useLang } from "@/components/providers/language";
 import { SEAT_KINDS, type SeatType } from "@/lib/floor-plan";
-import { seatsForEvent, type Seat } from "@/lib/floor-availability";
+import {
+  applySnapshot,
+  seatsForEvent,
+  type FloorSnapshot,
+  type Seat,
+} from "@/lib/floor-availability";
 import type { TableBooking } from "@/components/reservation/use-table-booking";
 
 /* The room, opened over the page — and the whole booking, done inside it.
@@ -90,11 +95,101 @@ export function FloorPlanOverlay({
   const lenis = useLenis();
   const closeRef = useRef<HTMLButtonElement>(null);
 
-  const seats = useMemo(
-    () => seatsForEvent(booking.event.slug),
-    [booking.event.slug],
-  );
   const [tooltip, setTooltip] = useState<{ seat: Seat; x: number; y: number }>();
+
+  /* ── THE ROOM AS IT IS THIS SECOND ──────────────────────────────────────
+   *
+   * The drawing is static and known at build time; what is NOT known is which
+   * tables somebody else is in the middle of taking, and that changes while
+   * the guest is looking at it. So the map is drawn from the plan and then
+   * coloured from the server's own answer, which is asked for every few
+   * seconds for as long as this room is open.
+   *
+   * EVERY FEW SECONDS, and deliberately not more. A table changing hands is a
+   * once-a-minute event in a busy club, not a once-a-frame one, and the
+   * difference between four seconds and four hundred milliseconds is invisible
+   * to a guest and a hundredfold to the server. There is no realtime channel
+   * on this site and this does not deserve one.
+   *
+   * IT STOPS WHEN NOBODY IS LOOKING. A backgrounded tab polls nothing, and
+   * asks once immediately on coming back — which is also what re-syncs the
+   * countdown after a phone has been in a pocket.
+   *
+   * The same answer carries this guest's own hold, which is how a countdown
+   * survives a refresh: React state is gone, the httpOnly cookie is not, and
+   * the server hands the remaining seconds straight back. */
+  const [snapshot, setSnapshot] = useState<
+    (FloorSnapshot & { serverNow?: string; holdExpiresAt?: string }) | undefined
+  >();
+
+  const slug = booking.event.slug;
+
+  /* Read through a ref so the poll below is not torn down and restarted every
+     time the booking changes underneath it. */
+  const syncFloor = booking.syncFloor;
+  const syncRef = useRef(syncFloor);
+  useEffect(() => {
+    syncRef.current = syncFloor;
+  }, [syncFloor]);
+
+  const refresh = useCallback(
+    async (signal?: AbortSignal) => {
+      try {
+        const response = await fetch(
+          `/api/reservations/availability?eventId=${encodeURIComponent(slug)}`,
+          { signal, cache: "no-store" },
+        );
+        if (!response.ok) return;
+        const body = (await response.json()) as
+          | (FloorSnapshot & { ok: true; serverNow: string; holdExpiresAt?: string })
+          | null;
+        if (!body?.ok) return;
+
+        setSnapshot(body);
+        /* The authoritative word on this guest's own three minutes. */
+        syncRef.current(body);
+      } catch {
+        /* A poll that does not arrive changes nothing: the floor stays as it
+           was last drawn, and the next one is four seconds away. Nothing a
+           guest does depends on it — the server refuses what it must refuse
+           whatever this map happens to be showing. */
+      }
+    },
+    [slug],
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    /* The opening read, scheduled rather than fired from the effect body: the
+       floor must not sit four seconds behind the room when it first appears,
+       and a poll is a subscription rather than something a render does. */
+    const first = window.setTimeout(() => void refresh(controller.signal), 0);
+
+    const poll = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      void refresh(controller.signal);
+    }, 4000);
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refresh(controller.signal);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(poll);
+      document.removeEventListener("visibilitychange", onVisible);
+      controller.abort();
+    };
+  }, [refresh]);
+
+  /* The plan, coloured by the answer. Geometry is never touched by this — see
+     applySnapshot in lib/floor-availability.ts. */
+  const seats = useMemo(
+    () => applySnapshot(seatsForEvent(slug), snapshot),
+    [slug, snapshot],
+  );
 
   const { seat, step } = booking;
 

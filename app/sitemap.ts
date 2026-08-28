@@ -41,6 +41,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly",
       priority: 0.6,
     },
+    {
+      url: "https://plitviceclub.com/cenovnik",
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
     /* The concierge, read off the same list the cards and the routes are read
        off — six pages that can never fall out of step with the six cards. */
     ...INFO.map((category) => ({

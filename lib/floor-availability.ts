@@ -20,7 +20,20 @@ import {
  * Because of that split, a table that is moved does not have to be un-booked,
  * and a night that sells out does not have to be re-drawn. */
 
-export type SeatStatus = "available" | "reserved";
+/* THE THREE STATES OF A TABLE, and only two of them are permanent.
+ *
+ *   available — nobody has it
+ *   held      — somebody else is filling in the form for it right now. It goes
+ *               back to available by itself, within three minutes, and nothing
+ *               anywhere has to notice or clean up. Not clickable while it
+ *               lasts, and it says nothing about who is holding it.
+ *   reserved  — gone. Either the club marked it gone or somebody booked it.
+ *
+ * A guest never sees "held" on their OWN table: the table they are holding is
+ * simply the one they picked, lit as it always was. The split is made on the
+ * server against a cookie the browser cannot read — see
+ * lib/reservations/holds.ts. */
+export type SeatStatus = "available" | "held" | "reserved";
 
 /* MOCK DATA — stand-in until the club's bookings are readable.
  *
@@ -72,6 +85,41 @@ export type Seat = {
 
 export function reservedSeats(eventSlug: string): ReadonlySet<string> {
   return new Set(RESERVED[eventSlug] ?? []);
+}
+
+/* WHAT THE SERVER SAYS THE FLOOR LOOKS LIKE THIS SECOND — the shape
+   /api/reservations/availability answers in. "mine" is the asking guest's own
+   hold and is deliberately not part of "held": their table is theirs, not a
+   table they are locked out of. */
+export type FloorSnapshot = {
+  reserved: string[];
+  held: string[];
+  mine: string[];
+};
+
+/* The night's floor with a live snapshot laid over it.
+ *
+ * THE DRAWING IS UNTOUCHED. Nothing here moves a table, renames one or changes
+ * what it seats — it decides one field, and that field is what colour the
+ * table is drawn in. Reserved beats held, because a table that has been booked
+ * is not coming back in a hundred and eighty seconds.
+ *
+ * The same seat objects are handed back where nothing about them changed, so a
+ * poll that finds the floor exactly as it was costs React nothing. */
+export function applySnapshot(seats: Seat[], snapshot: FloorSnapshot | undefined): Seat[] {
+  if (!snapshot) return seats;
+
+  const reserved = new Set(snapshot.reserved);
+  const held = new Set(snapshot.held);
+
+  return seats.map((seat) => {
+    const status: SeatStatus = reserved.has(seat.id)
+      ? "reserved"
+      : held.has(seat.id)
+        ? "held"
+        : "available";
+    return status === seat.status ? seat : { ...seat, status };
+  });
 }
 
 function resolve(seat: FloorSeat, taken: ReadonlySet<string>): Seat {

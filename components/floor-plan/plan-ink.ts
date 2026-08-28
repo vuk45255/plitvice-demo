@@ -43,6 +43,13 @@ export const INK = {
   /* Gone. Dimmed rather than coloured, and not clickable. */
   seatTaken: "rgba(244,240,230,0.1)",
   seatTakenFill: "rgba(244,240,230,0.015)",
+  /* Somebody else is in the middle of taking it. Held back towards the dark
+     the way a booked table is, but not all the way there — it is coming back
+     inside three minutes, and a guest watching the floor should be able to see
+     that it is a different kind of unavailable without being told so in words.
+     Still gold rather than white: it is a table in play, not a table gone. */
+  seatHeld: "rgba(200,164,93,0.2)",
+  seatHeldFill: "rgba(200,164,93,0.025)",
 
   /* the id set inside a booth, and on everything once the map is zoomed in */
   seatId: "rgba(244,240,230,0.42)",

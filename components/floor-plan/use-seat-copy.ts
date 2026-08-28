@@ -21,8 +21,17 @@ export function useSeatCopy() {
   const capacity = (seat: Seat) =>
     `${seat.capacity.min}–${seat.capacity.max} ${t("floor.persons")}`;
   const guestCount = (n: number) => `${n} ${t("floor.persons")}`;
+  /* Three states, three words — and the middle one is deliberately vague. A
+     guest is told the table cannot be had at this moment and nothing at all
+     about the person holding it. */
   const statusLabel = (seat: Seat) =>
-    t(seat.status === "reserved" ? "floor.reserved" : "floor.available");
+    t(
+      seat.status === "reserved"
+        ? "floor.reserved"
+        : seat.status === "held"
+          ? "floor.held"
+          : "floor.available",
+    );
 
   /* What the card and the tooltip put at the top: what it is, then which one
      it is — SEPARE S12, BARSKI STO B29, VISOKI STO V13. */

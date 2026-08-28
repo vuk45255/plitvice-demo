@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { sourceOf } from "@/lib/reservations/rate-limit";
 import { requestReservation } from "@/lib/reservations/service";
+import { HOLD_COOKIE, isSessionToken } from "@/lib/reservations/session";
 
 /* Where a table is actually asked for.
  *
@@ -19,7 +20,7 @@ export const runtime = "nodejs";
 /* The answer depends on what is already held, so nothing here may be cached. */
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   let body: unknown;
   try {
     body = await request.json();
@@ -27,7 +28,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, reason: "invalid" }, { status: 400 });
   }
 
-  const result = requestReservation(body, { source: sourceOf(request.headers) });
+  /* THE SESSION IS READ HERE AND NOWHERE ELSE IN THIS FILE. It comes off an
+     httpOnly cookie rather than out of the body, so a request cannot name the
+     hold it would like to spend — it either carries the browser that took the
+     table three minutes ago or it does not. */
+  const raw = request.cookies.get(HOLD_COOKIE)?.value;
+
+  const result = await requestReservation(body, {
+    source: sourceOf(request.headers),
+    holdToken: isSessionToken(raw) ? raw : undefined,
+  });
 
   if (result.ok) {
     /* The id is the guest's own handle on the booking — what a confirmation
@@ -51,6 +61,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, reason: result.reason }, { status: 409 });
     case "unavailable":
       return NextResponse.json({ ok: false, reason: result.reason }, { status: 410 });
+    /* The three minutes are up, or the hold was never this browser's. Both
+       mean the table is not being written down for them, and both send the
+       guest back to the floor to choose again. */
+    case "hold-expired":
+    case "hold-invalid":
+      return NextResponse.json({ ok: false, reason: result.reason }, { status: 409 });
     default:
       return NextResponse.json(
         { ok: false, reason: "invalid", fields: result.fields },

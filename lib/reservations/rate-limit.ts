@@ -36,16 +36,53 @@ export type RateVerdict = { ok: true } | { ok: false; retryAfterSeconds: number 
 /* Count one attempt against a key. Successes count as well as failures —
    otherwise a script that succeeds is never slowed at all. */
 export function takeAttempt(key: string, now = Date.now()): RateVerdict {
+  return spend(key, now, WINDOW_MS, MAX_IN_WINDOW);
+}
+
+/* ── and a second, looser brake, on TAKING TABLES ───────────────────────── */
+
+/* WHY THIS EXISTS AT ALL, when a hold is harmless and expires by itself.
+ *
+ * Because holds are free, anonymous and effective. A request with no cookie is
+ * issued a fresh session, and a fresh session may hold a table — so a script
+ * that sends sixty cookie-less requests holds sixty tables, and by repeating
+ * every three minutes it keeps the whole floor dark to real guests without
+ * ever booking anything or leaving a name. Nothing else in the reservation
+ * path stops that: the unique index protects a table from being taken TWICE,
+ * not from being taken pointlessly.
+ *
+ * THE NUMBER IS DELIBERATELY GENEROUS. Committing to a table is a considered
+ * act — a guest does it once, or two or three times if they change their mind
+ * — so forty in five minutes is far past any real person, while a floor-wide
+ * lock-out needs hundreds. It is loose enough that a carrier's NAT or the
+ * club's own wifi, where a dozen guests share one address, never meets it.
+ *
+ * Reading the floor and letting a table go are NOT braked: they are cheap, and
+ * a guest who cannot release a table is a guest holding one for three minutes
+ * they did not want. */
+const HOLD_WINDOW_MS = 5 * 60 * 1000;
+const MAX_HOLDS_IN_WINDOW = 40;
+
+export function takeHold(key: string, now = Date.now()): RateVerdict {
+  return spend(`hold:${key}`, now, HOLD_WINDOW_MS, MAX_HOLDS_IN_WINDOW);
+}
+
+function spend(
+  key: string,
+  now: number,
+  windowMs: number,
+  max: number,
+): RateVerdict {
   const all = buckets();
   const seen = all.get(key)?.hits ?? [];
-  const recent = seen.filter((at) => now - at < WINDOW_MS);
+  const recent = seen.filter((at) => now - at < windowMs);
 
-  if (recent.length >= MAX_IN_WINDOW) {
+  if (recent.length >= max) {
     const oldest = recent[0];
     all.set(key, { hits: recent });
     return {
       ok: false,
-      retryAfterSeconds: Math.max(1, Math.ceil((WINDOW_MS - (now - oldest)) / 1000)),
+      retryAfterSeconds: Math.max(1, Math.ceil((windowMs - (now - oldest)) / 1000)),
     };
   }
 
@@ -55,7 +92,7 @@ export function takeAttempt(key: string, now = Date.now()): RateVerdict {
   /* Keep the map from growing for ever on a long-running server. */
   if (all.size > 5000) {
     for (const [k, w] of all) {
-      if (w.hits.every((at) => now - at >= WINDOW_MS)) all.delete(k);
+      if (w.hits.every((at) => now - at >= windowMs)) all.delete(k);
     }
   }
 

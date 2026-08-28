@@ -2,7 +2,8 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { validateField } from "@/lib/booking";
-import type { Seat } from "@/lib/floor-availability";
+import { useSeatHold } from "@/components/reservation/use-seat-hold";
+import type { FloorSnapshot, Seat } from "@/lib/floor-availability";
 import type { PartyEvent } from "@/lib/events";
 import type { MessageKey } from "@/lib/i18n";
 
@@ -55,12 +56,18 @@ export type BookingStep = "table" | "details" | "sent";
      "duplicate"   — this telephone or this email already holds a table for
                      this night; the panel says so and offers the way back
      "seat-taken"  — somebody got that table in the seconds in between
+     "seat-held"   — somebody else is in the middle of booking it right now,
+                     and will be for at most three minutes
+     "hold-expired"— this guest's own three minutes ran out while the form was
+                     open; the table is back on the floor and they choose again
      "unavailable" — the night has stopped taking tables
      "busy"        — too many attempts too quickly
      "failed"      — the request never arrived */
 export type BookingProblem =
   | "duplicate"
   | "seat-taken"
+  | "seat-held"
+  | "hold-expired"
   | "unavailable"
   | "busy"
   | "failed";
@@ -81,12 +88,23 @@ export function useTableBooking(event: PartyEvent) {
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<BookingProblem | null>(null);
 
+  /* The three minutes the table is kept for this guest. It is a hook of its
+     own because it is a conversation with the server rather than a piece of
+     form state — but it lives HERE, beside the seat and the step, because the
+     hold and the table it holds have to be picked up and put down together. */
+  const hold = useSeatHold(event.slug);
+
   /* Open a table's card. The party size starts at the smallest that table
      takes — the club's own rule, not a guess — and a size already chosen is
      kept wherever the new table can hold it, so moving from one separe to the
      next does not silently reset the party to its minimum. */
   const inspect = useCallback((next: Seat) => {
     setProblem(null);
+    /* Opening a different table is leaving the one they had committed to, so
+       it goes back on the floor at once rather than in three minutes. The
+       server would have done this anyway the moment they committed somewhere
+       else — this is only so everybody else sees it sooner. */
+    if (hold.held && hold.held.seatId !== next.id) hold.release();
     setSeat(next);
     setGuests((current) =>
       current === 0
@@ -97,27 +115,72 @@ export function useTableBooking(event: PartyEvent) {
        is about a table and the table has just changed. Nothing typed is lost:
        the fields below are untouched by this. */
     setStep((s) => (s === "sent" ? s : "table"));
-  }, []);
+  }, [hold]);
 
   /* Put the card away: the table is let go of and the guest is back to
      browsing the floor. It says nothing about the map's position and nothing
      about what they have typed, both of which are somebody else's business —
-     and it cannot undo a reservation that has already been sent. */
+     and it cannot undo a reservation that has already been sent.
+     It DOES let the hold go, because putting the card away is the guest saying
+     they are not taking this table after all. */
   const dismiss = useCallback(() => {
+    if (step !== "sent") hold.release();
     setSeat(undefined);
     setStep((s) => (s === "sent" ? s : "table"));
-  }, []);
+  }, [hold, step]);
 
   const setParty = useCallback((n: number) => setGuests(n), []);
 
-  const confirmSeat = useCallback(() => {
-    if (seat) setStep("details");
-  }, [seat]);
+  /* THE COMMIT POINT, and the only one.
+   *
+   * Everything before this is looking: a guest may open twenty cards, count a
+   * party on each and change their mind, and no table is taken away from
+   * anybody. Pressing IZABERI STO is the first moment they have said WHICH
+   * table they want — so it is the moment the house holds it for them, and
+   * the form does not open until the house has said yes.
+   *
+   * If somebody beat them to it by a second they are told here, on the card,
+   * with the map still in front of them — which is the right place to find out
+   * and much better than at the bottom of a filled-in form. */
+  const confirmSeat = useCallback(async () => {
+    if (!seat || hold.taking) return;
+    setProblem(null);
 
+    const result = await hold.acquire(seat.id);
+    if (result.ok) {
+      setStep("details");
+      return;
+    }
+
+    setProblem(
+      result.reason === "seat-held"
+        ? "seat-held"
+        : result.reason === "seat-reserved"
+          ? "seat-taken"
+          : result.reason === "unavailable"
+            ? "unavailable"
+            : "failed",
+    );
+  }, [hold, seat]);
+
+  /* Stepping back out of the form gives the table up. The guest is browsing
+     again, and a table nobody is filling a form for should not look busy to
+     everybody else for another two and a half minutes. */
   const backToTable = useCallback(() => {
     setProblem(null);
+    hold.release();
     setStep("table");
-  }, []);
+  }, [hold]);
+
+  /* The table ran out while the form was open. Nothing to release — the server
+     has already taken it back — so this only puts the guest on the floor with
+     the refusal cleared and the card shut. */
+  const chooseAgain = useCallback(() => {
+    hold.forget();
+    setProblem(null);
+    setSeat(undefined);
+    setStep("table");
+  }, [hold]);
 
   /* Leave the refusal behind and go back to the floor with nothing selected —
      what both "choose another table" and "we already have you" offer. */
@@ -179,6 +242,15 @@ export function useTableBooking(event: PartyEvent) {
   const submit = useCallback(async (): Promise<ContactField | null> => {
     if (sending || !seat) return null;
 
+    /* The countdown on screen has already run out. Sending anyway would be
+       refused on the other side — the server checks its own clock and its own
+       stored expiry — so this saves a round trip and nothing else. It is not
+       the check that matters; see the note at the top of use-seat-hold.ts. */
+    if (hold.expired) {
+      setProblem("hold-expired");
+      return null;
+    }
+
     const next: Partial<Record<ContactField, MessageKey>> = {};
     for (const field of ALL) {
       const wrong = check(field, values[field]);
@@ -208,6 +280,11 @@ export function useTableBooking(event: PartyEvent) {
       });
 
       if (response.ok) {
+        /* HELD → RESERVED. The hold was spent on the other side as part of
+           writing the booking down; forgetting it here stops the countdown and
+           keeps the next availability poll from reading its absence as an
+           expiry over the top of the confirmation. */
+        hold.forget();
         setStep("sent");
         return null;
       }
@@ -228,11 +305,22 @@ export function useTableBooking(event: PartyEvent) {
         return ALL.find((f) => marked[f]) ?? null;
       }
 
+      /* THE SERVER'S WORD ON THE THREE MINUTES, and the one that counts. Both
+         of its hold refusals land the guest in the same place — the table is
+         not theirs and they choose again — so both are read as expiry. A
+         `hold-invalid` should not be reachable from this site at all; it means
+         a live hold on that table belongs to some other session. */
+      const reason = body?.reason;
+      if (reason === "hold-expired" || reason === "hold-invalid") {
+        hold.forget();
+        setProblem("hold-expired");
+        return null;
+      }
+
       const known: BookingProblem[] = ["duplicate", "seat-taken", "unavailable"];
-      const reason = body?.reason as BookingProblem | undefined;
       setProblem(
-        reason && known.includes(reason)
-          ? reason
+        reason && known.includes(reason as BookingProblem)
+          ? (reason as BookingProblem)
           : response.status === 429
             ? "busy"
             : "failed",
@@ -246,16 +334,31 @@ export function useTableBooking(event: PartyEvent) {
     } finally {
       setSending(false);
     }
-  }, [event.slug, guests, seat, sending, values]);
+  }, [event.slug, guests, hold, seat, sending, values]);
 
   const reset = useCallback(() => {
+    hold.release();
     setSeat(undefined);
     setGuests(0);
     setStep("table");
     setValues(EMPTY);
     setErrors({});
     setProblem(null);
-  }, []);
+  }, [hold]);
+
+  /* WHAT THE FLOOR PLAN'S POLL FEEDS BACK IN — the server's own reading of the
+     room, every few seconds, and the thing that keeps the countdown honest
+     across a refresh, a sleeping laptop or a hold that quietly ran out.
+     A finished reservation is left alone: the hold is gone from the server by
+     then, and reading that as an expiry would put a refusal over the top of
+     the guest's confirmation. */
+  const syncFloor = useCallback(
+    (snapshot: FloorSnapshot & { serverNow?: string; holdExpiresAt?: string }) => {
+      if (step === "sent") return;
+      hold.sync(snapshot);
+    },
+    [hold, step],
+  );
 
   return {
     event,
@@ -274,9 +377,16 @@ export function useTableBooking(event: PartyEvent) {
     setParty,
     confirmSeat,
     backToTable,
+    chooseAgain,
     set,
     blur,
     submit,
     reset,
+    /* The three minutes, for whoever is drawing them. */
+    hold: hold.held,
+    holdSeconds: hold.secondsLeft,
+    holdExpired: hold.expired,
+    taking: hold.taking,
+    syncFloor,
   };
 }

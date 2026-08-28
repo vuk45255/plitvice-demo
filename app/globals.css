@@ -208,6 +208,72 @@ body::after {
   text-indent: 0.46em;
 }
 
+/* ── THE PRICE LIST ────────────────────────────────────────────────────────
+ *
+ * One row of the cenovnik: the drink on the left, the dinars on the right,
+ * and a leader of dots holding the two ends of the line together. Written
+ * here rather than in utilities on the element because of the one line below
+ * that Tailwind cannot express — see the pair of align-items declarations.
+ *
+ * The row is a flex line and the leader is the only thing in it that grows,
+ * which is what pins the price to the right margin whatever the name does. */
+.menu-row {
+  display: flex;
+  /* THESE TWO DECLARATIONS ARE A PAIR AND THE ORDER MATTERS. Nothing on the
+     list wraps at 390px — the longest name on it, "Domaća vodka (za mikseve)",
+     was measured against the narrowest column it can fall in — but a name
+     wraps eventually: at 320px, or at 200% text, or in a language this list
+     has not been written in yet. When it does, the dots and the price should
+     follow the LAST line of the name down rather than hang off the first one
+     with the rest of the name below them.
+     `last baseline` does that. Where it is not understood the declaration is
+     dropped and the plain `baseline` above it stands, which is the same
+     layout for every row that does not wrap — that is to say, all of them. */
+  align-items: baseline;
+  align-items: last baseline;
+  gap: 0 0.5rem;
+}
+
+.menu-leader {
+  /* The only part of the row that gives and takes. */
+  flex: 1 1 auto;
+  /* Never squeezed out entirely: a row with no dots at all reads as a
+     different kind of row, so the longest name still gets a short run. */
+  min-width: 1.25rem;
+  height: 1px;
+  /* Round dots rather than a dotted border, which renders as squares at this
+     weight, and set in gold at a strength that is felt and not read. */
+  background-image: radial-gradient(
+    circle,
+    rgba(200, 164, 93, 0.4) 0.5px,
+    transparent 0.5px
+  );
+  background-size: 6px 1px;
+  background-repeat: repeat-x;
+  /* Off both ends, so the leader emerges from the name and arrives at the
+     price instead of butting into either. */
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 14%,
+    #000 86%,
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 14%,
+    #000 86%,
+    transparent
+  );
+}
+
+/* Figures that do not shift under each other down a column of prices. */
+.menu-price {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
 /* One grade for all imagery — every photo reads as one campaign. Enough
    saturation left in it for the club's own lights to carry the colour. */
 .img-grade {
@@ -325,6 +391,30 @@ body::after {
 }
 @media (prefers-reduced-motion: reduce) {
   .marquee-track {
+    animation: none;
+    will-change: auto;
+  }
+}
+
+/* The one lamp that crosses the drinks band — see components/drinks/drinks-band.tsx.
+   A soft gold gradient with no filter on it, moved by transform alone, so the
+   light reads as passing through the room without costing a blur pass. It
+   travels from beyond the left edge to beyond the right, in units of its own
+   width, and the band's `overflow: hidden` does the rest. */
+@keyframes drink-sweep {
+  from {
+    transform: translate3d(-120%, 0, 0);
+  }
+  to {
+    transform: translate3d(380%, 0, 0);
+  }
+}
+.drink-sweep {
+  animation: drink-sweep 46s linear infinite;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .drink-sweep {
     animation: none;
     will-change: auto;
   }

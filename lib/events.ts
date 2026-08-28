@@ -12,6 +12,7 @@ import posterNumber from "@/public/party/53.jpg";
 import posterSajfer from "@/public/images/sajfer.jpg";
 import posterKaca from "@/public/dogadjaji/kaca.jpg";
 import posterVodka from "@/public/dogadjaji/vodka.jpg";
+import posterMadness from "@/public/dogadjaji/madness.jpg";
 
 /* Every night the club has put on, and everything the site needs to sell one.
  *
@@ -137,20 +138,33 @@ const tablesClosed: TableBooking = { enabled: false };
 /* Newest first. The night ahead sits at the top of every list it appears in. */
 export const events: PartyEvent[] = [
   {
+    slug: "saturday-madness",
+    artist: "Saturday Madness",
+    date: "date.aug29",
+    description: "event.about.saturdayMadness",
+    poster: posterMadness,
+    /* The artwork is silver and all but colourless — mean saturation under
+       seven per cent — so what it throws into the room is the cold white off
+       the print itself rather than a colour. Sampled the same way every other
+       night here was. */
+    ambient: "#c9c7c6",
+    status: "upcoming",
+    /* Entry is free and taken at the door, so there is nothing to sell online
+       and the card asks for the table instead. */
+    tickets: ticketsOffline,
+    tables: tablesOpen,
+  },
+  {
     slug: "vodka-experience",
     artist: "Vodka Experience",
     date: "date.aug22",
     description: "event.about.vodkaExperience",
-    startTime: "22:00",
-    ticketPrice: 500,
     poster: posterVodka,
     /* The cold blue off the bottle and the sky behind it. */
     ambient: "#6ea3d5",
-    status: "upcoming",
-    /* Entry is sold at the door for this one. Flip to `ticketsOnSale`
-       to put the purchase panel back. */
-    tickets: ticketsOffline,
-    tables: tablesOpen,
+    status: "past",
+    tickets: nothingOnSale,
+    tables: tablesClosed,
   },
   {
     slug: "dara-bubamara",

@@ -7,6 +7,7 @@ import { Interlude } from "@/components/sections/interlude";
 import { Vip } from "@/components/sections/vip";
 import { Location } from "@/components/sections/location";
 import { LocalInfo } from "@/components/sections/local-info";
+import { DrinksBand } from "@/components/drinks/drinks-band";
 import { SiteFooter } from "@/components/site-footer";
 
 export default function Home() {
@@ -26,6 +27,9 @@ export default function Home() {
             rather than two — the TREBA VAM questions and the six pictures are
             the two halves of a single pinned scene inside it. */}
         <LocalInfo />
+        {/* The back bar, a thin band between the two — the concierge ends on
+            the six pictures, and the address begins under it. */}
+        <DrinksBand />
         {/* And then the address itself, last, so the page ends on the door.
             It stands where the feed used to — see `wall` below. */}
         <Location />

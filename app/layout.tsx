@@ -1,12 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Great_Vibes, Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/providers/theme-provider";
-import { SmoothScroll } from "@/components/providers/smooth-scroll";
-import { EntranceProvider } from "@/components/providers/entrance";
-import { LanguageProvider } from "@/components/providers/language";
-import { MixProvider } from "@/components/providers/mix";
-import { VinylPlayer } from "@/components/mix/vinyl-player";
 
 const playfair = Playfair_Display({
   subsets: ["latin", "latin-ext"],
@@ -60,6 +54,14 @@ export const viewport: Viewport = {
 /* Runs before paint: dark is the default, a stored "light" choice wins. */
 const themeInit = `(function(){try{var t=localStorage.getItem("plitvice-theme");document.documentElement.classList.toggle("dark",t?t==="dark":true)}catch(e){document.documentElement.classList.add("dark")}})()`;
 
+/* The document, and only the document.
+ *
+ * <html>, the three families, the theme script that runs before paint and the
+ * club’s metadata — the things every route needs whatever it is for. The
+ * site’s own chrome (smooth scroll, the entrance, the mix) sits one level down
+ * in app/(site)/layout.tsx, so that the ticket and the scanner can be as light
+ * as a page is allowed to be. */
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
@@ -70,22 +72,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
       </head>
-      <body className="bg-surface text-ink font-sans">
-        <ThemeProvider>
-          <SmoothScroll>
-            <LanguageProvider>
-              {/* The mix belongs to the site, not to a page. Both the element
-                  and the record that drives it are mounted here, above
-                  everything the router swaps out, so internal navigation never
-                  interrupts what is playing. */}
-              <MixProvider>
-                <EntranceProvider>{children}</EntranceProvider>
-                <VinylPlayer />
-              </MixProvider>
-            </LanguageProvider>
-          </SmoothScroll>
-        </ThemeProvider>
-      </body>
+      <body className="bg-surface text-ink font-sans">{children}</body>
     </html>
   );
 }

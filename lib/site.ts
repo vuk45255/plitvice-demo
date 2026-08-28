@@ -73,5 +73,8 @@ export const navigation: { label: MessageKey; href: string }[] = [
   /* The story of the house — a page of its own rather than a place on this
      one, and the only entry in the menu that is not on the home page. */
   { label: "nav.about", href: "/o-nama" },
+  /* The concierge — the town rather than the club. It sits where the section
+     itself sits on the home page, after the story and before the door. */
+  { label: "nav.info", href: "#info" },
   { label: "nav.reserve", href: "/rezervacija" },
 ];

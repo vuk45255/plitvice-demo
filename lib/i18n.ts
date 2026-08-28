@@ -17,6 +17,7 @@ const sr = {
   "nav.parties": "Naše žurke",
   "nav.gallery": "Galerija",
   "nav.about": "O nama",
+  "nav.info": "Info",
   /* The phone's menu carries one door the wide bar does not — see
      components/site-header-mobile.tsx. */
   "nav.location": "Lokacija",
@@ -57,6 +58,9 @@ const sr = {
   "event.info": "Info",
 
   /* What a night says for itself, set under its poster. One key per night. */
+  "event.about.saturdayMadness":
+    "Saturday Madness. Subota, 29. avgust — DJ Wolf svira celu noć. Ulaz besplatan, 16+ uz ličnu kartu ili pasoš. 1 na 1 do pola 1: uz svaku flašu druga na račun kuće, važi za sve flaše naručene do 00:30.",
+
   "event.about.vodkaExperience":
     "Vodka Experience by Plitvice. Music by Dave Pavlo, posebna atmosfera i boca vodke gratis za ekipe koje stignu do ponoći. Minimalno 4 gosta za barski sto, 4–5 za visoki sto i 6 za separe. Ulaz 16+ uz lični dokument.",
 
@@ -142,6 +146,8 @@ const sr = {
   "info.d.mvMonogram":
     "Hotel i restoran na Beščanskom krstu, u mirnijem okruženju nadomak Inđije.",
   "info.d.kord2": "Apartmani u centru Inđije, u okviru kompleksa TQ Vegas.",
+  "info.d.fiveApartments":
+    "Luksuzni apartmani u Inđiji, sa privatnim parkingom i SPA & wellness sadržajem.",
   "info.d.monogram": "Smeštaj u mirnijem delu Inđije, u blizini parka i jezera.",
   "info.d.perlaLux": "Apartmani u centru Inđije.",
   "info.d.galerija":
@@ -158,6 +164,8 @@ const sr = {
   "info.d.domZdravlja":
     "Dom zdravlja u centru Inđije sa dežurnom službom hitne pomoći.",
   "info.d.apoteka": "Apoteka.",
+  "info.d.policija":
+    "Policijska stanica u Inđiji — prijava događaja i hitni pozivi.",
 
   /* KAKO DO NAS — the one page that is not a directory. */
   "info.route.here": "Adresa",
@@ -169,7 +177,7 @@ const sr = {
     "Inđija je na pruzi Beograd—Novi Sad, a stanica je u širem centru.",
   "info.route.plane": "Avionom",
   "info.route.planeNote":
-    "Aerodrom Nikola Tesla je približno 40 km od Inđije.",
+    "Aerodrom Nikola Tesla je približno 30 km od Inđije.",
   "info.route.open": "Otvori navigaciju",
 
 
@@ -180,6 +188,7 @@ const sr = {
   "shot.lights": "Podijum pod ljubičastim svetlima",
   "shot.booth": "DJ pult pred vrhunac večeri",
 
+  "date.aug29": "29. avgust",
   "date.aug22": "22. avgust",
   "date.aug15": "15. avgust",
   "date.oct25": "25. oktobar",
@@ -254,6 +263,15 @@ const sr = {
   "vip.p2": "Vi okupite ekipu, ostalo prepustite nama.",
   "vip.hoverText": "Rezerviši svoje mesto za sledeću subotu.",
   "vip.imgAlt": "Rezervisan sto iznad podijuma, spreman pred otvaranje",
+
+  /* THE BACK BAR — the band between the concierge and the address, and the
+     price list behind it. The names on the bottles are proper nouns and live
+     in lib/drinks.ts; only what the house itself says is in here. */
+  "drinks.title": "Šta se pije?",
+  "drinks.cta": "Pogledaj cenovnik",
+  "drinks.page.eyebrow": "Plitvice · Cenovnik",
+  "drinks.page.back": "Nazad",
+  "drinks.page.listLabel": "Cenovnik",
 
   "location.title": "*Pronađite* nas.",
   "location.caption": "Svake subote",
@@ -363,6 +381,7 @@ const sr = {
   "floor.persons": "osoba",
   "floor.available": "Dostupan",
   "floor.reserved": "Zauzet",
+  "floor.held": "Privremeno zauzeto",
   "floor.choose": "Izaberi sto",
   "floor.chooseBooth": "Izaberi separe",
   "floor.chosen": "Izabrano mesto",
@@ -403,6 +422,17 @@ const sr = {
   "floor.err.busy": "Sačekajte trenutak pa pokušajte ponovo.",
   "floor.err.unavailable": "Rezervacije za ovu žurku su zatvorene.",
   "floor.err.failed": "Slanje nije uspelo. Pokušajte ponovo.",
+  "floor.err.held":
+    "Neko drugi upravo rezerviše ovaj sto. Izaberite drugi.",
+  "floor.hold.taking": "Trenutak…",
+  "floor.hold.label": "Sto je privremeno rezervisan za vas",
+  "floor.hold.labelBooth": "Separe je privremeno rezervisano za vas",
+  "floor.hold.remaining": "Preostalo vreme",
+  "floor.hold.expiredTitle": "Vreme za rezervaciju je isteklo",
+  "floor.hold.expiredBody": "Sto je ponovo dostupan drugim gostima.",
+  "floor.hold.expiredBodyBooth": "Separe je ponovo dostupno drugim gostima.",
+  "floor.hold.again": "Izaberi sto ponovo",
+  "floor.hold.againBooth": "Izaberi separe ponovo",
 
   "tickets.announcements": "Najave idu preko Instagrama:",
   "tickets.type": "Vrsta karte",
@@ -422,6 +452,7 @@ const en: Record<MessageKey, string> = {
   "nav.parties": "Our parties",
   "nav.gallery": "Gallery",
   "nav.about": "About us",
+  "nav.info": "Info",
   "nav.location": "Location",
   "nav.reserve": "Reservations",
 
@@ -451,6 +482,9 @@ const en: Record<MessageKey, string> = {
   "event.doors": "Doors",
   "event.ticket": "Ticket",
   "event.info": "Info",
+
+  "event.about.saturdayMadness":
+    "Saturday Madness. Saturday 29 August — DJ Wolf plays all night long. Free entry, 16+ with a valid ID card or passport. One for one until half past midnight: every bottle comes with a second on the house, all bottles included, ordered by 00:30.",
 
   "event.about.vodkaExperience":
     "Vodka Experience by Plitvice. Music by Dave Pavlo, an atmosphere of its own, and a bottle of vodka on the house for groups arriving before midnight. Minimum 4 guests for a bar table, 4–5 for a high table and 6 for a booth. Entry 16+ with photo ID.",
@@ -522,6 +556,8 @@ const en: Record<MessageKey, string> = {
   "info.d.mvMonogram":
     "A hotel and restaurant at the Beščanski krst, in quieter country just outside Inđija.",
   "info.d.kord2": "Apartments in the centre of Inđija, inside the TQ Vegas complex.",
+  "info.d.fiveApartments":
+    "Luxury apartments in Inđija, with private parking and a spa and wellness suite.",
   "info.d.monogram":
     "Rooms in a quieter part of Inđija, near the park and the lake.",
   "info.d.perlaLux": "Apartments in the centre of Inđija.",
@@ -538,6 +574,8 @@ const en: Record<MessageKey, string> = {
   "info.d.domZdravlja":
     "The town clinic in the centre of Inđija, with an out-of-hours emergency service.",
   "info.d.apoteka": "Pharmacy.",
+  "info.d.policija":
+    "The police station in Inđija — reporting an incident and emergency calls.",
 
   "info.route.here": "Address",
   "info.route.car": "By car",
@@ -557,6 +595,7 @@ const en: Record<MessageKey, string> = {
   "shot.lights": "The dance floor under violet lights",
   "shot.booth": "The booth before the peak of the night",
 
+  "date.aug29": "29 August",
   "date.aug22": "22 August",
   "date.aug15": "15 August",
   "date.oct25": "25 October",
@@ -622,6 +661,12 @@ const en: Record<MessageKey, string> = {
   "vip.p2": "You gather the crew, leave the rest to us.",
   "vip.hoverText": "Book your place for this Saturday.",
   "vip.imgAlt": "A reserved table above the dance floor, set before opening",
+
+  "drinks.title": "What are we drinking?",
+  "drinks.cta": "See the price list",
+  "drinks.page.eyebrow": "Plitvice · Price list",
+  "drinks.page.back": "Back",
+  "drinks.page.listLabel": "Price list",
 
   "location.title": "*Find* us.",
   "location.caption": "Every Saturday",
@@ -718,6 +763,7 @@ const en: Record<MessageKey, string> = {
   "floor.persons": "guests",
   "floor.available": "Available",
   "floor.reserved": "Taken",
+  "floor.held": "Temporarily taken",
   "floor.choose": "Choose this table",
   "floor.chooseBooth": "Choose this booth",
   "floor.chosen": "Your spot",
@@ -753,6 +799,17 @@ const en: Record<MessageKey, string> = {
   "floor.err.busy": "One moment, then please try again.",
   "floor.err.unavailable": "Table reservations for this party are closed.",
   "floor.err.failed": "That did not send. Please try again.",
+  "floor.err.held":
+    "Someone else is booking this table right now. Please choose another one.",
+  "floor.hold.taking": "One moment…",
+  "floor.hold.label": "This table is held for you",
+  "floor.hold.labelBooth": "This booth is held for you",
+  "floor.hold.remaining": "Time remaining",
+  "floor.hold.expiredTitle": "Your time has run out",
+  "floor.hold.expiredBody": "The table is available to other guests again.",
+  "floor.hold.expiredBodyBooth": "The booth is available to other guests again.",
+  "floor.hold.again": "Choose a table again",
+  "floor.hold.againBooth": "Choose a booth again",
 
   "tickets.announcements": "Announcements go out on Instagram:",
   "tickets.type": "Ticket type",

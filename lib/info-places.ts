@@ -147,6 +147,19 @@ export const PLACES: Record<string, Place[]> = {
          what the description already tells the reader to look for. */
       mapQuery: "TQ Vegas Inđija",
     },
+    {
+      name: "Five Apartments",
+      photo: "/smestaj/fiveapartments.jpg",
+      /* UNRESOLVED — the street is not on the sheet this was added from, so
+         the town stands in for it rather than a guessed number. Google lists
+         the business, so the map link below is exact regardless; put the
+         street here when it is confirmed and nothing else has to change. */
+      address: "Inđija",
+      phone: "+381 65 301 1000",
+      note: "info.d.fiveApartments",
+      /* The business by name — the default query would append the town twice. */
+      mapQuery: "Five Apartments Inđija",
+    },
   ],
 
   restorani: [
@@ -171,12 +184,14 @@ export const PLACES: Record<string, Place[]> = {
     },
     {
       name: "Corso",
+      photo: "/restorani/corso.jpg",
       address: "Vojvode Stepe 1",
       phone: "+381 (0)22 559 000",
       note: "info.d.corso",
     },
     {
       name: "Perla",
+      photo: "/restorani/perla.jpg",
       address: "Dušana Jerkovića 9",
       phone: "+381 (0)22 565 397",
       note: "info.d.perla",
@@ -188,6 +203,7 @@ export const PLACES: Record<string, Place[]> = {
          fields are for, and the map is asked for the business by name. Fill
          `address`, `phone` and `note` in and each appears by itself. */
       name: "Nest",
+      photo: "/restorani/nest.jpg",
       address: "Inđija",
       mapQuery: "Nest Inđija",
     },
@@ -277,10 +293,11 @@ export const PLACES: Record<string, Place[]> = {
     },
   ],
 
-  /* THE ONE CATEGORY WITH NO TELEPHONE NUMBERS IN IT. The old page carried
-     none for any of these four, and an emergency number is the last thing on
-     a website to guess at, so every card here offers the map and nothing else.
-     Add a verified `phone` to a line and its POZOVI appears by itself. */
+  /* THE CATEGORY THAT CARRIES ALMOST NO TELEPHONE NUMBERS. The old page
+     carried none for the clinic or the pharmacies, and an emergency number is
+     the last thing on a website to guess at, so those four cards offer the map
+     and nothing else. Add a verified `phone` to a line and its POZOVI appears
+     by itself — which is the whole of what the police line below does. */
   "prva-pomoc": [
     {
       name: 'Dom zdravlja "Dr Milorad-Mika Pavlović"',
@@ -305,6 +322,18 @@ export const PLACES: Record<string, Place[]> = {
       address: "Novosadski put 23",
       note: "info.d.apoteka",
       mapQuery: "BENU apoteka Novosadski put Inđija",
+    },
+    /* THE ONE LINE ON THIS PAGE WITH A NUMBER ON IT, and it is a number
+       nobody has to look up: 192 is the national police line, dialled as it
+       is written from anywhere in Serbia. No street — the old pages carried
+       none for the station and an address here would be a guess — so the
+       town stands in for it and the map is asked for the station by name. */
+    {
+      name: "Policijska stanica Inđija",
+      address: "Inđija",
+      phone: "192",
+      note: "info.d.policija",
+      mapQuery: "Policijska stanica Inđija",
     },
   ],
 };

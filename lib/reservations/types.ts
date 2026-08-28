@@ -4,24 +4,35 @@ import type { SeatType, ZoneId } from "@/lib/floor-plan";
  *
  * WHERE A RESERVATION LIVES ITS LIFE. It arrives `pending` — the guest has
  * asked and the club has not yet rung back. It becomes `confirmed` when they
- * have, `cancelled` when either side lets it go, and `expired` when the night
- * has passed or a hold has run out. Nothing else in the system decides what
- * those words mean; everything asks HOLDS_A_SEAT below. */
+ * have, `rejected` when the club cannot take it, `cancelled` when the guest
+ * lets it go, and `expired` when the night has passed. Nothing else in the
+ * system decides what those words mean; everything asks HOLDS_A_SEAT below,
+ * and the partial unique indexes in lib/db/schema.ts repeat the same list so
+ * that nothing can quietly disagree with it. */
 
-export type ReservationStatus = "pending" | "confirmed" | "cancelled" | "expired";
+export type ReservationStatus =
+  | "pending"
+  | "confirmed"
+  | "rejected"
+  | "cancelled"
+  | "expired";
 
 /* Which of those actually hold a table against the floor.
  *
  * THIS IS THE HOUSE RULE, AND IT IS ONE LINE. Today a request holds its table
  * the moment it is made, because the club rings back rather than taking a
  * deposit and a table promised twice is worse than a table asked for twice.
- * The day the club would rather only confirmed bookings hold the floor — or
- * that a pending one holds it for twenty minutes and then lets go — this array
- * is what changes, and both the availability the map draws and the duplicate
- * check read it. */
+ * The day the club would rather only confirmed bookings hold the floor, this
+ * array is what changes — AND the two partial indexes in lib/db/schema.ts,
+ * which state the same rule where it cannot be raced. */
 export const HOLDS_A_SEAT: readonly ReservationStatus[] = ["pending", "confirmed"];
 
 export const holdsASeat = (status: ReservationStatus) => HOLDS_A_SEAT.includes(status);
+
+/* Where the booking came from. Both write to the same table, which is the
+   entire point: a table taken over the telephone disappears from the map the
+   same second, and staff cannot promise something the site is still offering. */
+export type ReservationSource = "web" | "phone";
 
 export type Reservation = {
   id: string;
@@ -36,11 +47,17 @@ export type Reservation = {
   phone: string;
   email: string;
   note: string;
-  /* The same two, reduced to one form each. Never shown; only ever compared.
-     See identity.ts. */
+  /* The same two, reduced to one form each. Never shown; only ever compared
+     and searched. See identity.ts. */
   phoneKey: string;
   emailKey: string;
   status: ReservationStatus;
+  source: ReservationSource;
+  /* Which member of staff wrote it down, for a telephone booking. */
+  createdBy?: string;
+  /* And who last changed it — confirmed, cancelled, corrected. Undefined on
+     anything the club has not touched since the guest sent it. */
+  updatedBy?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -57,13 +74,20 @@ export type ReservationDraft = Omit<
      "unavailable" — the night is not taking tables at all
      "seat-taken"  — somebody else holds that exact table for that night
      "duplicate"   — this guest already holds a table for this night
-     "rate-limited"— too many attempts from one source, too quickly */
+     "rate-limited"— too many attempts from one source, too quickly
+     "hold-expired"— the three minutes ran out while the form was open, or
+                     there was never a hold at all; the table is back on the
+                     floor and the guest has to choose again
+     "hold-invalid"— a live hold on that table belongs to somebody else, so
+                     whatever this request thinks it is holding, it is not */
 export type ReservationRefusal =
   | { ok: false; reason: "invalid"; fields: Record<string, string> }
   | { ok: false; reason: "unavailable" }
   | { ok: false; reason: "seat-taken" }
   | { ok: false; reason: "duplicate" }
-  | { ok: false; reason: "rate-limited"; retryAfterSeconds: number };
+  | { ok: false; reason: "rate-limited"; retryAfterSeconds: number }
+  | { ok: false; reason: "hold-expired" }
+  | { ok: false; reason: "hold-invalid" };
 
 export type ReservationResult =
   | { ok: true; reservation: Reservation }

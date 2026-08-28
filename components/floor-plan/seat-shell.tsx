@@ -11,11 +11,18 @@ import type { Seat } from "@/lib/floor-availability";
  * fact that a table is a button whether it is reached by cursor, thumb or
  * keyboard. */
 
-export type SeatState = "available" | "hover" | "picked" | "taken";
+export type SeatState = "available" | "hover" | "picked" | "held" | "taken";
 
+/* PICKED WINS OVER HELD, and that is not a special case — it is the whole of
+   the two-sided behaviour. The server never reports a guest's own hold as
+   held (see lib/reservations/holds.ts), so a table that is both picked and
+   held would mean the floor moved underneath somebody mid-form; showing it
+   lit, and letting the panel's own countdown say what has happened, is kinder
+   than having the table go dark under their hand. */
 export function seatState(seat: Seat, picked: boolean, hovered: boolean): SeatState {
   if (seat.status === "reserved") return "taken";
   if (picked) return "picked";
+  if (seat.status === "held") return "held";
   return hovered ? "hover" : "available";
 }
 
@@ -25,6 +32,8 @@ export function seatInk(state: SeatState) {
       return { stroke: INK.seatPicked, fill: INK.seatPickedFill, width: 2.4 };
     case "hover":
       return { stroke: INK.seatHover, fill: INK.seatHoverFill, width: 2 };
+    case "held":
+      return { stroke: INK.seatHeld, fill: INK.seatHeldFill, width: 1.6 };
     case "taken":
       return { stroke: INK.seatTaken, fill: INK.seatTakenFill, width: 1.5 };
     default:
@@ -67,7 +76,10 @@ export function SeatShell({
   onHover: SeatNodeProps["onHover"];
   children: React.ReactNode;
 }) {
-  const taken = state === "taken";
+  /* Held and booked behave identically to a hand: neither can be opened, and
+     the difference between them is a shade of gold and three minutes. Nothing
+     in here needs to tell them apart. */
+  const taken = state === "taken" || state === "held";
 
   /* A booth set at an angle on the paper is turned about its own centre, and
      the target over it turns with it. */

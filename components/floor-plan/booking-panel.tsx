@@ -6,6 +6,7 @@ import { Arrow } from "@/components/arrow";
 import { EASE } from "@/components/reveal";
 import { Field, NoteField } from "@/components/reservation/field";
 import { GuestCounter } from "@/components/floor-plan/guest-counter";
+import { HoldCountdown } from "@/components/floor-plan/hold-countdown";
 import { useSeatCopy } from "@/components/floor-plan/use-seat-copy";
 import { useLang } from "@/components/providers/language";
 import { site } from "@/lib/site";
@@ -77,7 +78,15 @@ export function BookingPanel({
   const { seat, guests, step, event, problem } = booking;
   if (!seat) return null;
 
-  const taken = seat.status === "reserved";
+  /* Gone for good, or somebody else's three minutes. Neither can be chosen,
+     and the card says which it is one line down. */
+  const taken = seat.status === "reserved" || seat.status === "held";
+
+  /* THE THREE MINUTES RAN OUT. It is its own whole state — the form is put
+     away, the submit with it, and the guest is sent back to the floor — and
+     it is reached either by the countdown reaching zero or by the server
+     saying so, whichever gets there first. See use-seat-hold.ts. */
+  const expired = problem === "hold-expired" || (step === "details" && booking.holdExpired);
 
   /* Two of the house's answers are whole states of their own — somebody else
      is holding that table, or this guest is already holding one for the night.
@@ -90,9 +99,11 @@ export function BookingPanel({
       ? t("floor.err.busy")
       : problem === "unavailable"
         ? t("floor.err.unavailable")
-        : problem === "failed"
-          ? t("floor.err.failed")
-          : null;
+        : problem === "seat-held"
+          ? t("floor.err.held")
+          : problem === "failed"
+            ? t("floor.err.failed")
+            : null;
 
   /* The cross the two working steps carry. It dismisses the card and nothing
      else — see the note above the component. */
@@ -152,16 +163,41 @@ export function BookingPanel({
             max={seat.capacity.max}
             onChange={booking.setParty}
           />
+          {/* Choosing the table is now a word with the house rather than a
+              step in the page: it goes and holds it, and the form opens only
+              once that has been granted. Almost always instantaneous, and the
+              label changes rather than a spinner appearing. */}
           <button
             type="button"
-            onClick={booking.confirmSeat}
-            className="btn-gold btn-gold-night mt-8 w-full text-center"
+            onClick={() => void booking.confirmSeat()}
+            disabled={booking.taking}
+            className="btn-gold btn-gold-night mt-8 w-full text-center disabled:cursor-wait disabled:opacity-60"
           >
             <span className="inline-flex items-center justify-center gap-4">
-              {chooseLabel(seat)}
-              <Arrow className="w-6" />
+              {booking.taking ? t("floor.hold.taking") : chooseLabel(seat)}
+              {booking.taking ? null : <Arrow className="w-6" />}
             </span>
           </button>
+
+          {/* Somebody beat them to it by a second, or the house could not be
+              reached. Said here, on the card, with the map still in front of
+              them — which is a far better place to find out than the bottom of
+              a filled-in form. */}
+          <div aria-live="polite">
+            <AnimatePresence>
+              {trouble ? (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: reduced ? 0 : 0.4 }}
+                  className="mt-4 text-[0.6875rem] leading-[1.5] tracking-[0.08em] text-[#e6a091]"
+                >
+                  {trouble}
+                </motion.p>
+              ) : null}
+            </AnimatePresence>
+          </div>
         </>
       )}
     </div>
@@ -177,6 +213,19 @@ export function BookingPanel({
         if (first) document.getElementById(`${uid}-${first}`)?.focus();
       }}
     >
+      {/* The table is theirs while they fill this in, and this is the only
+          place that says so. It is stuck to the top of the card's own scroll,
+          so on a phone with the keyboard up it stays above the fields instead
+          of scrolling away — and it is inside the card, so it can never cover
+          the map, the header or the button at the foot of the form. */}
+      {booking.hold ? (
+        <HoldCountdown
+          seat={seat}
+          seconds={booking.holdSeconds}
+          totalSeconds={booking.hold.totalSeconds}
+        />
+      ) : null}
+
       <div className="flex items-start justify-between gap-5">
         <button
           type="button"
@@ -314,6 +363,48 @@ export function BookingPanel({
     </form>
   );
 
+  /* ── the three minutes ran out ────────────────────────────────────────── */
+  /* Nothing was lost that was theirs to lose: the table was never booked, it
+     is simply back on the floor for everybody. So this is stated plainly and
+     without apology, and the way on is one button back to the map — where they
+     may well find the same table still free and take it again.
+     What they typed is deliberately kept. Pressing the button below returns
+     them to the floor with the name, the telephone and the note still in the
+     form, so choosing another table costs them the choice and not the typing. */
+  const expiredStep = (
+    <div role="status" aria-live="polite">
+      <div className="flex items-start justify-between gap-5">
+        <span
+          className="mt-2 block h-px w-20 bg-gradient-to-r from-[#e6a091] to-transparent"
+          aria-hidden="true"
+        />
+        {dismiss}
+      </div>
+
+      <h3 className="mt-5 font-serif text-[clamp(1.25rem,3.5vw,1.5rem)] uppercase leading-tight tracking-[0.04em] text-night-ink md:mt-7">
+        {t("floor.hold.expiredTitle")}
+      </h3>
+      <p className="mt-3 text-[0.875rem] leading-relaxed text-night-ink/60 md:mt-4">
+        {t(
+          seat.type === "booth"
+            ? "floor.hold.expiredBodyBooth"
+            : "floor.hold.expiredBody",
+        )}
+      </p>
+
+      <button
+        type="button"
+        onClick={booking.chooseAgain}
+        className="btn-gold btn-gold-night mt-7 w-full text-center"
+      >
+        <span className="inline-flex items-center justify-center gap-4">
+          {t(seat.type === "booth" ? "floor.hold.againBooth" : "floor.hold.again")}
+          <Arrow className="w-6" />
+        </span>
+      </button>
+    </div>
+  );
+
   /* ── it has gone ──────────────────────────────────────────────────────── */
   /* Held by somebody — or by this guest already.
    *
@@ -419,14 +510,19 @@ export function BookingPanel({
     </div>
   );
 
+  /* A finished reservation outranks everything — the hold behind it is spent
+     and its clock is irrelevant. After that, an expired hold outranks the form
+     it was holding open. */
   const content =
     step === "sent"
       ? sentStep
-      : blocked
-        ? blockedStep
-        : step === "table"
-          ? tableStep
-          : detailsStep;
+      : expired
+        ? expiredStep
+        : blocked
+          ? blockedStep
+          : step === "table"
+            ? tableStep
+            : detailsStep;
 
   return (
     <motion.section
@@ -469,7 +565,7 @@ export function BookingPanel({
           state says otherwise. This cannot get stuck: the step is what is
           rendered, and the fade is decoration on top of it. */}
       <motion.div
-        key={blocked ? `${step}-${problem}` : step}
+        key={expired ? "expired" : blocked ? `${step}-${problem}` : step}
         initial={reduced ? { opacity: 0 } : { opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: reduced ? 0 : 0.32, ease: EASE }}
