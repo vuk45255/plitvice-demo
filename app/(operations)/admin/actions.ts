@@ -1,10 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { belgradeInstant, scanMoment } from "@/lib/ticketing/copy";
+import { scanMoment } from "@/lib/ticketing/copy";
 import { buildDelivery, resendTickets } from "@/lib/ticketing/delivery";
 import { devMode } from "@/lib/ticketing/config";
-import { createEvent, findTicketingEvent, updateEvent } from "@/lib/ticketing/events";
+import { findTicketingEvent } from "@/lib/ticketing/events";
 import { publicOrigin } from "@/lib/ticketing/config";
 import { refundOrder } from "@/lib/ticketing/orders";
 import {
@@ -40,133 +40,12 @@ type ActionState = { ok?: string; error?: string };
 
 /* ── nights ─────────────────────────────────────────────────────────────── */
 
-export async function saveEvent(
-  _previous: ActionState,
-  form: FormData,
-): Promise<ActionState> {
-  if (!(await staffFor("admin"))) return { error: "Nemate pristup." };
-
-  const id = String(form.get("id") ?? "");
-  const event = await findTicketingEvent(id, true);
-  if (!event) return { error: "Događaj ne postoji." };
-
-  const number = (key: string) => {
-    const raw = form.get(key);
-    if (raw === null || String(raw).trim() === "") return undefined;
-    const value = Number(raw);
-    return Number.isFinite(value) ? Math.round(value) : undefined;
-  };
-
-  const capacity = number("capacity");
-  const ticketPrice = number("ticketPrice");
-  const maxPerOrder = number("maxPerOrder");
-  const status = String(form.get("status") ?? "") as
-    | "draft"
-    | "on_sale"
-    | "sold_out"
-    | "ended";
-
-  if (capacity !== undefined && capacity < 0) return { error: "Kapacitet ne može biti negativan." };
-  if (ticketPrice !== undefined && ticketPrice < 0) return { error: "Cena ne može biti negativna." };
-  if (maxPerOrder !== undefined && maxPerOrder < 1) return { error: "Najviše po porudžbini mora biti bar 1." };
-
-  const text = (key: string) => {
-    const raw = form.get(key);
-    return raw === null ? undefined : String(raw).trim();
-  };
-
-  /* The capacity floor is NOT checked here. It lives in `updateEvent`, which
-     is the one function that writes to this table — so a future till, a
-     script or a second screen cannot get past it by not remembering to look.
-     This only turns the refusal into a sentence. */
-  const result = await updateEvent(event.id, {
-    capacity,
-    ticketPrice,
-    maxPerOrder,
-    title: text("title") || undefined,
-    slug: text("slug")?.toLowerCase() || undefined,
-    image: text("image"),
-    description: text("description"),
-    status: ["draft", "on_sale", "sold_out", "ended"].includes(status)
-      ? status
-      : undefined,
-    /* The club types its own clock; this turns it into the instant it names.
-       Empty string is kept as empty string, which `updateEvent` writes as NULL
-       — that is how a sales window is cleared. */
-    startsAt: instant(form.get("startsAt")) || undefined,
-    doorsAt: instant(form.get("doorsAt")),
-    salesStart: instant(form.get("salesStart")),
-    salesEnd: instant(form.get("salesEnd")),
-  });
-
-  if (!result.ok) {
-    if (result.reason === "capacity_below_sold") {
-      return {
-        error: `Već je prodato/rezervisano ${result.taken}. Kapacitet ne može biti manji.`,
-      };
-    }
-    if (result.reason === "slug_taken") return { error: "Taj slug već postoji." };
-    return { error: "Izmena nije sačuvana." };
-  }
-
-  revalidatePath("/admin");
-  revalidatePath("/admin/dogadjaji");
-  revalidatePath(`/admin/dogadjaji/${event.id}`);
-  return { ok: "Sačuvano." };
-}
-
-/* A night the club is adding by hand rather than through the catalogue. It
-   arrives `draft` — see `createEvent` — so nothing is on sale until somebody
-   chooses to put it there. */
-export async function newEvent(
-  _previous: ActionState,
-  form: FormData,
-): Promise<ActionState> {
-  if (!(await staffFor("admin"))) return { error: "Nemate pristup." };
-
-  const text = (key: string) => String(form.get(key) ?? "").trim();
-  const number = (key: string) => {
-    const value = Number(form.get(key));
-    return Number.isFinite(value) ? Math.round(value) : NaN;
-  };
-
-  const startsAt = instant(form.get("startsAt"));
-  if (!startsAt) return { error: "Datum i vreme su obavezni." };
-
-  const result = await createEvent({
-    title: text("title"),
-    slug: text("slug").toLowerCase(),
-    startsAt,
-    doorsAt: instant(form.get("doorsAt")) || undefined,
-    capacity: number("capacity"),
-    ticketPrice: number("ticketPrice"),
-    maxPerOrder: Number.isFinite(number("maxPerOrder")) ? number("maxPerOrder") : undefined,
-    image: text("image") || undefined,
-    description: text("description") || undefined,
-  });
-
-  if (!result.ok) {
-    const said: Record<string, string> = {
-      slug_taken: "Taj slug već postoji.",
-      invalid:
-        "Proverite podatke — slug sme da sadrži samo mala slova, brojeve i crtice.",
-      unknown: "Događaj nije upisan.",
-    };
-    return { error: said[result.reason] ?? "Događaj nije upisan." };
-  }
-
-  revalidatePath("/admin");
-  revalidatePath("/admin/dogadjaji");
-  return { ok: `Upisano: ${result.event.title} (${result.event.slug}). Status: draft.` };
-}
-
-/* A wall clock reading from a datetime-local field, as an instant. Undefined
-   means "leave it alone"; empty string means "clear it". */
-function instant(raw: FormDataEntryValue | null): string | undefined {
-  const value = String(raw ?? "").trim();
-  if (!value) return "";
-  return belgradeInstant(value);
-}
+/* THEY MOVED. Everything that creates, edits, publishes, duplicates, archives
+   or deletes a night now lives in app/(operations)/admin/dogadjaji/actions.ts,
+   beside the screens that call it — the event manager grew from two form
+   handlers into a dozen, and a file that also refunds orders and cancels tables
+   is not where they belong. The rules did not move: they are still in
+   lib/ticketing/events.ts, which remains the only writer of that table. */
 
 /* Pending orders whose ten minutes are up, written down as expired. The seats
    went back the moment the timestamp passed whether or not this ever runs —

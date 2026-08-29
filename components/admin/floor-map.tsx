@@ -4,26 +4,44 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   PLAN,
-  ROOMS,
   SEATS,
-  cornerPath,
+  seatBox,
   seatNumber,
-  seatSize,
+  seatTurn,
   type FloorSeat,
 } from "@/lib/floor-plan";
+import {
+  PlanArchitecture,
+  SeatOutline,
+  type PlanInk,
+} from "@/components/floor-plan/plan-shapes";
 import { Badge } from "@/components/admin/badge";
 import type { FloorState, AdminSeat } from "@/lib/reservations/admin";
 
 /* THE FLOOR, DRAWN FOR THE OFFICE.
  *
- * ═══ WHAT THIS IS NOT ═════════════════════════════════════════════════════
+ * ═══ THE SAME BUILDING, IN DIFFERENT INK ══════════════════════════════════
  *
- * It is not the guest's floor plan. That drawing — the ink, the grain, the
- * light on the separes, the tap-to-open cards — belongs to somebody being sold
- * a night out and is not touched by anything here. This reads the SAME
- * geometry out of lib/floor-plan.ts and draws a schematic: flat shapes, three
- * states, a number on each. Two audiences, one source for where the tables
- * are, so a table that moves moves on both.
+ * It is not the guest's floor plan — the light on the separes, the tap-to-open
+ * cards, the gold on the chosen table all belong to somebody being sold a night
+ * out. But underneath, it is the SAME DRAWING, and that is now literally true
+ * rather than an intention: the walls, the stage, the stairs, the spiral and
+ * every table come out of `PlanArchitecture` and `SeatOutline` in
+ * components/floor-plan/plan-shapes.tsx, which the reservation map calls as
+ * well. This file hands them the office's palette and nothing else.
+ *
+ * It used to read the same ARRAYS and draw its own room from them, which
+ * sounds like the same thing and is not. Reading `SEATS` did not stop this map
+ * putting every table's top-left where the plan states its centre, spinning the
+ * angled separes about that wrong point, drawing the round bar tables as
+ * squares, or leaving out every structure in the building. Shared data was not
+ * enough; the drawing had to be shared too.
+ *
+ * ═══ WHAT IS STILL THIS FILE'S OWN ════════════════════════════════════════
+ *
+ * The three states and their colours, the eight-second poll, the server's
+ * clock, the click, and the panel down the right-hand side. None of it can move
+ * a wall.
  *
  * ═══ THREE STATES, READ FROM ACROSS THE ROOM ══════════════════════════════
  *
@@ -54,6 +72,22 @@ const INK = {
   held: { fill: "rgba(224,170,98,0.12)", stroke: "#e0aa62" },
   reserved: { fill: "rgba(42,18,63,0.85)", stroke: "rgba(200,164,93,0.75)" },
 } as const;
+
+/* THE ROOM, IN THE OFFICE'S OWN INK — the same values this map has always drawn
+   its walls in, extended to the structures it used not to draw at all. Held
+   well back: on a busy night the three table states are the only thing anybody
+   is looking for, and a stage that competes with them is a stage in the way. */
+const OFFICE_INK: PlanInk = {
+  ground: "rgba(0,0,0,0.35)",
+  floor: "rgba(255,255,255,0.015)",
+  floorEdge: "rgba(244,240,230,0.09)",
+  structure: "rgba(244,240,230,0.03)",
+  structureEdge: "rgba(244,240,230,0.10)",
+  tread: "rgba(244,240,230,0.09)",
+  label: "rgba(244,240,230,0.22)",
+  labelArea: "rgba(244,240,230,0.22)",
+  zoneMark: "rgba(244,240,230,0.10)",
+};
 
 export function FloorMap({
   initial,
@@ -131,18 +165,16 @@ export function FloorMap({
             role="img"
             aria-label="Raspored stolova"
           >
-            {/* The walls, so the tables are somewhere rather than floating. An
-                open run of wall is drawn open — closing it would throw a line
-                straight across the room. */}
-            {ROOMS.map((room) => (
-              <path
-                key={room.id}
-                d={roomPath(room.points, room.closed !== false)}
-                fill={room.closed === false ? "none" : "rgba(255,255,255,0.015)"}
-                stroke="rgba(244,240,230,0.09)"
-                strokeWidth={2}
-              />
-            ))}
+            {/* THE BUILDING. Walls, floors, the stage, the bar runs, the
+                stairs, the spiral, the zone numerals — the identical drawing
+                the guest sees, in the office's ink. Signage the club wrote on
+                the plan is set as written; the one label that would need
+                translating is left off rather than pulling the site's
+                dictionary onto a screen that has no other use for it. */}
+            <PlanArchitecture
+              ink={OFFICE_INK}
+              labelText={(label) => label.text ?? ""}
+            />
 
             {SEATS.map((seat) => {
               const state = byId.get(seat.id);
@@ -182,19 +214,21 @@ function Shape({
   active: boolean;
   onPick: () => void;
 }) {
-  const { w, h } = seatSize(seat);
-  const cx = seat.x + w / 2;
-  const cy = seat.y + h / 2;
-  const spin = seat.rotation ? `rotate(${seat.rotation} ${cx} ${cy})` : undefined;
+  /* THE PLAN'S OWN BOX AND THE PLAN'S OWN TURN. Both come from
+     lib/floor-plan.ts, which is what makes a rotated separe here sit exactly
+     where it sits on the guest's map — `x`/`y` is a CENTRE, and this file used
+     to read it as a corner. */
+  const { h, cx, cy } = seatBox(seat);
+  const spin = seatTurn(seat);
   const ink = INK[state.state];
 
   const shape = {
     fill: ink.fill,
     stroke: active ? "#f4f0e6" : ink.stroke,
-    strokeWidth: active ? 4 : state.state === "available" ? 1.5 : 2.5,
+    width: active ? 4 : state.state === "available" ? 1.5 : 2.5,
     /* Held tables are dashed as well as amber — colour alone is not a state
        anybody should have to rely on. */
-    strokeDasharray: state.state === "held" ? "10 7" : undefined,
+    dash: state.state === "held" ? "10 7" : undefined,
   };
 
   return (
@@ -214,18 +248,16 @@ function Shape({
       }}
       aria-label={`${seatNumber(seat)} — ${label(state.state)}`}
     >
-      {seat.corner ? (
-        <path
-          d={cornerPath(seat.x, seat.y, w, h, seat.depth ?? 18, seat.corner)}
-          {...shape}
-        />
-      ) : (
-        <rect x={seat.x} y={seat.y} width={w} height={h} rx={3} {...shape} />
-      )}
+      {/* The circle for a bar table, the rounded bar for a high one, the box or
+          the corner L for a separe — one implementation, shared with the
+          reservation map. The shape is the button here, so it keeps its pointer
+          events rather than hiding behind an invisible target. */}
+      <SeatOutline seat={seat} ink={shape} />
       <text
         x={cx}
-        y={cy + 5}
+        y={cy}
         textAnchor="middle"
+        dominantBaseline="central"
         fontSize={Math.max(11, Math.min(16, h / 2.4))}
         fill={
           state.state === "reserved"
@@ -418,9 +450,6 @@ function left(expiresAt: string | undefined, now: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-function roomPath(
-  points: readonly (readonly [number, number])[],
-  closed: boolean,
-): string {
-  return `M ${points.map((p) => p.join(" ")).join(" L ")}${closed ? " Z" : ""}`;
-}
+/* `roomPath` used to live here — the office's own tracing of the walls, which
+   is exactly the second drawing this change removed. The walls are now drawn by
+   the shared plan. */

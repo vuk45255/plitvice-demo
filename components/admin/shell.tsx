@@ -194,11 +194,23 @@ export function Field({
 }
 
 /* A heading inside a long form — OSNOVNO, PRODAJA, KAPACITET. Fifteen inputs
-   in one blob is a form nobody fills in correctly at speed. */
-export function FormSection({ title }: { title: string }) {
+   in one blob is a form nobody fills in correctly at speed.
+
+   `children` is for a heading that is more than a word: the event editor
+   numbers its steps, and a number in a circle beside the word is what turns a
+   long form into something somebody will finish standing up. Passing children
+   REPLACES the title rather than adding to it, so there is never a heading
+   rendered twice. */
+export function FormSection({
+  title,
+  children,
+}: {
+  title: string;
+  children?: ReactNode;
+}) {
   return (
     <div className="mt-2 border-t border-[var(--adm-line-soft)] pt-6 first:mt-0 first:border-0 first:pt-0 sm:col-span-2">
-      <p className="adm-eyebrow">{title}</p>
+      {children ?? <p className="adm-eyebrow">{title}</p>}
     </div>
   );
 }

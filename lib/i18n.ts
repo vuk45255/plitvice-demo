@@ -57,13 +57,6 @@ const sr = {
      lib/site.ts — it is the same in every language. */
   "event.info": "Info",
 
-  /* What a night says for itself, set under its poster. One key per night. */
-  "event.about.saturdayMadness":
-    "Saturday Madness. Subota, 29. avgust — DJ Wolf svira celu noć. Ulaz besplatan, 16+ uz ličnu kartu ili pasoš. 1 na 1 do pola 1: uz svaku flašu druga na račun kuće, važi za sve flaše naručene do 00:30.",
-
-  "event.about.vodkaExperience":
-    "Vodka Experience by Plitvice. Music by Dave Pavlo, posebna atmosfera i boca vodke gratis za ekipe koje stignu do ponoći. Minimalno 4 gosta za barski sto, 4–5 za visoki sto i 6 za separe. Ulaz 16+ uz lični dokument.",
-
   "gallery.title": "Naše *žurke*.",
   "gallery.caption": "Svake subote",
   "gallery.cta": "Pogledaj na Instagram",
@@ -187,19 +180,6 @@ const sr = {
   "shot.crowd": "Nastup pod punim svetlima, publika u sali",
   "shot.lights": "Podijum pod ljubičastim svetlima",
   "shot.booth": "DJ pult pred vrhunac večeri",
-
-  "date.aug29": "29. avgust",
-  "date.aug22": "22. avgust",
-  "date.aug15": "15. avgust",
-  "date.oct25": "25. oktobar",
-  "date.jul18": "18. jul",
-  "date.jul11": "11. jul",
-  "date.jul04": "4. jul",
-  "date.jun27": "27. jun",
-  "date.may30": "30. maj",
-  "date.may16": "16. maj",
-  "date.may09": "9. maj",
-  "date.apr18": "18. april",
 
   "atmosfera.title": "*Atmosfera*.",
   "atmosfera.lead":
@@ -348,12 +328,16 @@ const sr = {
   "reserve.note": "Napomena / posebni zahtevi",
   "reserve.noteHint": "Rođendan, mesto u sali, flaša na stolu — recite nam.",
   "reserve.optional": "opciono",
-  "reserve.submit": "Pošalji rezervaciju",
+  "reserve.submit": "Potvrdi rezervaciju",
   "reserve.sending": "Šaljemo…",
+  /* THE FORM CONFIRMS THE TABLE, it does not ask for one. Nothing here may
+     suggest that somebody in the club still has to say yes — the booking is
+     written down as confirmed by the same statement that takes the table. */
   "reserve.footnote":
-    "Potvrdu javljamo telefonom ili mejlom, najčešće istog dana.",
-  "reserve.successTitle": "Vaša rezervacija je poslata.",
-  "reserve.successBody": "Javićemo vam se uskoro.",
+    "Sto je vaš čim potvrdite — potvrda stiže na vašu email adresu.",
+  "reserve.successTitle": "Rezervacija je potvrđena.",
+  "reserve.successBody":
+    "Sto je rezervisan na vaše ime. Potvrdu šaljemo na vašu email adresu.",
   "reserve.successAgain": "Nova rezervacija",
 
   "reserve.err.name": "Upišite ime i prezime.",
@@ -447,6 +431,37 @@ const sr = {
 
 export type MessageKey = keyof typeof sr;
 
+/* ═══ TEXT THAT IS NOT IN THE DICTIONARY ═══════════════════════════════════
+ *
+ * A dictionary key is right for the words the SITE says: they are written once,
+ * by us, in both languages, and a translator moves them together. It is exactly
+ * wrong for the words a NIGHT says. Those are the club owner's, typed into
+ * /admin/dogadjaji at eleven on a Friday, and a key would mean the owner could
+ * not change one without a deploy — which is the whole thing this system exists
+ * to remove.
+ *
+ * So a caption may also be a value carrying its own text. Two shapes only:
+ *
+ *   a MessageKey  — the site's own words, translated in this file
+ *   a LocalText   — the same sentence already resolved into both languages,
+ *                   which is what a DATE becomes when it is formatted out of an
+ *                   instant rather than looked up
+ *
+ * and a plain string, which is the club's own words in the club's own language
+ * and is handed back untouched. `t` accepts all three, so every existing call
+ * site keeps working and none of them had to learn anything. */
+export type LocalText = { sr: string; en: string };
+
+export type Caption = MessageKey | LocalText | (string & {});
+
+/* Resolve a caption for one language. The dictionary first, the Serbian entry
+   as a fallback, and finally the string itself — which is the case for text
+   that came out of the database and was never a key. */
+export function resolveCaption(value: Caption, lang: Lang): string {
+  if (typeof value !== "string") return value[lang];
+  return messages[lang][value as MessageKey] ?? messages.sr[value as MessageKey] ?? value;
+}
+
 const en: Record<MessageKey, string> = {
   "nav.events": "Events",
   "nav.parties": "Our parties",
@@ -482,12 +497,6 @@ const en: Record<MessageKey, string> = {
   "event.doors": "Doors",
   "event.ticket": "Ticket",
   "event.info": "Info",
-
-  "event.about.saturdayMadness":
-    "Saturday Madness. Saturday 29 August — DJ Wolf plays all night long. Free entry, 16+ with a valid ID card or passport. One for one until half past midnight: every bottle comes with a second on the house, all bottles included, ordered by 00:30.",
-
-  "event.about.vodkaExperience":
-    "Vodka Experience by Plitvice. Music by Dave Pavlo, an atmosphere of its own, and a bottle of vodka on the house for groups arriving before midnight. Minimum 4 guests for a bar table, 4–5 for a high table and 6 for a booth. Entry 16+ with photo ID.",
 
   "gallery.title": "Our *parties*.",
   "gallery.caption": "Every Saturday",
@@ -594,19 +603,6 @@ const en: Record<MessageKey, string> = {
   "shot.crowd": "On stage under full lights, the room watching",
   "shot.lights": "The dance floor under violet lights",
   "shot.booth": "The booth before the peak of the night",
-
-  "date.aug29": "29 August",
-  "date.aug22": "22 August",
-  "date.aug15": "15 August",
-  "date.oct25": "25 October",
-  "date.jul18": "18 July",
-  "date.jul11": "11 July",
-  "date.jul04": "4 July",
-  "date.jun27": "27 June",
-  "date.may30": "30 May",
-  "date.may16": "16 May",
-  "date.may09": "9 May",
-  "date.apr18": "18 April",
 
   "atmosfera.title": "*Atmosphere*.",
   "atmosfera.lead":
@@ -734,11 +730,13 @@ const en: Record<MessageKey, string> = {
   "reserve.note": "Note / special requests",
   "reserve.noteHint": "A birthday, a spot in the room, a bottle on the table — tell us.",
   "reserve.optional": "optional",
-  "reserve.submit": "Send reservation",
+  "reserve.submit": "Confirm reservation",
   "reserve.sending": "Sending…",
-  "reserve.footnote": "We confirm by phone or email, usually the same day.",
-  "reserve.successTitle": "Your reservation has been sent.",
-  "reserve.successBody": "We will get back to you shortly.",
+  "reserve.footnote":
+    "The table is yours the moment you confirm — your confirmation goes to your email.",
+  "reserve.successTitle": "Your reservation is confirmed.",
+  "reserve.successBody":
+    "The table is booked in your name. We are sending the confirmation to your email.",
   "reserve.successAgain": "New reservation",
 
   "reserve.err.name": "Please enter your full name.",

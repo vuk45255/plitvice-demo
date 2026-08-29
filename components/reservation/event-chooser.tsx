@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { PosterImage } from "@/components/events/poster-image";
 import { useLang } from "@/components/providers/language";
 import type { PartyEvent } from "@/lib/events";
 import { site } from "@/lib/site";
@@ -74,10 +74,9 @@ export function EventChooser({
                 }`}
               >
                 <span className="relative block h-[4.5rem] w-[3.5rem] shrink-0 overflow-hidden rounded-xl">
-                  <Image
-                    src={event.poster}
+                  <PosterImage
+                    poster={event.poster}
                     alt=""
-                    placeholder="blur"
                     sizes="56px"
                     fill
                     className={`object-cover transition-[filter] duration-700 ${

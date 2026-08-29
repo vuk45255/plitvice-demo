@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Image, { type StaticImageData } from "next/image";
+import { PosterImage } from "@/components/events/poster-image";
+import type { Poster } from "@/lib/club/poster-assets";
 import Link from "next/link";
 import {
   motion,
@@ -328,7 +329,8 @@ export function PortalStills({
   playing,
   interval,
 }: {
-  images: StaticImageData[];
+  /* Either bundled artwork or an uploaded URL — see components/events/poster-image.tsx. */
+  images: Poster[];
   sizes: string;
   playing: boolean;
   interval: number;
@@ -353,10 +355,9 @@ export function PortalStills({
               scale: { duration: reduced ? 0 : 2.4, ease: EASE },
             }}
           >
-            <Image
-              src={image}
+            <PosterImage
+              poster={image}
               alt=""
-              placeholder="blur"
               sizes={sizes}
               fill
               className="img-grade object-cover"

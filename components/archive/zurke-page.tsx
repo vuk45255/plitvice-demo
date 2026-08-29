@@ -1,13 +1,13 @@
 "use client";
 
-import Image from "next/image";
+import { PosterImage } from "@/components/events/poster-image";
 import Link from "next/link";
 import { ArchiveShell } from "@/components/archive/archive-shell";
 import { EventPoster } from "@/components/events/event-poster";
 import { ImageReveal } from "@/components/image-reveal";
 import { Reveal } from "@/components/reveal";
 import { useLang } from "@/components/providers/language";
-import { pastEvents, reserveHref, upcomingEvents } from "@/lib/events";
+import { reserveHref, type PartyEvent } from "@/lib/events";
 import { site } from "@/lib/site";
 
 /* Every night the club has put on, in one room.
@@ -18,9 +18,16 @@ import { site } from "@/lib/site";
  * baselines so the wall never reads as a product grid. A night that has
  * happened sells nothing, so nothing under it asks you to buy. */
 
-export function ZurkePage() {
+/* The wall is handed in rather than imported — it is the events table, read on
+   the server by app/(site)/zurke/page.tsx. Adding a night is adding a row. */
+export function ZurkePage({
+  next,
+  past,
+}: {
+  next?: PartyEvent;
+  past: PartyEvent[];
+}) {
   const { t } = useLang();
-  const [next] = upcomingEvents;
 
   return (
     <ArchiveShell
@@ -44,10 +51,9 @@ export function ZurkePage() {
                 aria-label={`${next.artist} — ${t(next.date)} — ${t("events.buy")}`}
                 className="group relative block aspect-[4/5] w-full overflow-hidden ring-1 ring-gold/25"
               >
-                <Image
-                  src={next.poster}
+                <PosterImage
+                  poster={next.poster}
                   alt=""
-                  placeholder="blur"
                   sizes="(min-width: 768px) 46vw, 92vw"
                   fill
                   className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.025]"
@@ -114,7 +120,7 @@ export function ZurkePage() {
         </Reveal>
 
         <ul className="mt-14 grid grid-cols-2 gap-x-6 gap-y-16 md:mt-20 md:grid-cols-3 md:gap-x-12 md:gap-y-20">
-          {pastEvents.map((event, i) => (
+          {past.map((event, i) => (
             <li key={event.slug} className={drops[i % drops.length]}>
               <ImageReveal delay={(i % 3) * 0.07}>
                 <EventPoster

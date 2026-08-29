@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { query, tx, type Queryable } from "@/lib/db/client";
 import { TAKEN_CLAUSE } from "@/lib/ticketing/taken";
+import { currentVenue, isFloorPlan, type FloorPlanId, type VenueId } from "@/lib/venue";
+import type { TicketingEvent, TicketingEventStatus } from "@/lib/ticketing/event-rules";
 
 /* The nights the system can sell, read from the database.
  *
@@ -18,7 +20,7 @@ import { TAKEN_CLAUSE } from "@/lib/ticketing/taken";
  * ═══ THIS IS NOW A TABLE ══════════════════════════════════════════════════
  *
  * It used to be an array in this file. It is `SELECT * FROM events`, seeded
- * once from lib/ticketing/catalogue.ts and edited from /admin thereafter —
+ * once from lib/club/programme-seed.ts and edited from /admin thereafter —
  * which is what lets the club raise a capacity or open a sale at eleven at
  * night without a deploy. Everything above still asks `findTicketingEvent`;
  * the only change is that asking is now something you await.
@@ -29,47 +31,29 @@ import { TAKEN_CLAUSE } from "@/lib/ticketing/taken";
  * more people than the room holds. It is counted, in the same transaction that
  * takes the seats — see `soldFor` and `placeOrder` in lib/ticketing/store.ts. */
 
-export type TicketingEventStatus = "draft" | "on_sale" | "sold_out" | "ended";
-
-export type TicketingEvent = {
-  /* Stable and internal — what an order and a ticket are filed under, so that
-     renaming a night's slug never orphans a ticket somebody has bought. */
-  id: string;
-  /* Public, and shared with the poster wall in lib/events.ts. */
-  slug: string;
-  /* A name is a name: never translated, never restyled. */
-  title: string;
-  /* When the night is, as an ISO instant. */
-  startsAt: string;
-  /* When the doors open, when that is not the same thing. */
-  doorsAt?: string;
-  description?: string;
-  /* A path under public/, not an imported asset. */
-  image?: string;
-  status: TicketingEventStatus;
-  /* Entry, in whole dinars. The ONLY place a price is read from: an amount
-     that arrived from a browser is never believed. */
-  ticketPrice: number;
-  currency: "RSD";
-  /* How many may be let in. */
-  capacity: number;
-  /* Most admissions one order may hold — a house rule about touts and
-     mistyped quantities, not a statement about stock. */
-  maxPerOrder: number;
-  /* The window during which the site may take money. Either end may be open. */
-  salesStart?: string;
-  salesEnd?: string;
-  /* True for nights that exist only so the system can be tested. Filtered out
-     of every list and refused by every lookup unless dev mode is open, so a
-     test night cannot be sold to anybody by accident. */
-  testOnly: boolean;
-};
+/* ═══ THE SHAPE OF A NIGHT LIVES IN lib/ticketing/event-rules.ts ══════════
+ *
+ * `TicketingEvent`, `TicketingEventStatus`, `SaleState`, `saleState` and
+ * `remainingForOrder` moved there — not because they changed, but because
+ * this file imports `pg` on its first line and a client component that wants
+ * one label out of the event manager must not therefore ship a Postgres
+ * driver to a browser. They are re-exported below, so nothing that already
+ * imports them from here has to change. */
+export type {
+  SaleState,
+  TicketingEvent,
+  TicketingEventStatus,
+} from "@/lib/ticketing/event-rules";
+export { remainingForOrder, saleState } from "@/lib/ticketing/event-rules";
 
 /* ── reading ────────────────────────────────────────────────────────────── */
 
 const COLUMNS = `id, slug, title, starts_at, doors_at, description, image, status,
                  ticket_price, currency, capacity, max_per_order,
-                 sales_start, sales_end, test_only`;
+                 sales_start, sales_end, test_only,
+                 venue_id, ticketing_enabled, tables_enabled, floor_plan,
+                 poster_key, lineup, genre, age_restriction, entry_note,
+                 dress_code, promotion, archived_at`;
 
 /* The same list, qualified, for the one query that joins a count beside it. */
 const COLUMNS_E = COLUMNS.split(",").map((c) => `e.${c.trim()}`).join(", ");
@@ -90,6 +74,18 @@ type EventRow = {
   sales_start: Date | string | null;
   sales_end: Date | string | null;
   test_only: boolean;
+  venue_id: string | null;
+  ticketing_enabled: boolean | null;
+  tables_enabled: boolean | null;
+  floor_plan: string | null;
+  poster_key: string | null;
+  lineup: string | null;
+  genre: string | null;
+  age_restriction: string | null;
+  entry_note: string | null;
+  dress_code: string | null;
+  promotion: string | null;
+  archived_at: Date | string | null;
 };
 
 /* One instant, written the one way the rest of the system reads it. Both
@@ -117,6 +113,24 @@ function toEvent(row: EventRow): TicketingEvent {
     salesStart: iso(row.sales_start),
     salesEnd: iso(row.sales_end),
     testOnly: Boolean(row.test_only),
+    /* Every one of these is read defensively. The columns have defaults, so a
+       real row always has a value — but a row read through an older path, a
+       test fixture, or a database that has not finished migrating must not be
+       able to produce an event object with `undefined` where a boolean is
+       declared. The fallback is always what the system did before the column
+       existed. */
+    venueId: row.venue_id ?? currentVenue().id,
+    ticketingEnabled: row.ticketing_enabled ?? true,
+    tablesEnabled: row.tables_enabled ?? false,
+    floorPlan: row.floor_plan && isFloorPlan(row.floor_plan) ? row.floor_plan : "default",
+    posterKey: row.poster_key ?? undefined,
+    lineup: row.lineup ?? undefined,
+    genre: row.genre ?? undefined,
+    ageRestriction: row.age_restriction ?? undefined,
+    entryNote: row.entry_note ?? undefined,
+    dressCode: row.dress_code ?? undefined,
+    promotion: row.promotion ?? undefined,
+    archivedAt: iso(row.archived_at),
   };
 }
 
@@ -216,6 +230,16 @@ export type EventPatch = Partial<
     | "salesEnd"
     | "description"
     | "image"
+    | "ticketingEnabled"
+    | "tablesEnabled"
+    | "floorPlan"
+    | "posterKey"
+    | "lineup"
+    | "genre"
+    | "ageRestriction"
+    | "entryNote"
+    | "dressCode"
+    | "promotion"
   >
 >;
 
@@ -314,6 +338,19 @@ async function writeEvent(
   if (patch.doorsAt !== undefined) push("doors_at", patch.doorsAt || null);
   if (patch.salesStart !== undefined) push("sales_start", patch.salesStart || null);
   if (patch.salesEnd !== undefined) push("sales_end", patch.salesEnd || null);
+  if (patch.ticketingEnabled !== undefined) push("ticketing_enabled", patch.ticketingEnabled);
+  if (patch.tablesEnabled !== undefined) push("tables_enabled", patch.tablesEnabled);
+  if (patch.floorPlan !== undefined) push("floor_plan", patch.floorPlan);
+  if (patch.posterKey !== undefined) push("poster_key", patch.posterKey || null);
+  /* The five optional lines about the night. An empty string CLEARS one —
+     that is how the form removes a dress code — and `undefined` leaves it
+     alone, exactly as it does for a description. */
+  if (patch.lineup !== undefined) push("lineup", patch.lineup || null);
+  if (patch.genre !== undefined) push("genre", patch.genre || null);
+  if (patch.ageRestriction !== undefined) push("age_restriction", patch.ageRestriction || null);
+  if (patch.entryNote !== undefined) push("entry_note", patch.entryNote || null);
+  if (patch.dressCode !== undefined) push("dress_code", patch.dressCode || null);
+  if (patch.promotion !== undefined) push("promotion", patch.promotion || null);
 
   if (sets.length === 0) {
     const event = await findTicketingEvent(id, true);
@@ -352,11 +389,25 @@ export type NewEvent = {
   description?: string;
   image?: string;
   status?: TicketingEventStatus;
+  /* Everything the event manager can set on the way in. All optional, so the
+     original four-field call site still compiles and still means what it
+     meant. */
+  ticketingEnabled?: boolean;
+  tablesEnabled?: boolean;
+  floorPlan?: FloorPlanId;
+  posterKey?: string;
+  lineup?: string;
+  genre?: string;
+  ageRestriction?: string;
+  entryNote?: string;
+  dressCode?: string;
+  promotion?: string;
+  venueId?: VenueId;
 };
 
 /* Adding a night from the office rather than from the catalogue.
  *
- * WHY THIS IS ALLOWED TO EXIST when lib/ticketing/catalogue.ts is where nights
+ * WHY THIS IS ALLOWED TO EXIST when lib/club/programme-seed.ts is where nights
  * come from: the catalogue seeds the table once and then never touches it
  * again, precisely so that a night the club added at eleven on a Friday is not
  * removed by the next deploy. A row created here is a row like any other.
@@ -390,11 +441,14 @@ export async function createEvent(input: NewEvent): Promise<EventWriteResult> {
     const result = await query<EventRow>(
       `INSERT INTO events (
          id, slug, title, starts_at, doors_at, description, image, status,
-         ticket_price, currency, capacity, max_per_order, test_only
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'RSD',$10,$11,false)
+         ticket_price, currency, capacity, max_per_order, test_only,
+         venue_id, ticketing_enabled, tables_enabled, floor_plan, poster_key,
+         lineup, genre, age_restriction, entry_note, dress_code, promotion
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'RSD',$10,$11,false,
+                 $12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
        RETURNING ${COLUMNS}`,
       [
-        `evt_${randomUUID().slice(0, 8)}`,
+        newEventId(),
         slug,
         title,
         input.startsAt,
@@ -405,6 +459,17 @@ export async function createEvent(input: NewEvent): Promise<EventWriteResult> {
         input.ticketPrice,
         input.capacity,
         input.maxPerOrder ?? 10,
+        input.venueId ?? currentVenue().id,
+        input.ticketingEnabled ?? true,
+        input.tablesEnabled ?? false,
+        input.floorPlan ?? "default",
+        input.posterKey || null,
+        input.lineup || null,
+        input.genre || null,
+        input.ageRestriction || null,
+        input.entryNote || null,
+        input.dressCode || null,
+        input.promotion || null,
       ],
     );
     return { ok: true, event: toEvent(result.rows[0]) };
@@ -414,6 +479,243 @@ export async function createEvent(input: NewEvent): Promise<EventWriteResult> {
   }
 }
 
+/* An id, in one place, because two things now mint one. Prefixed so that a
+   row id says what it is when it turns up in a log next to an order's. */
+function newEventId(): string {
+  return `evt_${randomUUID().slice(0, 8)}`;
+}
+
+/* ── copying a night ────────────────────────────────────────────────────── */
+
+/* WHAT A DUPLICATE IS, AND — MUCH MORE IMPORTANTLY — WHAT IT IS NOT.
+ *
+ * Staff run the same night every Saturday: same price, same capacity, same
+ * floor, same age rule, same door time. Typing all of that again is how a
+ * capacity ends up wrong, so this copies the CONFIGURATION of a night and
+ * nothing else.
+ *
+ * ═══ WHY NO OPERATIONAL DATA CAN COME WITH IT ═════════════════════════════
+ *
+ * Not because this function is careful to leave it behind — because there is
+ * nothing to leave behind. THIS IS ONE INSERT INTO ONE TABLE. Orders, tickets,
+ * scans, reservations and seat holds all point AT an event (by id, or by slug
+ * for the floor); not one of them is stored on the event row, and a brand-new
+ * id that nothing has ever pointed at cannot inherit any of them.
+ *
+ * That is the whole safety argument, and it is structural rather than a list
+ * of things somebody remembered not to copy. The alternative — copy the row
+ * and then delete what should not be there — is the version that ships a bug
+ * the first time a table is added.
+ *
+ * ═══ THE THREE THINGS THAT ARE DELIBERATELY NOT COPIED ════════════════════
+ *
+ *   THE STATUS. A copy always arrives `draft`, whatever the original was. A
+ *   duplicate that went on sale the instant it was made — last week's date,
+ *   last week's poster — is exactly how a club sells tickets to an evening
+ *   that does not exist.
+ *
+ *   THE SALES WINDOW. It was a window around LAST week's date. Carried over,
+ *   it would silently close the sale of a night that has not happened yet.
+ *
+ *   THE POSTER KEY. The URL is copied so the new night is not blank, but the
+ *   two rows must not both claim to OWN the same object in the bucket:
+ *   replacing the copy's poster would otherwise delete the original's. So the
+ *   copy points at the image and owns nothing. */
+export type DuplicateInput = {
+  title?: string;
+  slug?: string;
+  startsAt?: string;
+};
+
+export async function duplicateEvent(
+  id: string,
+  input: DuplicateInput = {},
+): Promise<EventWriteResult> {
+  const source = await findTicketingEvent(id, true);
+  if (!source) return { ok: false, reason: "unknown" };
+
+  const title = (input.title ?? source.title).trim();
+  const startsAt = input.startsAt ?? nextWeek(source.startsAt);
+  const slug = (input.slug ?? (await freeSlugFrom(source.slug))).trim().toLowerCase();
+
+  return createEvent({
+    title,
+    slug,
+    startsAt,
+    /* The door offset is a fact about how this club runs a night, so it is
+       kept — shifted onto the new date rather than copied as an instant. */
+    doorsAt: source.doorsAt
+      ? shift(source.doorsAt, Date.parse(startsAt) - Date.parse(source.startsAt))
+      : undefined,
+    capacity: source.capacity,
+    ticketPrice: source.ticketPrice,
+    maxPerOrder: source.maxPerOrder,
+    description: source.description,
+    image: source.image,
+    /* posterKey deliberately omitted — see above. */
+    ticketingEnabled: source.ticketingEnabled,
+    tablesEnabled: source.tablesEnabled,
+    floorPlan: source.floorPlan,
+    lineup: source.lineup,
+    genre: source.genre,
+    ageRestriction: source.ageRestriction,
+    entryNote: source.entryNote,
+    dressCode: source.dressCode,
+    promotion: source.promotion,
+    venueId: source.venueId,
+    status: "draft",
+  });
+}
+
+/* A free slug near the one being copied: saturday-madness-2, then -3. Checked
+   rather than guessed, and the INSERT's unique index is still what decides —
+   this only makes the common case pleasant. */
+async function freeSlugFrom(slug: string): Promise<string> {
+  const stem = slug.replace(/-\d+$/, "");
+  for (let n = 2; n < 100; n += 1) {
+    const candidate = `${stem}-${n}`;
+    const taken = await query(`SELECT 1 FROM events WHERE slug = $1`, [candidate]);
+    if (taken.rowCount === 0) return candidate;
+  }
+  return `${stem}-${randomUUID().slice(0, 4)}`;
+}
+
+/* Seven days on, at the same hour. The club's usual answer, and the form shows
+   it as an editable date rather than committing anybody to it. */
+const nextWeek = (startsAt: string) =>
+  new Date(Date.parse(startsAt) + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+const shift = (instant: string, by: number) =>
+  new Date(Date.parse(instant) + by).toISOString();
+
+/* ── archiving, and the one case where deleting is allowed ──────────────── */
+
+/* WHAT A NIGHT LEFT BEHIND. Asked before anything destructive is offered, and
+ * asked of the DATABASE rather than of a status column — the question is not
+ * "did this look busy", it is "does removing this row destroy a record of
+ * money, an admission, or a table somebody was promised".
+ *
+ * Orders and tickets are filed under the event's ID; the floor is keyed by its
+ * SLUG. Both are counted, because either one being non-zero is a night with a
+ * history. */
+export type EventFootprint = {
+  orders: number;
+  tickets: number;
+  reservations: number;
+  /* True if any of the above is non-zero — the one question callers ask. */
+  hasHistory: boolean;
+};
+
+export async function eventFootprint(id: string): Promise<EventFootprint | undefined> {
+  const event = await findTicketingEvent(id, true);
+  if (!event) return undefined;
+
+  const result = await query<{ orders: number; tickets: number; reservations: number }>(
+    `SELECT
+       (SELECT COUNT(*)::int FROM ticket_orders WHERE event_id = $1) AS orders,
+       (SELECT COUNT(*)::int FROM tickets       WHERE event_id = $1) AS tickets,
+       (SELECT COUNT(*)::int FROM reservations  WHERE event_id = $2) AS reservations`,
+    [event.id, event.slug],
+  );
+
+  const row = result.rows[0];
+  const counted = {
+    orders: Number(row?.orders ?? 0),
+    tickets: Number(row?.tickets ?? 0),
+    reservations: Number(row?.reservations ?? 0),
+  };
+  return { ...counted, hasHistory: Object.values(counted).some((n) => n > 0) };
+}
+
+/* OFF EVERY WORKING LIST, WITH EVERYTHING INTACT.
+ *
+ * The status goes to `ended` as well as the timestamp being set, and that is
+ * not redundancy: `saleState` reads the status, so an archived night stops
+ * being sellable through the one function every seller already asks — rather
+ * than through a second rule a future checkout might forget to apply.
+ *
+ * A guest holding a ticket to an archived night can still open it. That is
+ * deliberate: the ticket is theirs, the night happened, and archiving is the
+ * club tidying its own list. */
+export async function archiveEvent(id: string): Promise<EventWriteResult> {
+  const result = await query<EventRow>(
+    `UPDATE events SET archived_at = now(), status = 'ended', updated_at = now()
+      WHERE id = $1 RETURNING ${COLUMNS}`,
+    [id],
+  );
+  const row = result.rows[0];
+  return row ? { ok: true, event: toEvent(row) } : { ok: false, reason: "unknown" };
+}
+
+/* Back onto the list, as a draft. Never straight back into a sale: whatever
+   the night's status was before it was archived, somebody has to look at it. */
+export async function restoreEvent(id: string): Promise<EventWriteResult> {
+  const result = await query<EventRow>(
+    `UPDATE events SET archived_at = NULL, status = 'draft', updated_at = now()
+      WHERE id = $1 RETURNING ${COLUMNS}`,
+    [id],
+  );
+  const row = result.rows[0];
+  return row ? { ok: true, event: toEvent(row) } : { ok: false, reason: "unknown" };
+}
+
+export type EventDeleteResult =
+  | { ok: true }
+  | { ok: false; reason: "unknown" }
+  /* It has a history. Carries the numbers, because "cannot delete" is not
+     useful and "31 orders and 12 tables" is. */
+  | { ok: false; reason: "has_history"; footprint: EventFootprint };
+
+/* THE ONLY WAY A ROW LEAVES THIS TABLE, AND IT IS ALMOST NEVER ALLOWED.
+ *
+ * A night with one paid order is a night whose figures the club reads next
+ * March; a night with one reservation is a table somebody was promised. Either
+ * makes this refuse, and the answer is to archive instead — which the office
+ * offers in the same breath.
+ *
+ * What IS deletable: a draft created by mistake five minutes ago that nothing
+ * has ever pointed at. That is a real case and a hard delete is the honest
+ * answer to it; anything else keeps its row for ever.
+ *
+ * THE CHECK AND THE DELETE ARE ONE TRANSACTION, taking the event row FOR
+ * UPDATE first. Otherwise an order placed between the count and the delete
+ * would be orphaned — a paid ticket pointing at a night that no longer exists,
+ * which is the worst outcome this function exists to prevent. */
+export async function deleteEvent(id: string): Promise<EventDeleteResult> {
+  const footprint = await eventFootprint(id);
+  if (!footprint) return { ok: false, reason: "unknown" };
+  if (footprint.hasHistory) return { ok: false, reason: "has_history", footprint };
+
+  return tx(async (q) => {
+    const locked = await q.query<{ slug: string }>(
+      `SELECT slug FROM events WHERE id = $1 FOR UPDATE`,
+      [id],
+    );
+    const slug = locked.rows[0]?.slug;
+    if (!slug) return { ok: false as const, reason: "unknown" as const };
+
+    /* Counted AGAIN, inside the lock. The count above is what the office was
+       shown; this is the one that decides. */
+    const live = await q.query<{ n: number }>(
+      `SELECT (
+         (SELECT COUNT(*) FROM ticket_orders WHERE event_id = $1) +
+         (SELECT COUNT(*) FROM tickets       WHERE event_id = $1) +
+         (SELECT COUNT(*) FROM reservations  WHERE event_id = $2)
+       )::int AS n`,
+      [id, slug],
+    );
+    if (Number(live.rows[0]?.n ?? 0) > 0) {
+      return { ok: false as const, reason: "has_history" as const, footprint };
+    }
+
+    /* Seat holds are three-minute courtesies rather than history, so they go
+       with the night instead of blocking it. */
+    await q.query(`DELETE FROM seat_holds WHERE event_id = $1`, [slug]);
+    await q.query(`DELETE FROM events WHERE id = $1`, [id]);
+    return { ok: true as const };
+  });
+}
+
 function isUniqueViolation(error: unknown): boolean {
   const said = String(
     (error as { constraint?: string })?.constraint ??
@@ -421,55 +723,4 @@ function isUniqueViolation(error: unknown): boolean {
       "",
   );
   return /unique|duplicate key/i.test(said);
-}
-
-/* ── the rules about a night, which are pure and stay pure ──────────────── */
-
-/* Whether money may be taken for this night, and if not, why not.
- *
- * THE STATUS IS THE CLUB'S DECISION; THE WINDOW AND THE CAPACITY ARE FACTS.
- * All three are checked here and nowhere else, so a purchase route, an admin
- * screen and a webhook can never come to different conclusions.
- *
- * This is a LAST LOOK, not the guarantee. The guarantee that a night cannot
- * oversell is the transaction in `placeOrder`, which locks the event row and
- * counts inside the lock. This is what tells a guest, before they type
- * anything, that there is no point. */
-export type SaleState =
-  | { open: true }
-  | { open: false; reason: "draft" | "ended" | "sold_out" | "too_early" | "too_late" | "no_price" };
-
-export function saleState(
-  event: TicketingEvent,
-  sold: number,
-  now = new Date(),
-): SaleState {
-  if (event.status === "draft") return { open: false, reason: "draft" };
-  if (event.status === "ended") return { open: false, reason: "ended" };
-  if (event.status === "sold_out") return { open: false, reason: "sold_out" };
-
-  /* A night whose price nobody has set is a night nobody may buy. Selling
-     entry for nothing is not a decision this system is allowed to make on the
-     club's behalf. */
-  if (event.ticketPrice <= 0) return { open: false, reason: "no_price" };
-
-  if (event.salesStart && now < new Date(event.salesStart)) {
-    return { open: false, reason: "too_early" };
-  }
-  if (event.salesEnd && now > new Date(event.salesEnd)) {
-    return { open: false, reason: "too_late" };
-  }
-  /* The night itself is the last moment a ticket is worth anything. */
-  if (now > new Date(event.startsAt) && !event.testOnly) {
-    return { open: false, reason: "too_late" };
-  }
-  if (sold >= event.capacity) return { open: false, reason: "sold_out" };
-
-  return { open: true };
-}
-
-/* How many more may go into one order: whatever is left, capped by the house
-   rule. Zero means the night is full. */
-export function remainingForOrder(event: TicketingEvent, sold: number): number {
-  return Math.max(0, Math.min(event.maxPerOrder, event.capacity - sold));
 }

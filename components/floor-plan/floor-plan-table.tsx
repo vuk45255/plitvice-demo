@@ -1,6 +1,7 @@
 "use client";
 
 import { INK } from "@/components/floor-plan/plan-ink";
+import { SeatOutline } from "@/components/floor-plan/plan-shapes";
 import {
   SeatId,
   SeatShell,
@@ -74,32 +75,17 @@ export function FloorPlanTable({
         )
       ) : null}
 
-      {round ? (
-        <circle
-          cx={seat.x}
-          cy={seat.y}
-          r={seat.w / 2}
-          fill={ink.fill}
-          stroke={ink.stroke}
-          strokeWidth={ink.width}
-          style={{ transition: "stroke 400ms ease, fill 400ms ease" }}
-          pointerEvents="none"
-        />
-      ) : (
-        /* the high table: a long stroke with fully rounded ends */
-        <rect
-          x={seat.x - seat.w / 2}
-          y={seat.y - seat.h / 2}
-          width={seat.w}
-          height={seat.h}
-          rx={seat.h / 2}
-          fill={ink.fill}
-          stroke={ink.stroke}
-          strokeWidth={ink.width}
-          style={{ transition: "stroke 400ms ease, fill 400ms ease" }}
-          pointerEvents="none"
-        />
-      )}
+      {/* The outline itself is drawn by the shared plan — see
+          components/floor-plan/plan-shapes.tsx. The circle and the rounded bar
+          are the same two shapes the office's map draws, from the same box. */}
+      <SeatOutline
+        seat={seat}
+        ink={{
+          ...ink,
+          pointerEvents: "none",
+          style: { transition: "stroke 400ms ease, fill 400ms ease" },
+        }}
+      />
 
       {showId || state === "picked" || state === "hover" ? (
         <SeatId seat={seat} state={state} size={11} />

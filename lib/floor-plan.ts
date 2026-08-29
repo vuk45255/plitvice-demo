@@ -769,9 +769,49 @@ export function seatNumber(seat: { id: string; display?: string }) {
   return seat.display?.trim() || seat.id;
 }
 
+/* ── how a table is placed on the page ─────────────────────────────────────
+ *
+ * EVERYTHING THAT DRAWS A TABLE GOES THROUGH THE TWO FUNCTIONS BELOW, and the
+ * reason is a bug rather than tidiness.
+ *
+ * `x`/`y` on a seat is its CENTRE — the editor exports centres, because a
+ * table that is rotated has to turn about something, and its corner is not it.
+ * SVG's `<rect>` takes a top-left. Every drawing therefore has to subtract half
+ * the footprint, and every drawing that forgets puts the whole floor half a
+ * table down and to the right AND spins the angled separes about the wrong
+ * point. The office map did exactly that, for months, which is why these exist
+ * and why no component may do the arithmetic for itself again.
+ *
+ * A geometric seat, and only that: enough to place and turn a shape. The
+ * guest's `Seat` and the plan's own `FloorSeat` both satisfy it, which is what
+ * lets the reservation map and the office map draw from one implementation. */
+export type SeatGeometry = {
+  type: SeatType;
+  x: number;
+  y: number;
+  w?: number;
+  h?: number;
+  rotation?: number;
+  corner?: CornerSide;
+  depth?: number;
+};
+
 /* The footprint this table is drawn at — its own where it has one, its kind's
    otherwise. */
-export function seatSize(seat: FloorSeat) {
+export function seatSize(seat: SeatGeometry) {
   const kind = SEAT_KINDS[seat.type];
   return { w: seat.w ?? kind.size.w, h: seat.h ?? kind.size.h };
+}
+
+/* The box to draw it in: `x`/`y` the top-left SVG wants, `cx`/`cy` the centre
+   the plan actually states. */
+export function seatBox(seat: SeatGeometry) {
+  const { w, h } = seatSize(seat);
+  return { x: seat.x - w / 2, y: seat.y - h / 2, w, h, cx: seat.x, cy: seat.y };
+}
+
+/* And the turn, about that centre. Absent where the table is square to the
+   page, which is most of them. */
+export function seatTurn(seat: SeatGeometry) {
+  return seat.rotation ? `rotate(${seat.rotation} ${seat.x} ${seat.y})` : undefined;
 }

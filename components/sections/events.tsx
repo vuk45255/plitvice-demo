@@ -7,7 +7,7 @@ import { Ambient } from "@/components/ambient";
 import { ArchivePoster } from "@/components/events/archive-poster";
 import { UpcomingEvent } from "@/components/events/upcoming-event";
 import { useLang } from "@/components/providers/language";
-import { nextEvent, pastEvents } from "@/lib/events";
+import type { PartyEvent } from "@/lib/events";
 
 /* The night ahead takes the room; the nights behind it sit smaller and in grey
    until you look at them.
@@ -25,10 +25,19 @@ import { nextEvent, pastEvents } from "@/lib/events";
  * baseline — because that asymmetry is what keeps it from reading as a grid of
  * cards. What changed is that the night ahead now sits in its own light. */
 
-const alsoRan = pastEvents.slice(0, 2);
-
-export function Events() {
+/* THE NIGHTS ARE HANDED IN, NOT IMPORTED. They come off the events table, are
+   read on the server by app/(site)/page.tsx and passed down — so a title the
+   office changed at eleven is on the home page at eleven, and this component
+   still knows nothing about where a night comes from. */
+export function Events({
+  next,
+  past,
+}: {
+  next?: PartyEvent;
+  past: PartyEvent[];
+}) {
   const { t, tRich } = useLang();
+  const alsoRan = past.slice(0, 2);
 
   return (
     <section
@@ -64,13 +73,13 @@ export function Events() {
             crowding the page. */}
         <div className="mt-16 grid gap-16 md:mt-28 md:grid-cols-12 md:gap-x-12">
           <div className="md:col-span-6">
-            {nextEvent ? (
+            {next ? (
               <>
                 <Reveal>
                   <p className="rail mb-7 block">{t("events.next")}</p>
                 </Reveal>
                 <UpcomingEvent
-                  event={nextEvent}
+                  event={next}
                   sizes="(min-width: 768px) 48vw, 92vw"
                 />
               </>

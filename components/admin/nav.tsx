@@ -82,16 +82,15 @@ function Links({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-/* The house mark, quietly. Two lines, letter-spaced, gold over grey — the
-   same lockup the club uses everywhere, without the ceremony. */
+/* The house mark, quietly. One line, letter-spaced, gold — the same lockup the
+   club uses everywhere, without the ceremony and without a subtitle: anybody
+   reading this sidebar is already signed in to the office and does not need to
+   be told which building they are in. */
 function Wordmark() {
   return (
     <div>
       <p className="text-[0.6875rem] uppercase tracking-[0.42em] text-[var(--adm-gold)]">
         Plitvice
-      </p>
-      <p className="mt-1 text-[0.5rem] uppercase tracking-[0.32em] text-[var(--adm-ink-4)]">
-        Night Operations
       </p>
     </div>
   );

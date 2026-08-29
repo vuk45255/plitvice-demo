@@ -478,6 +478,340 @@
     }
   }
 
+  /* ═══ THE EVENT MANAGER ════════════════════════════════════════════════
+   *
+   * Five additions, all built from the vocabulary already above: the panel
+   * surface, the hairline, the one gold, the 3px corner. Nothing here
+   * introduces a new colour, a new radius or a motion — an event card is a
+   * panel with a picture in it, and a switch is a checkbox that reads at a
+   * glance from arm's length.
+   *
+   * THE WHOLE SECTION IS BUILT FOR A THUMB. Every interactive thing below
+   * clears 44px on its shortest side, because the person using this is
+   * standing up, holding a phone in one hand, and it is late. */
+
+  /* ── an event in a list ────────────────────────────────────────────── */
+
+  /* One row per night: poster, then everything else. On a phone the poster is
+     a wide strip above the text; from 40rem it becomes a column beside it.
+     Grid rather than flex, so the text block never has to know how wide the
+     picture is. */
+  .adm-event {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.875rem;
+    padding: 0.875rem;
+    border-bottom: 1px solid var(--adm-line-soft);
+  }
+  .adm-event:last-child {
+    border-bottom: 0;
+  }
+  @media (min-width: 40rem) {
+    .adm-event {
+      grid-template-columns: 7.5rem 1fr;
+      gap: 1.125rem;
+      padding: 1.125rem;
+      align-items: start;
+    }
+  }
+
+  /* The poster's frame. It holds its shape whether or not there is an image
+     in it, so a list of nights with three posters and one without does not
+     stagger — the empty one is a quiet panel with a letter in it. */
+  .adm-event-poster {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--adm-line-soft);
+    border-radius: 3px;
+    background: var(--adm-panel-2);
+    aspect-ratio: 4 / 3;
+  }
+  @media (min-width: 40rem) {
+    .adm-event-poster {
+      aspect-ratio: 3 / 4;
+    }
+  }
+  .adm-event-poster img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  /* The initial shown where there is no artwork. Large, dim, and obviously a
+     placeholder rather than a broken image. */
+  .adm-event-poster-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--adm-ink-4);
+    font-size: 1.5rem;
+    letter-spacing: 0.1em;
+  }
+  /* A night that is over, or put away, reads as past without being unreadable. */
+  .adm-event--dim .adm-event-poster img {
+    opacity: 0.45;
+    filter: saturate(0.6);
+  }
+
+  /* ── the upload area ───────────────────────────────────────────────── */
+
+  /* A label wrapping a real <input type="file">. That is the whole control:
+     the native picker on a laptop, and on a phone the operating system's own
+     sheet — gallery, files, and the camera when the device offers it. No
+     custom gallery, no library, nothing to go wrong on a browser nobody
+     tested. */
+  .adm-drop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 9rem;
+    padding: 1.25rem 1rem;
+    border: 1px dashed var(--adm-line);
+    border-radius: 3px;
+    background: var(--adm-panel-2);
+    color: var(--adm-ink-3);
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 120ms ease, background-color 120ms ease,
+      color 120ms ease;
+  }
+  .adm-drop:hover {
+    border-color: rgba(200, 164, 93, 0.45);
+    background: var(--adm-panel-3);
+    color: var(--adm-ink-2);
+  }
+  /* Dragging a file over it. Only reachable with a pointer, which is why it is
+     an enhancement and not the mechanism. */
+  .adm-drop--over {
+    border-color: rgba(200, 164, 93, 0.75);
+    border-style: solid;
+    background: var(--adm-panel-3);
+    color: var(--adm-gold);
+  }
+  .adm-drop:focus-within {
+    border-color: rgba(200, 164, 93, 0.55);
+    box-shadow: 0 0 0 3px rgba(200, 164, 93, 0.1);
+  }
+  /* The input itself is present, focusable and operable by keyboard — it is
+     simply not drawn, because the label around it is the control. */
+  .adm-drop input[type="file"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* What a chosen image looks like before it is saved. */
+  .adm-poster-preview {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--adm-line-soft);
+    border-radius: 3px;
+    background: var(--adm-panel-2);
+    max-width: 16rem;
+  }
+  .adm-poster-preview img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  /* ── a switch ──────────────────────────────────────────────────────── */
+
+  /* PRODAJA KARATA — ON / OFF. A real checkbox, so it submits with the form,
+     works without JavaScript and is announced correctly; only its appearance
+     is ours. The whole row is the target, which on a phone is the difference
+     between a control and a game of darts. */
+  .adm-switch {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
+    min-height: 3.25rem;
+    padding: 0.625rem 0.875rem;
+    border: 1px solid var(--adm-line-soft);
+    border-radius: 3px;
+    background: var(--adm-panel-2);
+    cursor: pointer;
+    transition: border-color 120ms ease, background-color 120ms ease;
+  }
+  .adm-switch:hover {
+    background: var(--adm-panel-3);
+  }
+  .adm-switch:focus-within {
+    border-color: rgba(200, 164, 93, 0.55);
+    box-shadow: 0 0 0 3px rgba(200, 164, 93, 0.1);
+  }
+  .adm-switch input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+  }
+  /* The track. 44px wide and 24 tall — a thumb's worth without being a toy. */
+  .adm-switch-track {
+    position: relative;
+    flex: none;
+    width: 2.75rem;
+    height: 1.5rem;
+    border: 1px solid var(--adm-line);
+    border-radius: 999px;
+    background: var(--adm-panel-3);
+    transition: background-color 120ms ease, border-color 120ms ease;
+  }
+  .adm-switch-track::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0.1875rem;
+    width: 1rem;
+    height: 1rem;
+    margin-top: -0.5rem;
+    border-radius: 999px;
+    background: var(--adm-ink-3);
+    transition: transform 120ms ease, background-color 120ms ease;
+  }
+  .adm-switch input:checked + .adm-switch-track {
+    background: rgba(42, 18, 63, 0.85);
+    border-color: rgba(200, 164, 93, 0.6);
+  }
+  .adm-switch input:checked + .adm-switch-track::after {
+    transform: translateX(1.1875rem);
+    background: var(--adm-gold);
+  }
+
+  /* ── a three-dot menu ──────────────────────────────────────────────── */
+
+  /* The secondary actions. A <details> element: the browser's own disclosure,
+     with its own keyboard behaviour and no state to manage — which is why
+     there is no JavaScript in it and no library under it. */
+  .adm-menu {
+    position: relative;
+  }
+  .adm-menu > summary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid var(--adm-line);
+    border-radius: 3px;
+    color: var(--adm-ink-3);
+    cursor: pointer;
+    list-style: none;
+    transition: color 120ms ease, border-color 120ms ease;
+  }
+  .adm-menu > summary::-webkit-details-marker {
+    display: none;
+  }
+  .adm-menu > summary:hover,
+  .adm-menu[open] > summary {
+    color: var(--adm-ink);
+    border-color: rgba(200, 164, 93, 0.32);
+  }
+  .adm-menu-list {
+    position: absolute;
+    right: 0;
+    z-index: 30;
+    min-width: 13rem;
+    margin-top: 0.375rem;
+    padding: 0.25rem;
+    border: 1px solid var(--adm-line);
+    border-radius: 3px;
+    background: var(--adm-panel);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+  }
+  /* Every item is a full-width target of its own, because this menu is used
+     with a thumb far more often than with a mouse. */
+  .adm-menu-list button,
+  .adm-menu-list a {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0 0.75rem;
+    border: 0;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--adm-ink-2);
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: left;
+    cursor: pointer;
+    transition: color 120ms ease, background-color 120ms ease;
+  }
+  .adm-menu-list button:hover,
+  .adm-menu-list a:hover {
+    background: var(--adm-panel-2);
+    color: var(--adm-ink);
+  }
+  .adm-menu-list .adm-menu-danger {
+    color: var(--adm-bad);
+  }
+
+  /* ── the guided editor ─────────────────────────────────────────────── */
+
+  /* A step's heading. The number is the point: it says how many there are and
+     where you are, which is what turns a long form into something somebody
+     will finish standing up. */
+  .adm-step {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+  }
+  .adm-step-no {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.375rem;
+    height: 1.375rem;
+    flex: none;
+    border: 1px solid rgba(200, 164, 93, 0.4);
+    border-radius: 999px;
+    color: var(--adm-gold);
+    font-size: 0.625rem;
+    letter-spacing: 0;
+  }
+
+  /* THE SAVE BAR. On a phone it sits on the bottom of the screen, because the
+     alternative is scrolling past five sections to find OBJAVI. On a laptop it
+     is an ordinary row at the end of the form — a floating bar over a desktop
+     layout is a phone pattern nobody asked for. */
+  .adm-savebar {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    padding: 0.875rem;
+    border-top: 1px solid var(--adm-line);
+    background: color-mix(in srgb, var(--adm-panel) 92%, transparent);
+    backdrop-filter: blur(8px);
+  }
+  @media (min-width: 40rem) {
+    .adm-savebar {
+      position: static;
+      backdrop-filter: none;
+      background: transparent;
+      padding: 1.25rem 0 0;
+    }
+  }
+
   /* Somebody who has asked not to see movement gets a still block, which
      reads exactly as well. */
   @media (prefers-reduced-motion: reduce) {

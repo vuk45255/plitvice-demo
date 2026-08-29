@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { PosterImage } from "@/components/events/poster-image";
 import { useLang } from "@/components/providers/language";
 import type { PartyEvent } from "@/lib/events";
 
@@ -28,10 +28,9 @@ export function ArchivePoster({
   return (
     <article>
       <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[4px] opacity-50 ring-1 ring-white/[0.05]">
-        <Image
-          src={event.poster}
+        <PosterImage
+          poster={event.poster}
           alt=""
-          placeholder="blur"
           sizes={sizes}
           fill
           className="object-cover grayscale-[0.92] brightness-[0.78]"

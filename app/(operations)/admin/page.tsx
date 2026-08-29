@@ -7,7 +7,7 @@ import { floorState, reservationCounts } from "@/lib/reservations/admin";
 import { databaseKind } from "@/lib/db/client";
 import { failedDeliveries } from "@/lib/mail/send";
 import { providerName } from "@/lib/mail/provider";
-import { upcomingEvents } from "@/lib/events";
+import { mediaReadiness } from "@/lib/media/provider";
 import { allTicketingEvents, saleState } from "@/lib/ticketing/events";
 import { countsFor, listOrders, recentScans } from "@/lib/ticketing/store";
 import { eventDate, eventTime, price, scanMoment } from "@/lib/ticketing/copy";
@@ -52,6 +52,7 @@ export default async function AdminHome() {
 
   const events = await allTicketingEvents();
   const kind = await databaseKind();
+  const media = mediaReadiness();
 
   /* Tonight, or the next one: the soonest night that has not finished. Twelve
      hours' grace, because a Saturday night is still "tonight" at four on
@@ -83,11 +84,12 @@ export default async function AdminHome() {
     );
   }
 
-  /* The tables are keyed on the poster wall's slug; the tickets on the
-     ticketing row's id. The same night, filed under two names — see the note
-     at the top of lib/ticketing/events.ts. */
-  const wall = upcomingEvents.find((event) => event.slug === current.slug);
-  const tablesEnabled = Boolean(wall?.tables.enabled);
+  /* Whether this night takes tables — off its own row, which is where the
+     office sets it. The floor is still keyed by SLUG and the tickets by id;
+     that is one night filed under two names and is explained at the top of
+     lib/ticketing/events.ts. What has gone is the second opinion: this used to
+     look the night up on the poster wall as well, and the two could disagree. */
+  const tablesEnabled = current.tablesEnabled;
 
   const [counts, tables, floor, scans, pending, failed] = await Promise.all([
     countsFor(current.id),
@@ -155,7 +157,6 @@ export default async function AdminHome() {
           value={counts.paid}
           of={counts.capacity}
           tone="gold"
-          note={`${percent(counts.paid, counts.capacity)} kapaciteta`}
         />
         <Stat
           label="Skenirano"
@@ -172,35 +173,36 @@ export default async function AdminHome() {
         <Stat
           label="U toku plaćanja"
           value={live.length}
-          note={counts.held > 0 ? `${counts.held} karata zadržano` : "ništa u toku"}
+          note={counts.held > 0 ? `${counts.held} karata zadržano` : undefined}
         />
-        <Stat
-          label="Porudžbine"
-          value={counts.orders}
-          note="ukupno za ovo veče"
-        />
+        <Stat label="Porudžbine" value={counts.orders} />
       </div>
 
       {/* ── the floor ─────────────────────────────────────────────────── */}
       {tablesEnabled && floor ? (
         <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat
-            label="Rezervacije"
-            value={tables.confirmed + tables.pending}
-            note={`${tables.confirmed} potvrđeno`}
-          />
+          <Stat label="Rezervacije" value={tables.confirmed + tables.pending} />
           <Stat label="Zauzeti stolovi" value={floor.counts.reserved} tone="good" />
           <Stat label="Slobodni stolovi" value={floor.counts.available} />
-          <Stat
-            label="Na čekanju"
-            value={tables.pending}
-            tone={tables.pending > 0 ? "warn" : "plain"}
-            note={
-              tables.pending > 0 ? "čeka potvrdu" : floor.counts.held > 0
-                ? `${floor.counts.held} zadržano na sajtu`
-                : undefined
-            }
-          />
+          {/* A booking made on the site is confirmed the moment it is made, so
+              "na čekanju" is now a count of OLD rows and normally zero. It is
+              shown only when there is something in it — otherwise the tile says
+              what is actually happening on the floor this minute, which is how
+              many guests are mid-booking. */}
+          {tables.pending > 0 ? (
+            <Stat
+              label="Na čekanju"
+              value={tables.pending}
+              tone="warn"
+              note="starije rezervacije — potvrdite ili otkažite"
+            />
+          ) : (
+            <Stat
+              label="U toku na sajtu"
+              value={floor.counts.held}
+              note={floor.counts.held > 0 ? "gost bira sto" : undefined}
+            />
+          )}
         </div>
       ) : null}
 
@@ -320,17 +322,34 @@ export default async function AdminHome() {
           </form>
         }
       >
+        {/* ═══ STATES, NOT PRODUCT NAMES ══════════════════════════════════
+         *
+         * The person reading this runs a nightclub. What they need to know is
+         * whether guests are getting their e-mail and whether the night's data
+         * is on the real server — not which vendor carries the post or which
+         * engine holds the rows. Naming either one tells them nothing they can
+         * act on and invites them to worry about something that is not theirs.
+         *
+         * Whoever deploys this needs the opposite, and gets it: the store, the
+         * provider and the variable that is missing all go to the server log
+         * and to .env.example. */}
         <dl className="grid gap-x-8 gap-y-3 px-[1.125rem] py-4 text-[0.8125rem] sm:grid-cols-2">
           <div className="flex items-baseline justify-between gap-4">
-            <dt className="text-[var(--adm-ink-3)]">Baza</dt>
+            <dt className="text-[var(--adm-ink-3)]">Podaci</dt>
             <dd className="text-[var(--adm-ink-2)]">
-              {kind === "postgres" ? "Postgres" : "PGlite (lokalno)"}
+              {kind === "postgres" ? "Na serveru" : "Lokalno, na ovom računaru"}
             </dd>
           </div>
           <div className="flex items-baseline justify-between gap-4">
-            <dt className="text-[var(--adm-ink-3)]">Pošta</dt>
+            <dt className="text-[var(--adm-ink-3)]">Pošta gostima</dt>
             <dd className="text-[var(--adm-ink-2)]">
-              {providerName() === "log" ? "samo log (nije podešena)" : providerName()}
+              {providerName() === "log" ? "Nije uključena" : "Uključena"}
+            </dd>
+          </div>
+          <div className="flex items-baseline justify-between gap-4">
+            <dt className="text-[var(--adm-ink-3)]">Slike za postere</dt>
+            <dd className="text-[var(--adm-ink-2)]">
+              {media.ready ? "Može se postavljati" : "Trenutno nije dostupno"}
             </dd>
           </div>
         </dl>
@@ -360,7 +379,3 @@ function greeting(now: Date): string {
   return "Dobar dan";
 }
 
-function percent(part: number, whole: number): string {
-  if (whole <= 0) return "—";
-  return `${Math.round((part / whole) * 100)}%`;
-}

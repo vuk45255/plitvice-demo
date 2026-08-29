@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { PosterImage } from "@/components/events/poster-image";
 import Link from "next/link";
 import { Arrow } from "@/components/arrow";
 import { useLang } from "@/components/providers/language";
@@ -51,10 +51,9 @@ export function EventPoster({
   const artwork = (
     <>
       <div className="relative aspect-[4/5] w-full overflow-hidden">
-        <Image
-          src={event.poster}
+        <PosterImage
+          poster={event.poster}
           alt=""
-          placeholder="blur"
           sizes={sizes}
           fill
           priority={priority}

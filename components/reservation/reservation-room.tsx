@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import Image from "next/image";
+import { PosterImage } from "@/components/events/poster-image";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useLenis } from "lenis/react";
@@ -16,11 +16,9 @@ import { PosterTicker } from "@/components/reservation/poster-ticker";
 import { useLang } from "@/components/providers/language";
 import {
   entryPrice,
-  findEvent,
   isBookable,
   reserveHref,
   ticketAvailability,
-  upcomingEvents,
   type PartyEvent,
   type ReserveChoice,
 } from "@/lib/events";
@@ -83,13 +81,22 @@ function EventMeta({ event }: { event: PartyEvent }) {
   );
 }
 
+/* THE NIGHTS ARE HANDED IN. They are the events table, read on the server by
+   app/(site)/rezervacija/page.tsx — which is why ZA KOJU ŽURKU? lists what the
+   office published rather than what somebody once wrote into a file. */
 export function ReservationRoom({
+  events,
   initialSlug,
   initialChoice,
 }: {
+  events: PartyEvent[];
   initialSlug?: string;
   initialChoice?: ReserveChoice;
 }) {
+  /* Looked up in what was handed in, so a slug in a link can only ever resolve
+     to a night the server was willing to show. */
+  const findEvent = (slug: string | undefined) =>
+    slug ? events.find((event) => event.slug === slug) : undefined;
   const { t } = useLang();
   const reduced = useReducedMotion();
   const lenis = useLenis();
@@ -215,7 +222,7 @@ export function ReservationRoom({
           className="mt-10 md:mt-16"
         >
           <EventChooser
-            events={upcomingEvents}
+            events={events}
             selected={selected}
             onSelect={chooseEvent}
           />
@@ -239,10 +246,9 @@ export function ReservationRoom({
                       rounded frame and takes the curve of the corners with it. */}
                   <div className="group relative aspect-[4/5] w-full overflow-hidden rounded-[20px] ring-1 ring-gold/20">
                     <div className="absolute inset-0 transition-transform duration-700 ease-out group-hover:scale-[1.02]">
-                      <Image
-                        src={selected.poster}
+                      <PosterImage
+                        poster={selected.poster}
                         alt=""
-                        placeholder="blur"
                         sizes="(min-width: 768px) 40vw, 92vw"
                         fill
                         priority

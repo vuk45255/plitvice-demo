@@ -1,31 +1,40 @@
-import type { StaticImageData } from "next/image";
-import type { MessageKey } from "@/lib/i18n";
+import type { LocalText } from "@/lib/i18n";
+import type { Poster } from "@/lib/club/poster-assets";
 
-import posterDara from "@/public/party/dara.jpg";
-import posterTeodora from "@/public/party/teodora.jpg";
-import posterThcf from "@/public/party/thcf.jpg";
-import posterRelja from "@/public/party/relja.jpg";
-import posterRasta from "@/public/party/rasta.jpg";
-import posterInas from "@/public/party/inas.jpg";
-import posterSemafor from "@/public/party/semafor.jpg";
-import posterNumber from "@/public/party/53.jpg";
-import posterSajfer from "@/public/images/sajfer.jpg";
-import posterKaca from "@/public/dogadjaji/kaca.jpg";
-import posterVodka from "@/public/dogadjaji/vodka.jpg";
-import posterMadness from "@/public/dogadjaji/madness.jpg";
-
-/* Every night the club has put on, and everything the site needs to sell one.
+/* WHAT A NIGHT LOOKS LIKE TO THE PUBLIC SITE — the shape, and the handful of
+ * rules that are arithmetic over it. NOT the nights themselves.
  *
- * This is the only place a night is described. The poster wall, the archive at
- * /zurke and the reservation room at /rezervacija all read from here, so adding
- * a night is one entry in `events` and nothing else: it appears on the wall, it
- * gets its ticket call and its table call, and it is reachable at
- * /rezervacija?event=<slug>.
+ * ═══ THIS FILE USED TO BE THE PROGRAMME. IT IS NOT ANY MORE ═══════════════
  *
- * NOTHING IS INVENTED HERE. Prices, doors, capacity and table maps are the
- * club's to give us; every one of them is optional and every one of them is
- * absent until it is real. The UI is written to read what is here and say
- * nothing about what is not. */
+ * It held a hand-written array of every night the club had put on, with the
+ * copy for each one as a key into lib/i18n.ts and its artwork as an import.
+ * That array is gone, and this is why:
+ *
+ * THE CLUB'S PROGRAMME EXISTED TWICE. It was here, where the wall read whether
+ * a night sold tickets and took tables; and it was in the `events` table, where
+ * the ticketing system read what a ticket cost and how many there were. The two
+ * agreed only for as long as somebody remembered to edit both. An owner who
+ * changed a night in /admin/dogadjaji changed the second and not the first, and
+ * the public site went on saying what this file said — which made the office
+ * screen a decoration.
+ *
+ * There is now ONE ROW PER NIGHT. lib/club/programme.ts reads the table and
+ * produces the `PartyEvent` values below; every page fetches them on the server
+ * and hands them to its components as props. Nothing that renders a night
+ * changed shape, and the shape now comes from the place the club can edit.
+ *
+ * ═══ WHAT IS STILL HERE, AND WHY IT BELONGS HERE ══════════════════════════
+ *
+ * The TYPE, because it is the contract between the data layer and every
+ * component that draws a night. And the four PURE FUNCTIONS at the bottom —
+ * what a night's ticket line should say, what the cheapest way in costs, where
+ * a reservation link points — because they are decisions about a night that
+ * must come out the same on the wall, in the archive and in the reservation
+ * room. A component that decided any of them for itself would eventually
+ * disagree with the one next to it.
+ *
+ * NOTHING IN THIS FILE READS A DATABASE and nothing in it is async, which is
+ * what lets a client component keep importing it. */
 
 /* A named kind of ticket — a package, an early bird, whatever the club adds on
    top of plain entry. A night with none of these sells one thing: entry at
@@ -33,19 +42,20 @@ import posterMadness from "@/public/dogadjaji/madness.jpg";
    language at the point of display, never written out here. */
 export type TicketType = {
   id: string;
-  name: MessageKey;
-  note?: MessageKey;
+  name: LocalText | string;
+  note?: LocalText | string;
   price: number;
   /* Left undefined while the club counts the door itself. */
   remaining?: number;
 };
 
 export type Ticketing = {
-  /* Whether this night sells tickets through the site at all. */
+  /* Whether this night sells tickets through the site at all. Set from the
+     `ticketing_enabled` column and from nothing else — never inferred from a
+     price, because "nobody has set a price" and "this night is not sold here"
+     are two different facts about a night. */
   enabled: boolean;
-  /* Whether the night is being sold, which is the club's decision and has
-     nothing to do with whether a payment provider is wired — that lives in
-     lib/checkout.ts.
+  /* Whether the night is being sold, which is the club's decision:
        "soon"     — announced, the ticket line is not shown yet
        "open"     — on sale; the purchase panel is live
        "closed"   — sale has ended, or the night has passed
@@ -61,8 +71,8 @@ export type Ticketing = {
  * The room itself is not described here. The club has one floor and it is the
  * same floor every night, so it is drawn once in lib/floor-plan.ts rather than
  * hung off each event; which of its tables are still free on a given night is
- * lib/floor-availability.ts, keyed by the slug above. A night that takes no
- * tables simply has no table line, and neither file is consulted. */
+ * lib/floor-availability.ts, keyed by the slug. A night that takes no tables
+ * simply has no table line, and neither file is consulted. */
 export type TableBooking = {
   enabled: boolean;
 };
@@ -72,218 +82,58 @@ export type PartyEvent = {
   slug: string;
   /* A performer's name is a name — never translated, never restyled. */
   artist: string;
-  date: MessageKey;
+  /* Written out in both languages from the night's instant. */
+  date: LocalText;
   /* A few lines about the night — who is playing, what the house is doing,
      what a table takes. Set under the poster in the reservation room, and only
-     when the club has written one; a night without one shows nothing there. */
-  description?: MessageKey;
+     when the club has written one; a night without one shows nothing there.
+     THE CLUB'S OWN WORDS, typed into the office, so it is text rather than a
+     dictionary key: there is no translator between the owner and the guest. */
+  description?: string;
   /* When the doors open, on a 24-hour clock — "22:00". The same in every
-     language, so it is a plain string rather than a dictionary key. Undefined
-     until the club confirms it, and then simply not shown. */
+     language, so it is a plain string. */
   startTime?: string;
-  /* Entry, in whole dinars. Formatted for the reader at the point of display —
-     never written out as text here. Undefined means the price is not settled,
-     and no price appears anywhere for the night. */
+  /* Entry, in whole dinars. Formatted for the reader at the point of display.
+     Undefined means there is no online price to quote, and no price appears
+     anywhere for the night. */
   ticketPrice?: number;
   /* Nights are at the house unless the club takes one somewhere else. */
   location?: string;
   /* The colour this night's artwork throws into the room around it — the light
      the poster is spilling onto the dark, not a brand colour and not a theme.
-     Sampled off the artwork itself and written here as a plain CSS hex, so a
-     red night, an amber one or a purple one is one line in this file and no
-     change anywhere else. Undefined means the poster stands in the house's own
-     light and no glow is drawn behind it. */
+     Sampled off the artwork itself, and therefore filed with the artwork in
+     lib/club/poster-assets.ts. Undefined means the poster stands in the house's
+     own light and no glow is drawn behind it. */
   ambient?: string;
-  poster: StaticImageData;
+  /* Either a picture that came with the build — carrying its dimensions and the
+     blur placeholder the bundler computed — or the URL of one somebody uploaded
+     from the office. Undefined for a night with no artwork at all. */
+  poster?: Poster;
   status: "upcoming" | "past";
   tickets: Ticketing;
   tables: TableBooking;
+
+  /* ═══ THE REST OF WHAT THE ROW KNOWS ══════════════════════════════════
+   *
+   * Carried through so that no surface has to reach past the programme layer
+   * to find out what a night is. All optional, and the current design shows
+   * them only where the club has written them into the description — which is
+   * where this club writes them. Giving any of them a line of its own is a
+   * change to the design, not to the data, and is not made here. */
+  lineup?: string;
+  genre?: string;
+  ageRestriction?: string;
+  entryNote?: string;
+  dressCode?: string;
+  promotion?: string;
 };
 
-/* The two ways an upcoming night can stand towards tickets. Exported because
-   they are the vocabulary for configuring one — a night is switched between
-   them here and nowhere else.
+/* ── the rules, which are pure and stay pure ────────────────────────────── */
 
-   On sale: entry at `ticketPrice`, ten to an order. Give a night named types
-   here — packages, early birds — and the panel offers those instead. */
-export const ticketsOnSale: Ticketing = {
-  enabled: true,
-  sale: "open",
-  types: [],
-  maxPerOrder: 10,
-};
-
-/* A night the club is not selling online — the door takes the money, or the
-   tickets go somewhere that is not this site. The reservation room still shows
-   the ticket line for a night like this, unavailable rather than absent, so the
-   guest reads that entry exists and only the online sale does not. */
-export const ticketsOffline: Ticketing = {
-  enabled: false,
-  sale: "closed",
-  types: [],
-  maxPerOrder: 0,
-};
-
-/* A night that has happened sells nothing. */
-const nothingOnSale: Ticketing = {
-  enabled: false,
-  sale: "closed",
-  types: [],
-  maxPerOrder: 0,
-};
-
-const tablesOpen: TableBooking = { enabled: true };
-const tablesClosed: TableBooking = { enabled: false };
-
-/* Newest first. The night ahead sits at the top of every list it appears in. */
-export const events: PartyEvent[] = [
-  {
-    slug: "saturday-madness",
-    artist: "Saturday Madness",
-    date: "date.aug29",
-    description: "event.about.saturdayMadness",
-    poster: posterMadness,
-    /* The artwork is silver and all but colourless — mean saturation under
-       seven per cent — so what it throws into the room is the cold white off
-       the print itself rather than a colour. Sampled the same way every other
-       night here was. */
-    ambient: "#c9c7c6",
-    status: "upcoming",
-    /* Entry is free and taken at the door, so there is nothing to sell online
-       and the card asks for the table instead. */
-    tickets: ticketsOffline,
-    tables: tablesOpen,
-  },
-  {
-    slug: "vodka-experience",
-    artist: "Vodka Experience",
-    date: "date.aug22",
-    description: "event.about.vodkaExperience",
-    poster: posterVodka,
-    /* The cold blue off the bottle and the sky behind it. */
-    ambient: "#6ea3d5",
-    status: "past",
-    tickets: nothingOnSale,
-    tables: tablesClosed,
-  },
-  {
-    slug: "dara-bubamara",
-    artist: "Dara Bubamara",
-    date: "date.aug15",
-    poster: posterDara,
-    status: "past",
-    tickets: nothingOnSale,
-    tables: tablesClosed,
-  },
-  {
-    slug: "rasta",
-    artist: "Rasta",
-    date: "date.oct25",
-    poster: posterRasta,
-    status: "past",
-    tickets: nothingOnSale,
-    tables: tablesClosed,
-  },
-  {
-    slug: "katarina-zivkovic",
-    artist: "Katarina Živković",
-    date: "date.jul18",
-    poster: posterKaca,
-    status: "past",
-    tickets: nothingOnSale,
-    tables: tablesClosed,
-  },
-  {
-    slug: "white-party-semafor",
-    artist: "White Party & Semafor",
-    date: "date.jul11",
-    poster: posterSemafor,
-    status: "past",
-    tickets: nothingOnSale,
-    tables: tablesClosed,
-  },
-  {
-    slug: "teodora",
-    artist: "Teodora",
-    date: "date.jul04",
-    poster: posterTeodora,
-    status: "past",
-    tickets: nothingOnSale,
-    tables: tablesClosed,
-  },
-  {
-    slug: "sajfer",
-    artist: "Sajfer",
-    date: "date.jun27",
-    poster: posterSajfer,
-    status: "past",
-    tickets: nothingOnSale,
-    tables: tablesClosed,
-  },
-  {
-    slug: "thcf",
-    artist: "THCF",
-    date: "date.may30",
-    poster: posterThcf,
-    status: "past",
-    tickets: nothingOnSale,
-    tables: tablesClosed,
-  },
-  {
-    slug: "relja",
-    artist: "Relja",
-    date: "date.may16",
-    poster: posterRelja,
-    status: "past",
-    tickets: nothingOnSale,
-    tables: tablesClosed,
-  },
-  {
-    slug: "inas",
-    artist: "Inas",
-    date: "date.may09",
-    poster: posterInas,
-    status: "past",
-    tickets: nothingOnSale,
-    tables: tablesClosed,
-  },
-  {
-    slug: "my-lucky-number",
-    artist: "My Lucky Numb3r",
-    date: "date.apr18",
-    poster: posterNumber,
-    status: "past",
-    tickets: nothingOnSale,
-    tables: tablesClosed,
-  },
-];
-
-export const upcomingEvents = events.filter((e) => e.status === "upcoming");
-export const pastEvents = events.filter((e) => e.status === "past");
-
-/* The night the home page leads with. Undefined is a real state — the club
-   between seasons — and every surface that uses it handles that. */
-export const nextEvent: PartyEvent | undefined = upcomingEvents[0];
-
-export function findEvent(slug: string | undefined): PartyEvent | undefined {
-  if (!slug) return undefined;
-  return events.find((event) => event.slug === slug);
-}
-
-/* Can this night be reserved or bought at all? Past nights answer no, and the
-   reservation room refuses to open on them. */
 export function isBookable(event: PartyEvent) {
-  return (
-    event.status === "upcoming" && (event.tickets.enabled || event.tables.enabled)
-  );
+  return event.status === "upcoming" && (event.tickets.enabled || event.tables.enabled);
 }
 
-/* What is actually on sale for a night.
- *
- * A night with named types sells those. A night with only a price sells one
- * thing — entry — and that single type is built from the price rather than
- * written out twice, so `ticketPrice` stays the one number anybody has to
- * edit. A night with neither sells nothing, and the ticket step says so. */
 export function ticketTypes(event: PartyEvent): TicketType[] {
   if (event.tickets.types.length > 0) return event.tickets.types;
   if (event.ticketPrice === undefined) return [];
@@ -308,8 +158,10 @@ export function entryPrice(event: PartyEvent): number | undefined {
  *                    exist and that this night is not one of them
  *   "none"         — there is no ticket line to draw at all
  *
- * Turning a night's online sale on or off is `tickets.enabled` in the entry
- * above and nothing else — no surface decides this by looking at a name. */
+ * Turning a night's online sale on or off is `tickets.enabled`, which comes
+ * from the `ticketing_enabled` column and nothing else — no surface decides
+ * this by looking at a name, and none of them decides it by looking at a
+ * price. */
 export type TicketAvailability = "open" | "unavailable" | "none";
 
 export function ticketAvailability(event: PartyEvent): TicketAvailability {
@@ -318,27 +170,23 @@ export function ticketAvailability(event: PartyEvent): TicketAvailability {
   if (!event.tickets.enabled) return "unavailable";
   /* Announced but not on sale yet, or priced by nobody — both are silence
      rather than a refusal, so the line stays off. */
-  if (event.tickets.sale === "soon" || event.tickets.sale === "closed")
-    return "none";
+  if (event.tickets.sale === "soon" || event.tickets.sale === "closed") return "none";
   return entryPrice(event) === undefined ? "none" : "open";
 }
 
-/* What the artwork of every night cycles through in the middle portal. */
-export const posters = events.map((event) => event.poster);
+/* ── where a night is bought ────────────────────────────────────────────── */
 
 /* The two things a guest can be here for. The room reads this out of the URL,
    so every entry point on the site is a plain link and every state of the room
-   can be shared, bookmarked and opened in a new tab. */
+   is somewhere that can be shared. */
 export type ReserveChoice = "karte" | "stolovi";
 
 export const RESERVE_PATH = "/rezervacija";
 
-/* /rezervacija               — pick a night
-   /rezervacija?event=slug    — that night, both ways in
-   ...&izbor=karte|stolovi    — straight to one of them */
 export function reserveHref(slug?: string, choice?: ReserveChoice) {
-  if (!slug) return RESERVE_PATH;
-  const query = new URLSearchParams({ event: slug });
-  if (choice) query.set("izbor", choice);
-  return `${RESERVE_PATH}?${query.toString()}`;
+  const params = new URLSearchParams();
+  if (slug) params.set("event", slug);
+  if (choice) params.set("izbor", choice);
+  const query = params.toString();
+  return query ? `${RESERVE_PATH}?${query}` : RESERVE_PATH;
 }

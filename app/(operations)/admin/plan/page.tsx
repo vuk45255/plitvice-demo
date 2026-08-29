@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Empty, PageHeader, Panel } from "@/components/admin/shell";
 import { FloorMap } from "@/components/admin/floor-map";
-import { upcomingEvents } from "@/lib/events";
+import { bookableNights } from "@/lib/reservations/gate";
 import { floorState } from "@/lib/reservations/admin";
 import { requireStaff } from "@/lib/staff/guard";
 
@@ -29,7 +29,7 @@ export default async function AdminFloorPage({
   await requireStaff("admin");
 
   const params = await searchParams;
-  const nights = upcomingEvents.filter((event) => event.tables.enabled);
+  const nights = await bookableNights();
   const chosen =
     (typeof params.event === "string" &&
       nights.find((event) => event.slug === params.event)) ||
@@ -74,7 +74,7 @@ export default async function AdminFloorPage({
           >
             {nights.map((event) => (
               <option key={event.slug} value={event.slug}>
-                {event.artist}
+                {event.title}
               </option>
             ))}
           </select>
@@ -84,7 +84,7 @@ export default async function AdminFloorPage({
         </button>
       </form>
 
-      <Panel title={chosen.artist}>
+      <Panel title={chosen.title}>
         {/* The map refreshes itself every few seconds against the server; what
             is rendered here is only the first answer. */}
         <FloorMap initial={floor} eventSlug={chosen.slug} />

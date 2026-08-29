@@ -9,24 +9,33 @@ import {
 } from "@/app/(operations)/admin/actions";
 import type { ReservationStatus } from "@/lib/reservations/types";
 
-/* Confirm, reject, cancel — and correct.
+/* Cancel, reject, correct — and confirm what is left to confirm.
  *
- * NOTHING IS EVER DELETED. A rejected booking keeps its row and its time; what
+ * NOTHING IS EVER DELETED. A cancelled booking keeps its row and its time; what
  * changes is that the partial unique index in lib/db/schema.ts stops covering
- * it, so the table goes back on the map the same second. History is what the
- * club wants when somebody rings up asking why nobody called them back.
+ * it, so the table goes back on the map the same second. That is what
+ * "oslobodi sto" means here and why OTKAŽI is the button that does it — a
+ * second button freeing the same table by a different name would be two ways to
+ * write the same row. History is what the club wants when somebody rings up
+ * asking why nobody called them back.
+ *
+ * ═══ THERE IS NO LONGER AN APPROVAL STEP ══════════════════════════════════
+ *
+ * A booking made on the site arrives `confirmed` — see lib/reservations/
+ * service.ts — so nobody presses POTVRDI forty times a night any more. It is
+ * still here for the two rows that need it: a `pending` booking written before
+ * that changed, and a cancelled or rejected one being put back. Both are rare,
+ * and the second can fail, because the table may since have been given away.
  *
  * ═══ WHAT IS OFFERED, AND HOW LOUDLY ══════════════════════════════════════
  *
  * Only the moves that make sense from where the booking is — a confirmed
- * booking has no "confirm" button — and only ONE of them is primary. Confirming
- * is the move staff make forty times a night, so it is the gold one; rejecting
- * and cancelling sit next to it in quiet red; correcting and re-sending are
- * ghosts, because they are rare and must not compete.
+ * booking has no "confirm" button — and only ONE of them is primary. Rejecting
+ * and cancelling sit in quiet red; correcting and re-sending are ghosts,
+ * because they are rare and must not compete.
  *
  * The two that take a table away from somebody who thinks they have it ask
- * first, in the office's own dialog. Confirming does not: it is undoable and it
- * is the whole job.
+ * first, in the office's own dialog. Confirming does not: it is undoable.
  *
  * Every one of these re-checks the staff session on the server. A dialog is a
  * thing in a browser; a server action is a public endpoint. */
@@ -41,6 +50,8 @@ const MOVES: Record<
     detail?: string;
   }[]
 > = {
+  /* LEGACY ONLY. Nothing writes a booking in this state any more; what is here
+     was written before online bookings confirmed themselves. */
   pending: [
     { to: "confirmed", label: "Potvrdi", primary: true },
     {
@@ -51,13 +62,16 @@ const MOVES: Record<
         "Sto se odmah vraća na plan. Gost ne dobija nikakvu poruku — javite mu telefonom.",
     },
   ],
+  /* OTKAŽI IS ALSO "OSLOBODI STO": the row stops being covered by the partial
+     unique index, so the table is back on the plan the same second and can be
+     given to somebody else. */
   confirmed: [
     {
       to: "cancelled",
       label: "Otkaži",
-      confirm: "Otkazati potvrđenu rezervaciju?",
+      confirm: "Otkazati rezervaciju i osloboditi sto?",
       detail:
-        "Gostu je već potvrđeno da ima sto. Sto se odmah oslobađa; obavezno ga pozovite.",
+        "Gost ima potvrdu da mu je sto rezervisan. Sto se odmah vraća na plan; obavezno ga pozovite.",
     },
   ],
   rejected: [{ to: "confirmed", label: "Ipak potvrdi", primary: true }],

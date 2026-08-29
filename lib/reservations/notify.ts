@@ -1,4 +1,3 @@
-import { findEvent } from "@/lib/events";
 import { findTicketingEvent } from "@/lib/ticketing/events";
 import { SEATS, seatNumber } from "@/lib/floor-plan";
 import { officeAddress } from "@/lib/mail/provider";
@@ -10,13 +9,13 @@ import type { Reservation } from "@/lib/reservations/types";
  *
  * ═══ TO THE GUEST — ONLY ON CONFIRMATION ══════════════════════════════════
  *
- * Not when they ask. A request is `pending` — the club rings back, and it may
- * ring back to say no — so a mail sent at that moment would be telling
- * somebody they have a table before the club has decided they do. The one
- * message a guest gets says the table is theirs, and it is sent the moment the
- * row actually reaches `confirmed`, whether that happened because staff pressed
- * a button or because a booking was taken over the telephone (which arrives
- * confirmed, the conversation having been the confirmation).
+ * The one message a guest gets says the table is theirs, and it is sent the
+ * moment the row reaches `confirmed` — which, for a booking made on the site,
+ * is the moment it is written down at all: spending a live hold on a free table
+ * IS the confirmation and there is nothing left to wait for. The other two ways
+ * a row reaches `confirmed` send exactly the same message: a booking taken over
+ * the telephone (the conversation having been the confirmation) and a legacy
+ * `pending` row the office confirms by hand.
  *
  * NOTHING IS SENT WHEN A BOOKING IS CANCELLED OR REJECTED. The club rings
  * those. A machine telling somebody their table is gone is not how this club
@@ -38,21 +37,21 @@ import type { Reservation } from "@/lib/reservations/types";
  * office; it never reaches the caller, because a mail service having a bad
  * morning must not be able to un-confirm a table. */
 
-/* The night, in the two places it is described.
+/* The night, from the one place it is described.
  *
- * A reservation is keyed on the SLUG — the poster wall's identifier — which is
- * where the name comes from. The date is not there: lib/events.ts holds a
- * dictionary key for it, because the wall writes its dates in two languages.
- * The instant lives in the ticketing `events` row that shares the slug, so
- * that is what is asked, and a night with no ticketing row simply has no date
- * in its mail rather than a wrong one. */
+ * A reservation is keyed on the SLUG, and the row carrying that slug is now the
+ * only record of what a night is — the title the office typed and the instant
+ * it starts come out of the same place. There used to be a second answer here,
+ * read out of a hand-written array in lib/events.ts, and the two could disagree
+ * the moment somebody renamed a night in the office. They cannot now, because
+ * there is one of them.
+ *
+ * A slug with no row at all still sends: the mail says the slug rather than
+ * failing, because a table that has been confirmed must never depend on a
+ * lookup succeeding. */
 async function night(eventId: string): Promise<{ title: string; startsAt?: string }> {
-  const sold = await findTicketingEvent(eventId, true).catch(() => undefined);
-  const wall = findEvent(eventId);
-  return {
-    title: wall?.artist ?? sold?.title ?? eventId,
-    startsAt: sold?.startsAt,
-  };
+  const event = await findTicketingEvent(eventId, true).catch(() => undefined);
+  return { title: event?.title ?? eventId, startsAt: event?.startsAt };
 }
 
 function seatLabel(seatId: string): string {
@@ -60,8 +59,10 @@ function seatLabel(seatId: string): string {
   return seat ? seatNumber(seat) : seatId;
 }
 
-/* The guest's own confirmation. Called from `setReservationStatus` and from a
-   telephone booking; never awaited by either. */
+/* The guest's own confirmation. Called from the site's own booking, from a
+   telephone booking and from `setReservationStatus`; never awaited by any of
+   them, and claimed by (kind, reservation id) so all three together still send
+   one message. */
 export async function notifyReservationConfirmed(
   reservation: Reservation,
 ): Promise<SendOutcome> {

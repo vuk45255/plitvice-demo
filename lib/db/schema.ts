@@ -1,5 +1,6 @@
-import { SEED_EVENTS } from "@/lib/ticketing/catalogue";
+import { PROGRAMME } from "@/lib/club/programme-seed";
 import type { Queryable } from "@/lib/db/client";
+import { devMode } from "@/lib/ticketing/config";
 
 /* THE SHAPE OF EVERY GUARANTEE IN THIS SYSTEM.
  *
@@ -43,7 +44,7 @@ const MIGRATION_LOCK = 720_1912;
 const STATEMENTS: string[] = [
   /* ── events ───────────────────────────────────────────────────────────
      A night, as the ticketing system needs to know it. Seeded once from
-     lib/ticketing/catalogue.ts and edited from /admin afterwards. */
+     lib/club/programme-seed.ts and edited from /admin afterwards. */
   `CREATE TABLE IF NOT EXISTS events (
      id             text PRIMARY KEY,
      slug           text NOT NULL UNIQUE,
@@ -308,6 +309,103 @@ const STATEMENTS: string[] = [
      one serves the question asked of a single ticket. */
   `CREATE INDEX IF NOT EXISTS ticket_scans_by_ticket
      ON ticket_scans (ticket_id, at DESC)`,
+
+  /* ═══ THE EVENT MANAGER'S OWN COLUMNS ═══════════════════════════════════
+   *
+   * Everything below hangs off the SAME `events` row a ticket is already
+   * filed under. There is no second events table and there is not going to
+   * be one: a night is one row, and the office editing its dress code must
+   * not be able to produce a night that the ticketing system disagrees with.
+   *
+   * Every one is nullable or has a default that reproduces exactly what the
+   * system did before it existed, so a row written by the seed, by the old
+   * form, or by last month's deploy keeps working untouched. */
+
+  /* WHICH HOUSE THIS NIGHT IS AT. One value today, and it is not read as a
+     filter anywhere — it is here so that the day there is a second club, the
+     rows already say which one they belong to instead of needing a migration
+     across live ticket data. See lib/venue.ts. */
+  `ALTER TABLE events ADD COLUMN IF NOT EXISTS venue_id text NOT NULL DEFAULT 'plitvice'`,
+
+  /* WHETHER THE NIGHT SELLS ENTRY ONLINE AT ALL, as against `status`, which
+     says how that sale is going. A night with a free door has this false and
+     is still a real night with a real floor. */
+  `ALTER TABLE events ADD COLUMN IF NOT EXISTS ticketing_enabled boolean NOT NULL DEFAULT true`,
+
+  /* WHETHER THE NIGHT TAKES TABLES, and which floor it takes them on. The
+     geometry is NOT here and never will be: the room is drawn once in
+     lib/floor-plan.ts, and this column names a plan rather than describing
+     one. 'default' is the house floor. */
+  `ALTER TABLE events ADD COLUMN IF NOT EXISTS tables_enabled boolean NOT NULL DEFAULT false`,
+  `ALTER TABLE events ADD COLUMN IF NOT EXISTS floor_plan text NOT NULL DEFAULT 'default'`,
+
+  /* THE POSTER, IN TWO PARTS. `image` is the URL anything renders; this is
+     the storage key the object is filed under, kept so a replaced poster can
+     be deleted from the bucket rather than left there for ever. A poster that
+     was typed in as a /public path has a URL and no key, which is exactly
+     right — there is nothing in a bucket to delete. */
+  `ALTER TABLE events ADD COLUMN IF NOT EXISTS poster_key text`,
+
+  /* WHAT THE NIGHT IS, for the people reading a poster. All optional, none of
+     them load-bearing: a club night with none of these filled in is a
+     complete night, and every screen is written to say nothing about what is
+     not there rather than print an empty label. */
+  `ALTER TABLE events ADD COLUMN IF NOT EXISTS lineup text`,
+  `ALTER TABLE events ADD COLUMN IF NOT EXISTS genre text`,
+  `ALTER TABLE events ADD COLUMN IF NOT EXISTS age_restriction text`,
+  `ALTER TABLE events ADD COLUMN IF NOT EXISTS entry_note text`,
+  `ALTER TABLE events ADD COLUMN IF NOT EXISTS dress_code text`,
+  `ALTER TABLE events ADD COLUMN IF NOT EXISTS promotion text`,
+
+  /* ARCHIVED, NOT DELETED. A night with orders against it is never removed —
+     the tickets, the scans and the money are the club's history. This takes
+     it off every working list and leaves every report intact. */
+  `ALTER TABLE events ADD COLUMN IF NOT EXISTS archived_at timestamptz`,
+
+  /* ═══ THE ONE BACKFILL, AND WHY IT IS SAFE ═══════════════════════════════
+   *
+   * `tables_enabled` was added with DEFAULT false, because false is what a new
+   * night should be until somebody says otherwise. That default was written
+   * onto EVERY EXISTING ROW as well — including the nights that were taking
+   * table bookings at the time, which until now nobody noticed because nothing
+   * read the column. The moment the reservation gate started reading it (see
+   * lib/reservations/gate.ts) that false would have shut the floor on a night
+   * the club was still selling.
+   *
+   * SO THE COLUMN IS SET FROM WHAT THE ROW ALREADY PROVES. A night that has a
+   * reservation against it was demonstrably taking tables — the rows are the
+   * evidence, not a guess — and it is switched on. The floor is keyed by SLUG,
+   * which is why the match is on slug and not on id.
+   *
+   * IT RUNS ONCE PER NIGHT AND NEVER UNDOES A DECISION. `AND tables_enabled =
+   * false` means a night the office has since switched off stays off: the
+   * statement can only ever turn one on, and only for a night that already has
+   * a booking on the floor. Re-running it on a later deploy changes nothing,
+   * which is what every statement in this list has to be true of. */
+  /* ═══ A LEDGER, FOR THE ONE KIND OF STEP THAT MAY NOT REPEAT ════════════
+   *
+   * Everything else in this list is idempotent by construction: CREATE TABLE
+   * IF NOT EXISTS, ADD COLUMN IF NOT EXISTS, an UPDATE narrow enough that a
+   * second run matches nothing. That is why this project needs no migration
+   * tool, and it stays true.
+   *
+   * ONE STEP CANNOT BE WRITTEN THAT WAY. Copying the poster wall's old values
+   * onto rows that predate the event manager has to happen exactly once — run
+   * it twice and the second run puts back everything the club edited in
+   * between, which is the failure this whole change exists to remove. So that
+   * step claims a key here first, inside the same transaction, and skips if it
+   * is already taken. One row, one column, no framework.
+   *
+   * NOTHING ELSE MAY USE THIS. A step that wants a ledger is almost always a
+   * step that should have been written to be safe to repeat. */
+  `CREATE TABLE IF NOT EXISTS applied_migrations (
+     id text PRIMARY KEY,
+     applied_at timestamptz NOT NULL DEFAULT now()
+   )`,
+
+  `UPDATE events SET tables_enabled = true
+      WHERE tables_enabled = false
+        AND EXISTS (SELECT 1 FROM reservations r WHERE r.event_id = events.slug)`,
 ];
 
 /* Create everything, once, whoever gets here first. Safe to call on every
@@ -318,39 +416,221 @@ export async function ensureSchema(db: Migratable): Promise<void> {
        throws does not leave the next deploy waiting on a dead lock. */
     await q.query("SELECT pg_advisory_xact_lock($1)", [MIGRATION_LOCK]);
     for (const statement of STATEMENTS) await q.query(statement);
-    await seedEvents(q);
+    await seedProgramme(q);
+    await adoptProgrammeOnce(q);
+    await seedFixtures(q);
   });
 }
 
-/* The nights from the catalogue, inserted once each.
+
+/* ── the venue's own nights, and the one time they are adopted ──────────── */
+
+/* THE PROGRAMME, INSERTED ONCE EACH.
  *
- * DO NOTHING ON CONFLICT, and that is the important half: a capacity or a
- * price the club changed in /admin at eleven at night is not put back by the
- * next deploy. The catalogue is how a night arrives; the table is what it is
- * afterwards. */
-async function seedEvents(q: Queryable): Promise<void> {
-  for (const event of SEED_EVENTS) {
+ * DO NOTHING ON CONFLICT, and that is the important half: a title, a capacity
+ * or a price the club changed in /admin at eleven at night is not put back by
+ * the next deploy. lib/club/programme-seed.ts is how a night ARRIVES; the table
+ * is what it is afterwards, and /admin/dogadjaji is the only thing that edits
+ * it. */
+async function seedProgramme(q: Queryable): Promise<void> {
+  for (const night of PROGRAMME) {
     await q.query(
       `INSERT INTO events (
          id, slug, title, starts_at, doors_at, description, image, status,
-         ticket_price, currency, capacity, max_per_order, sales_start, sales_end, test_only
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'RSD',$10,$11,$12,$13,$14)
+         ticket_price, currency, capacity, max_per_order, test_only,
+         venue_id, ticketing_enabled, tables_enabled, floor_plan,
+         lineup, genre, age_restriction, entry_note, dress_code, promotion
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'RSD',$10,$11,false,
+                 'plitvice',$12,$13,'default',$14,$15,$16,$17,$18,$19)
        ON CONFLICT (id) DO NOTHING`,
       [
-        event.id,
-        event.slug,
-        event.title,
-        event.startsAt,
-        event.doorsAt ?? null,
-        event.description ?? null,
-        event.image ?? null,
-        event.status,
-        event.ticketPrice,
-        event.capacity,
-        event.maxPerOrder,
-        event.salesStart ?? null,
-        event.salesEnd ?? null,
-        event.testOnly ?? false,
+        night.id,
+        night.slug,
+        night.title,
+        night.startsAt,
+        night.doorsAt ?? null,
+        night.description ?? null,
+        night.image,
+        night.status,
+        night.ticketPrice,
+        night.capacity,
+        night.maxPerOrder,
+        night.ticketingEnabled,
+        night.tablesEnabled,
+        night.lineup ?? null,
+        night.genre ?? null,
+        night.ageRestriction ?? null,
+        night.entryNote ?? null,
+        night.dressCode ?? null,
+        night.promotion ?? null,
+      ],
+    );
+  }
+}
+
+/* ═══ THE ONE-TIME ADOPTION, AND WHY IT NEEDS A LEDGER ═════════════════════
+ *
+ * A database that has been running since before the event manager has rows for
+ * some of these nights already — but written by the OLD seed, which knew about
+ * nine columns and not about the fifteen that carry what a night actually is.
+ * Those rows have no lineup, no age rule, no entry note, no promotion, the
+ * wrong description, and — the one that matters — `ticketing_enabled` and
+ * `tables_enabled` sitting at whatever the column default happened to be.
+ *
+ * Until this change nothing read those two, so nothing was wrong. Now the
+ * public site and both gates read them, and a Saturday whose row says
+ * `tables_enabled = false` because of a DEFAULT is a Saturday that stops taking
+ * tables the moment this deploys.
+ *
+ * So the values that used to live in the source — in the poster wall's array,
+ * where the club could not reach them — are copied ONTO THE ROW ONCE.
+ *
+ * ═══ ONCE. NOT ON EVERY DEPLOY ════════════════════════════════════════════
+ *
+ * `ON CONFLICT DO NOTHING` cannot express this: the row exists, so an INSERT
+ * does nothing and an UPDATE would run for ever, putting the club's own edits
+ * back every time a container started. That is the exact failure this whole
+ * change exists to prevent, so it must not be reintroduced by the migration
+ * that enables it.
+ *
+ * Hence a ledger: one row, one key, inserted in the SAME TRANSACTION as the
+ * adoption. Whoever gets there first claims the key and does the work; every
+ * later start finds the key and skips. From then on the office owns every one
+ * of these fields, and this code can never touch them again. */
+const ADOPTION_KEY = "programme-adoption-2026-08";
+
+async function adoptProgrammeOnce(q: Queryable): Promise<void> {
+  const claimed = await q.query(
+    `INSERT INTO applied_migrations (id) VALUES ($1)
+     ON CONFLICT (id) DO NOTHING RETURNING id`,
+    [ADOPTION_KEY],
+  );
+  /* Somebody has already done it. The club's edits stand. */
+  if (claimed.rowCount === 0) return;
+
+  for (const night of PROGRAMME) {
+    /* COALESCE ON THE TEXT FIELDS: a value the office has already typed wins,
+       and only a column that is genuinely empty is filled in. The two switches
+       and the status are assigned outright, because `false` is a real value
+       that COALESCE cannot tell apart from "never set" — and for those the
+       wall was the authority right up until this deploy. */
+    await q.query(
+      `UPDATE events SET
+         title             = $2,
+         starts_at         = $3,
+         doors_at          = COALESCE(doors_at, $4),
+         description       = COALESCE(NULLIF(description, ''), $5),
+         image             = COALESCE(NULLIF(image, ''), $6),
+         status            = $7,
+         ticketing_enabled = $8,
+         tables_enabled    = $9,
+         lineup            = COALESCE(NULLIF(lineup, ''), $10),
+         genre             = COALESCE(NULLIF(genre, ''), $11),
+         age_restriction   = COALESCE(NULLIF(age_restriction, ''), $12),
+         entry_note        = COALESCE(NULLIF(entry_note, ''), $13),
+         dress_code        = COALESCE(NULLIF(dress_code, ''), $14),
+         promotion         = COALESCE(NULLIF(promotion, ''), $15),
+         updated_at        = now()
+       WHERE id = $1 AND archived_at IS NULL`,
+      [
+        night.id,
+        night.title,
+        night.startsAt,
+        night.doorsAt ?? null,
+        night.description ?? null,
+        night.image,
+        night.status,
+        night.ticketingEnabled,
+        night.tablesEnabled,
+        night.lineup ?? null,
+        night.genre ?? null,
+        night.ageRestriction ?? null,
+        night.entryNote ?? null,
+        night.dressCode ?? null,
+        night.promotion ?? null,
+      ],
+    );
+  }
+}
+
+/* ── the two probe nights, and the lock on them ─────────────────────────── */
+
+/* NIGHTS THAT EXIST ONLY SO THE SYSTEM CAN BE TESTED, AND ONLY WHERE IT MAY BE.
+ *
+ * ═══ WHY THEY ARE NO LONGER SEEDED EVERYWHERE ═════════════════════════════
+ *
+ * They used to sit in the same list as the club's real programme and were
+ * inserted on every database this system had ever touched — including the one
+ * the club actually uses. So a person opening /admin/dogadjaji to run their
+ * business found "Plitvice Test Night" and "Plitvice Test Night — mala sala"
+ * on the list next to Saturday Madness. `test_only` kept them off the public
+ * site and out of every sale, which is what it is for, and it did nothing at
+ * all about the office having to look at them.
+ *
+ * ═══ THE LOCK IS THE ONE THAT ALREADY EXISTS ══════════════════════════════
+ *
+ * `devMode()` — TICKETING_DEV_MODE=true AND not a production build, both — is
+ * already the gate on every other thing that can mint a ticket without money
+ * changing hands. These rows are the events those flows sell into, so they
+ * belong behind exactly the same gate rather than a second one invented here.
+ *
+ * On a laptop and in `npm test` they are created and everything that needs a
+ * night to sell has one. On the club's server they are never written at all,
+ * and scripts/clean-test-events.mjs removes the ones an older deploy left. */
+const FIXTURE_NIGHTS = [
+  {
+    id: "evt_test_night",
+    slug: "test-night",
+    title: "Plitvice Test Night",
+    startsAt: "2099-12-31T23:00:00+01:00",
+    description:
+      "Probna večer koja postoji samo da bi se sistem ulaznica mogao testirati.",
+    image: "/dogadjaji/vodka.jpg",
+    status: "on_sale",
+    ticketPrice: 1000,
+    capacity: 50,
+    maxPerOrder: 10,
+  },
+  {
+    id: "evt_test_night_small",
+    slug: "test-night-small",
+    title: "Plitvice Test Night — mala sala",
+    startsAt: "2099-12-30T23:00:00+01:00",
+    description:
+      "Druga probna večer, namerno mala, za proveru rasprodaje i istovremenih kupovina.",
+    image: "/dogadjaji/vodka.jpg",
+    status: "on_sale",
+    /* Deliberately tiny: this is the night the load test sells out, and a room
+       of five hundred would take an hour to prove the same thing. */
+    capacity: 20,
+    ticketPrice: 1500,
+    maxPerOrder: 4,
+  },
+] as const;
+
+async function seedFixtures(q: Queryable): Promise<void> {
+  if (!devMode()) return;
+
+  for (const night of FIXTURE_NIGHTS) {
+    await q.query(
+      `INSERT INTO events (
+         id, slug, title, starts_at, description, image, status,
+         ticket_price, currency, capacity, max_per_order, test_only,
+         venue_id, ticketing_enabled, tables_enabled, floor_plan
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'RSD',$9,$10,true,
+                 'plitvice',true,false,'default')
+       ON CONFLICT (id) DO NOTHING`,
+      [
+        night.id,
+        night.slug,
+        night.title,
+        night.startsAt,
+        night.description,
+        night.image,
+        night.status,
+        night.ticketPrice,
+        night.capacity,
+        night.maxPerOrder,
       ],
     );
   }

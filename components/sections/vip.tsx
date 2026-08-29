@@ -9,15 +9,18 @@ import { GrandClubSignature } from "@/components/grand-club";
 import { Ambient } from "@/components/ambient";
 import { useLang } from "@/components/providers/language";
 import { ReserveButton } from "@/components/reservation/reserve-button";
-import { nextEvent } from "@/lib/events";
-import { reserveHref } from "@/lib/events";
+
+import { reserveHref, type PartyEvent } from "@/lib/events";
 import { site } from "@/lib/site";
 import reservationImg from "@/public/images/rezervacija.jpg";
 
 /* The one page that is always night — and the deepest velvet on the site:
    royal purple washed with a single warm light from above. One tall frame,
    magazine-narrow, and the reservation beside it. */
-export function Vip() {
+/* The night ahead is handed in — see the note in sections/events.tsx. It may
+   genuinely be absent: a club between seasons has no next night, and every
+   link below already handled that. */
+export function Vip({ next }: { next?: PartyEvent }) {
   const { t, tRich } = useLang();
 
   return (
@@ -46,7 +49,7 @@ export function Vip() {
                   cursor and the invitation comes up out of it. It travels to
                   the reservation room, on the night ahead where there is one. */}
               <Link
-                href={reserveHref(nextEvent?.slug, "stolovi")}
+                href={reserveHref(next?.slug, "stolovi")}
                 aria-label={t("common.reserveTable")}
                 className="group relative mx-auto block w-full max-w-[26rem] overflow-hidden md:mx-0"
               >
@@ -122,7 +125,7 @@ export function Vip() {
                 <ReserveButton
                   label="common.reserveTable"
                   night
-                  event={nextEvent?.slug}
+                  event={next?.slug}
                   choice="stolovi"
                   className="w-full text-center sm:w-auto"
                 />

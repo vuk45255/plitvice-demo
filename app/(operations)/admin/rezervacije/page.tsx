@@ -4,7 +4,7 @@ import { Empty, PageHeader, Panel, Scroller } from "@/components/admin/shell";
 import { Badge } from "@/components/admin/badge";
 import { PhoneReservationForm } from "@/components/admin/phone-reservation-form";
 import { ReservationActions } from "@/components/admin/reservation-actions";
-import { upcomingEvents } from "@/lib/events";
+import { bookableNights } from "@/lib/reservations/gate";
 import {
   floorState,
   reservationCounts,
@@ -51,7 +51,7 @@ export default async function AdminReservationsPage({
 
   /* Only nights that actually take tables. A select full of nights that cannot
      be booked is a select somebody will pick from. */
-  const nights = upcomingEvents.filter((event) => event.tables.enabled);
+  const nights = await bookableNights();
   const chosen =
     (typeof params.event === "string" &&
       nights.find((event) => event.slug === params.event)) ||
@@ -115,7 +115,7 @@ export default async function AdminReservationsPage({
           >
             {nights.map((event) => (
               <option key={event.slug} value={event.slug}>
-                {event.artist}
+                {event.title}
               </option>
             ))}
           </select>
@@ -138,7 +138,7 @@ export default async function AdminReservationsPage({
       ) : (
         <>
           <Panel
-            title={term ? `Rezultati za „${term}”` : `Rezervacije — ${chosen.artist}`}
+            title={term ? `Rezultati za „${term}”` : `Rezervacije — ${chosen.title}`}
             action={
               counts ? (
                 <span className="flex flex-wrap items-center gap-2">
@@ -146,10 +146,17 @@ export default async function AdminReservationsPage({
                   <span className="adm-figure text-[0.75rem] text-[var(--adm-ink-2)]">
                     {counts.confirmed}
                   </span>
-                  <Badge kind="reservation" value="pending" />
-                  <span className="adm-figure text-[0.75rem] text-[var(--adm-ink-2)]">
-                    {counts.pending}
-                  </span>
+                  {/* Only when there is something in it: online bookings are
+                      confirmed as they arrive, so a standing zero here would be
+                      a counter for a step that no longer exists. */}
+                  {counts.pending > 0 ? (
+                    <>
+                      <Badge kind="reservation" value="pending" />
+                      <span className="adm-figure text-[0.75rem] text-[var(--adm-ink-2)]">
+                        {counts.pending}
+                      </span>
+                    </>
+                  ) : null}
                 </span>
               ) : null
             }
@@ -164,7 +171,7 @@ export default async function AdminReservationsPage({
               <>
                 <ul className="lg:hidden">
                   {rows.map((row) => (
-                    <Card key={row.id} row={row} night={chosen.artist} />
+                    <Card key={row.id} row={row} night={chosen.title} />
                   ))}
                 </ul>
 
@@ -237,7 +244,7 @@ export default async function AdminReservationsPage({
           </Panel>
 
           <div id="nova" className="scroll-mt-6">
-            <Panel title={`Nova rezervacija — telefonom · ${chosen.artist}`}>
+            <Panel title={`Nova rezervacija — telefonom · ${chosen.title}`}>
               <PhoneReservationForm
                 eventId={chosen.slug}
                 seats={floor?.seats ?? []}

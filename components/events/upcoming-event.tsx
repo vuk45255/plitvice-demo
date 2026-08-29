@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import Image from "next/image";
+import { PosterImage } from "@/components/events/poster-image";
 import Link from "next/link";
 import {
   cubicBezier,
@@ -237,10 +237,9 @@ export function UpcomingEvent({
                     brightness, and a fraction of scale inside its own frame,
                     over the same long ease the rest of the house moves on.
                     The frame itself never changes size. */}
-                <Image
-                  src={event.poster}
+                <PosterImage
+                  poster={event.poster}
                   alt=""
-                  placeholder="blur"
                   sizes={sizes}
                   fill
                   className="object-cover [filter:saturate(0.7)_contrast(1.08)_brightness(0.74)] transition-[filter,scale] duration-[620ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.015] group-hover:[filter:saturate(1)_contrast(1)_brightness(1)]"

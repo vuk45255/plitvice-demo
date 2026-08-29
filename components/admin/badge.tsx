@@ -68,6 +68,8 @@ const EVENT: Record<string, Entry> = {
 /* Why a night is not selling, from `saleState`. */
 const SALE: Record<string, Entry> = {
   open: { label: "Prodaja otvorena", tone: "good" },
+  /* Not a failure to open a sale — a night that sells at the door. */
+  no_sale: { label: "Bez online prodaje", tone: "muted" },
   draft: { label: "Nije objavljeno", tone: "muted" },
   ended: { label: "Završeno", tone: "muted" },
   sold_out: { label: "Rasprodato", tone: "gold" },

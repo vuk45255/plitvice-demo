@@ -1,12 +1,12 @@
 import { afterResponse } from "@/lib/after-response";
 import { validateField } from "@/lib/booking";
-import { findEvent, isBookable } from "@/lib/events";
+import { tableBookingGate } from "@/lib/reservations/gate";
 import { seatCapacity } from "@/lib/floor-capacity";
 import { SEATS, seatNumber } from "@/lib/floor-plan";
 import { reservedSeats } from "@/lib/floor-availability";
 import { normalizeEmail, normalizePhone } from "@/lib/reservations/identity";
 import { consumeHold, restoreHold } from "@/lib/reservations/holds";
-import { notifyOffice } from "@/lib/reservations/notify";
+import { notifyOffice, notifyReservationConfirmed } from "@/lib/reservations/notify";
 import { takeAttempt } from "@/lib/reservations/rate-limit";
 import { reservationStore } from "@/lib/reservations/store";
 import type {
@@ -88,11 +88,11 @@ export async function requestReservation(
   if (!phoneKey) fields.phone = "invalid";
   if (!emailKey) fields.email = "invalid";
 
-  /* The night, as the club describes it — not as the browser does. */
-  const event = findEvent(text(body.eventId));
-  if (!event || !isBookable(event) || !event.tables.enabled) {
-    return { ok: false, reason: "unavailable" };
-  }
+  /* The night, as the club describes it — not as the browser does. Its row is
+     what says whether tables may be taken tonight; see gate.ts. */
+  const gate = await tableBookingGate(text(body.eventId));
+  if (!gate.open) return { ok: false, reason: "unavailable" };
+  const event = gate.event;
 
   /* The table, read off the floor plan. Its kind, its zone and what it seats
      come from here and are never taken from the request. */
@@ -149,20 +149,39 @@ export async function requestReservation(
      It stays the final authority even now that a hold stands in front of it —
      the hold knows nothing about reservations, and this is the only thing that
      does. */
-  const outcome = await reservationStore.claim({
-    eventId: event.slug,
-    seatId: seat.id,
-    seatType: seat.type,
-    zone: seat.zone,
-    guests,
-    name,
-    phone,
-    email,
-    note,
-    phoneKey,
-    emailKey,
-    source: "web",
-  });
+  const outcome = await reservationStore.claim(
+    {
+      eventId: event.slug,
+      seatId: seat.id,
+      seatType: seat.type,
+      zone: seat.zone,
+      guests,
+      name,
+      phone,
+      email,
+      note,
+      phoneKey,
+      emailKey,
+      source: "web",
+    },
+    /* CONFIRMED BY THE SAME STATEMENT THAT TAKES THE TABLE.
+     *
+     * The club no longer rings back before a table is somebody's: spending a
+     * live hold on a table that is still free IS the confirmation, and the
+     * guest is told so before they close the page.
+     *
+     * Written as the status of the one INSERT rather than as an UPDATE after
+     * it, because "insert pending, then confirm" is two statements with a
+     * window between them — and a crash, a frozen instance or a retry inside
+     * that window leaves a table held by a booking nobody ever confirmed and a
+     * guest who was told nothing. There is no window here: the row arrives
+     * confirmed or it does not arrive.
+     *
+     * NOTHING ABOUT DOUBLE-BOOKING CHANGED. `pending` and `confirmed` are both
+     * inside the partial unique index in lib/db/schema.ts, so the index that
+     * refused the second guest before refuses them now, in the same statement. */
+    "confirmed",
+  );
 
   if (!outcome.ok) {
     /* The claim refused after the hold was already spent. Give the three
@@ -172,13 +191,20 @@ export async function requestReservation(
     return { ok: false, reason: outcome.reason };
   }
 
-  /* THE OFFICE HEARS ABOUT IT, and the guest does not — not yet. A booking
-     made on the site arrives `pending`: the club rings back, and it may ring
-     back to say no, so the only mail a guest gets is the one that says the
-     table is theirs. See lib/reservations/notify.ts.
-     Not awaited, and its failure is swallowed here and recorded there: a mail
-     service that is down must not turn a table that IS booked into a request
-     that failed. */
+  /* BOTH MESSAGES GO NOW, because there is nothing left to wait for. The
+     booking is confirmed, so the guest is told the table is theirs and the
+     office is told it exists. See lib/reservations/notify.ts.
+
+     Two calls rather than one, so neither depends on the other having worked.
+     Each is claimed by (kind, reservation id) in `mail_deliveries`, which is
+     what makes a retry, a second instance or an admin pressing a button later
+     produce no second mail.
+
+     Neither is awaited and neither can fail this request: a mail service having
+     a bad morning must not turn a table that IS booked into a booking that
+     failed, and the club may not have chosen a provider at all — see the log
+     provider in lib/mail/provider.ts, which is a state and not a stub. */
+  afterResponse(() => notifyReservationConfirmed(outcome.reservation));
   afterResponse(() => notifyOffice(outcome.reservation));
 
   return { ok: true, reservation: outcome.reservation };

@@ -1,6 +1,6 @@
 import { afterResponse } from "@/lib/after-response";
 import { validateField } from "@/lib/booking";
-import { findEvent, isBookable } from "@/lib/events";
+import { tableBookingGate } from "@/lib/reservations/gate";
 import { seatCapacity } from "@/lib/floor-capacity";
 import { SEATS, seatNumber, type FloorSeat } from "@/lib/floor-plan";
 import { reservedSeats } from "@/lib/floor-availability";
@@ -37,15 +37,27 @@ import {
  *     two tables covers `source = 'web'` only. Staff are trusted to know that
  *     the same number is ringing about a second table for the cousins.
  *
- * A telephone booking arrives `confirmed` rather than `pending`, because the
- * club has already said yes — that conversation was the confirmation.
+ * A telephone booking arrives `confirmed`, because the club has already said
+ * yes — that conversation was the confirmation. A booking made on the site now
+ * arrives `confirmed` too, for the same reason in a different form: spending a
+ * live hold on a free table is the confirmation. Neither door writes `pending`
+ * any more.
  *
- * ═══ 2. CONFIRMING, REJECTING AND CANCELLING ══════════════════════════════
+ * ═══ 2. CANCELLING, REJECTING — AND CONFIRMING WHAT IS LEFT ═══════════════
  *
- * Nothing is ever deleted. A rejected booking keeps its row, its time and its
+ * THE OFFICE DID NOT LOSE ANYTHING WHEN THE APPROVAL STEP WENT. Cancelling,
+ * rejecting, correcting a guest's details and writing a booking down by
+ * telephone are all exactly as they were; what changed is that none of them is
+ * on the path of a normal booking any more. `setReservationStatus` still takes
+ * `confirmed`, because the legacy `pending` rows still need it and because
+ * putting a cancelled booking back is the same move.
+ *
+ * Nothing is ever deleted. A cancelled booking keeps its row, its time and its
  * reason for existing; what changes is that the partial index stops covering
- * it, so the table goes back on the map the same second. History is what the
- * club will want when somebody rings up asking why nobody called them back. */
+ * it, so the table goes back on the map the same second — which is what
+ * "freeing the table" means here, and why there is no separate button for it.
+ * History is what the club will want when somebody rings up the next
+ * afternoon. */
 
 /* ── what staff are shown ───────────────────────────────────────────────── */
 
@@ -277,10 +289,9 @@ export async function addPhoneReservation(
   if (!phoneKey) fields.phone = "invalid";
   const emailKey = email ? normalizeEmail(email) : "";
 
-  const event = findEvent(text(input.eventId));
-  if (!event || !isBookable(event) || !event.tables.enabled) {
-    return { ok: false, reason: "unavailable" };
-  }
+  const gate = await tableBookingGate(text(input.eventId));
+  if (!gate.open) return { ok: false, reason: "unavailable" };
+  const event = gate.event;
 
   const seat = SEATS.find((s) => s.id === text(input.seatId));
   if (!seat) fields.seatId = "unknown";
@@ -367,9 +378,12 @@ export type StatusChangeResult =
   | { ok: true; reservation: ReservationLine }
   | { ok: false; reason: "unknown" | "seat-taken" };
 
-/* Confirm, reject, cancel — and un-cancel, which is the one that can fail:
-   putting a booking back onto a table somebody else has since been given is
-   refused by the unique index rather than by anybody remembering to check. */
+/* Cancel, reject — and un-cancel, which is the one that can fail: putting a
+   booking back onto a table somebody else has since been given is refused by
+   the unique index rather than by anybody remembering to check.
+   `confirmed` is still a destination, for the legacy `pending` rows and for
+   putting a cancelled booking back; it is no longer a step anything on the
+   site's own path goes through. */
 export async function setReservationStatus(
   id: string,
   status: ReservationStatus,
@@ -381,9 +395,13 @@ export async function setReservationStatus(
   if ("conflict" in updated) return { ok: false, reason: "seat-taken" };
 
   /* THE ONE STATE CHANGE A GUEST IS TOLD ABOUT, and only on the way in: a
-     booking that has just become confirmed. Nothing is sent for a cancellation
-     — the club rings those, and a machine telling somebody their table is gone
-     is not how this club talks to people. Awaited nowhere: see notify(). */
+     booking that has just become confirmed. A booking made on the site is
+     already confirmed when it is written down and has already had its message,
+     so this fires for a legacy `pending` row or a cancelled one put back — and
+     even then `sendOnce` is what stops a second message, not this condition.
+     Nothing is sent for a cancellation — the club rings those, and a machine
+     telling somebody their table is gone is not how this club talks to people.
+     Awaited nowhere: see notify(). */
   if (status === "confirmed" && before?.status !== "confirmed") {
     afterResponse(() => notifyReservationConfirmed(updated));
   }

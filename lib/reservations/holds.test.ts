@@ -37,7 +37,15 @@ import {
   __resetReservationStoreForTests,
   reservationStore,
 } from "@/lib/reservations/store";
-import { addPhoneReservation, setReservationStatus } from "@/lib/reservations/admin";
+import {
+  addPhoneReservation,
+  editReservation,
+  floorState,
+  reservationsForEvent,
+  setReservationStatus,
+} from "@/lib/reservations/admin";
+import { notifyReservationConfirmed } from "@/lib/reservations/notify";
+import { mailDeliveryFor } from "@/lib/mail/send";
 import { requestReservation } from "@/lib/reservations/service";
 import { seatCapacity } from "@/lib/floor-capacity";
 import { SEATS } from "@/lib/floor-plan";
@@ -63,7 +71,31 @@ async function age(seatId: string, eventId = NIGHT) {
 beforeEach(async () => {
   await __resetHoldStoreForTests();
   await __resetReservationStoreForTests();
+  /* The delivery claim is keyed by (kind, reservation id) and survives the
+     reservation itself, so a run that did not clear it would be testing
+     yesterday's rows. */
+  await query(`DELETE FROM mail_deliveries`);
 });
+
+/* WAITING FOR WORK THAT WAS DELIBERATELY NOT AWAITED.
+ *
+ * The confirmation mail is handed to `afterResponse` — outside a request scope
+ * that is a floating promise, which is exactly right in production and means a
+ * test has to look for the result rather than await it. Polling the row is
+ * honest about that: it asks the database the same question the office screen
+ * asks, and fails loudly rather than hanging. It is not a sleep standing in for
+ * an expiry — those are still done by ageing a column. */
+async function eventually<T>(
+  look: () => Promise<T | null | undefined>,
+  what: string,
+): Promise<T> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const found = await look();
+    if (found) return found;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  assert.fail(`timed out waiting for ${what}`);
+}
 
 after(async () => {
   await closeDatabase();
@@ -315,8 +347,15 @@ describe("turning a hold into a reservation", () => {
 
     assert.ok(result.ok, "a held table books");
     assert.equal(result.reservation.seatId, FREE);
-    assert.equal(result.reservation.status, "pending");
+    /* CONFIRMED, by the same statement that took the table. Nobody in the
+       office was asked and nobody has to be. */
+    assert.equal(result.reservation.status, "confirmed");
     assert.equal(result.reservation.source, "web");
+    assert.equal(
+      result.reservation.updatedBy,
+      undefined,
+      "no member of staff touched it",
+    );
 
     /* And it is gone from the floor for good, not for three minutes. */
     assert.ok((await seatAvailability({ eventId: NIGHT })).reserved.includes(FREE));
@@ -619,5 +658,240 @@ describe("the store underneath", () => {
       ok: false,
       reason: "hold-expired",
     });
+  });
+});
+
+/* ═══ A BOOKING THAT CONFIRMS ITSELF ══════════════════════════════════════
+ *
+ * The club used to ring back: a booking made on the site arrived `pending` and
+ * waited for somebody in the office to press POTVRDI. That step is gone. What
+ * has to be true now is that the guest leaves with a table rather than a
+ * request, that nothing about how a table was made impossible to double-book
+ * changed on the way, and that the one message this produces is produced once. */
+describe("a booking made on the site confirms itself", () => {
+  async function bookOne(seatId: string, token = ANA) {
+    assert.ok((await acquireHold({ eventId: NIGHT, seatId, token })).ok);
+    const made = await requestReservation(booking(seatId), {
+      ...freshSource(),
+      holdToken: token,
+    });
+    assert.ok(made.ok, "a held table books");
+    return made.reservation;
+  }
+
+  it("needs nobody in the office to press anything", async () => {
+    const reservation = await bookOne(FREE);
+
+    /* THE ROW ITSELF, read back the way the office reads it — not the answer
+       the service handed out. */
+    const row = (await reservationsForEvent(NIGHT)).find(
+      (line) => line.id === reservation.id,
+    );
+    assert.ok(row);
+    assert.equal(row.status, "confirmed");
+    assert.equal(row.updatedBy, undefined, "nobody confirmed it by hand");
+
+    /* And the office's own map says the table is taken, with the booking on
+       it, without anything having been approved. */
+    const seat = (await floorState(NIGHT)).seats.find((s) => s.id === FREE);
+    assert.equal(seat?.state, "reserved");
+    assert.equal(seat?.reservation?.status, "confirmed");
+  });
+
+  it("writes the confirmed row in one statement, never pending first", async () => {
+    const reservation = await bookOne(FREE);
+
+    /* There is no instant at which this row was `pending`: it was inserted
+       confirmed. `updated_at` still equalling `created_at` is what a second
+       statement would have pulled apart, and a second statement is exactly the
+       window this change had to avoid opening. */
+    const row = await query<{ status: string; same: boolean }>(
+      `SELECT status, (created_at = updated_at) AS same
+         FROM reservations WHERE id = $1`,
+      [reservation.id],
+    );
+    assert.equal(row.rows[0].status, "confirmed");
+    assert.equal(row.rows[0].same, true, "nothing updated it after the insert");
+  });
+
+  it("still refuses the table to a second guest, exactly as before", async () => {
+    await bookOne(FREE);
+
+    /* Not even a hold can be taken on it now — it is reserved, not held. */
+    const held = await acquireHold({ eventId: NIGHT, seatId: FREE, token: BOJAN });
+    assert.equal(held.ok, false);
+    assert.equal(held.ok === false && held.reason, "seat-reserved");
+
+    /* And the telephone is refused by the index rather than by a check. */
+    const byPhone = await addPhoneReservation(
+      {
+        eventId: NIGHT,
+        seatId: FREE,
+        guests: partyFor(FREE),
+        name: "Telefon Gost",
+        phone: "0699999999",
+      },
+      "Šef sale",
+    );
+    assert.equal(byPhone.ok, false);
+    assert.equal(byPhone.ok === false && byPhone.reason, "seat-taken");
+  });
+
+  it("gives the table to exactly one of two confirmations landing together", async () => {
+    /* Two guests, each holding a table of their own, both submitting for the
+       same one. The partial unique index decides, inside the insert. */
+    assert.ok((await acquireHold({ eventId: NIGHT, seatId: FREE, token: ANA })).ok);
+    assert.ok((await acquireHold({ eventId: NIGHT, seatId: OTHER_FREE, token: BOJAN })).ok);
+
+    const [a, b] = await Promise.all([
+      requestReservation(booking(FREE), { ...freshSource(), holdToken: ANA }),
+      requestReservation(booking(FREE), { ...freshSource(), holdToken: BOJAN }),
+    ]);
+
+    assert.equal([a.ok, b.ok].filter(Boolean).length, 1, "one table, one booking");
+
+    const live = (await reservationsForEvent(NIGHT)).filter(
+      (line) => line.seatId === FREE && ["pending", "confirmed"].includes(line.status),
+    );
+    assert.equal(live.length, 1, "and exactly one row holds it");
+  });
+
+  it("confirms nothing once the three minutes have run out", async () => {
+    assert.ok((await acquireHold({ eventId: NIGHT, seatId: FREE, token: ANA })).ok);
+    await age(FREE);
+
+    const refused = await requestReservation(booking(FREE), {
+      ...freshSource(),
+      holdToken: ANA,
+    });
+    assert.equal(refused.ok, false);
+    assert.equal(refused.ok === false && refused.reason, "hold-expired");
+
+    /* NOTHING WAS WRITTEN — not a confirmed row, not a pending one, no row at
+       all — and the table is back on the floor for whoever wants it next. */
+    assert.equal((await reservationsForEvent(NIGHT)).length, 0);
+    assert.equal(
+      (await seatAvailability({ eventId: NIGHT })).reserved.includes(FREE),
+      false,
+    );
+    assert.ok((await acquireHold({ eventId: NIGHT, seatId: FREE, token: BOJAN })).ok);
+  });
+
+  it("queues the guest's confirmation exactly once", async () => {
+    const reservation = await bookOne(FREE);
+
+    const delivery = await eventually(
+      () => mailDeliveryFor("reservation-guest", reservation.id),
+      "the guest's confirmation to be claimed",
+    );
+    assert.equal(delivery.recipient, reservation.email);
+    /* The log provider is the development default and a STATE, not a failure —
+       so this is `sent` with no provider configured, which is the point: a club
+       that has not chosen a mail service still has a working reservation. */
+    assert.equal(delivery.status, "sent");
+    assert.equal(delivery.attempts, 1);
+
+    /* ASKING AGAIN SENDS NOTHING. The (kind, key) primary key in
+       `mail_deliveries` is the guarantee — the same one a second instance, a
+       retried request and the office pressing confirm on a legacy row meet. */
+    assert.equal(
+      await notifyReservationConfirmed(reservation),
+      "already-claimed",
+      "a second confirmation is not a second mail",
+    );
+    const after = await mailDeliveryFor("reservation-guest", reservation.id);
+    assert.equal(after?.attempts, 1);
+  });
+
+  it("makes a retried submit produce neither a second table nor a second mail", async () => {
+    const reservation = await bookOne(FREE);
+    await eventually(
+      () => mailDeliveryFor("reservation-guest", reservation.id),
+      "the first confirmation",
+    );
+
+    /* The same browser sending the same thing again: a double tap, a flaky
+       connection, a reloaded POST. The hold was spent by the first one and
+       there is nothing left to spend. */
+    const again = await requestReservation(booking(FREE), {
+      ...freshSource(),
+      holdToken: ANA,
+    });
+    assert.equal(again.ok, false);
+
+    assert.equal((await reservationsForEvent(NIGHT)).length, 1, "one booking");
+    const delivery = await mailDeliveryFor("reservation-guest", reservation.id);
+    assert.equal(delivery?.attempts, 1, "one mail");
+  });
+
+  it("lets the office cancel it, which puts the table back", async () => {
+    const reservation = await bookOne(FREE);
+
+    const cancelled = await setReservationStatus(reservation.id, "cancelled", "Uprava");
+    assert.ok(cancelled.ok);
+
+    /* Back on the plan for the office… */
+    assert.equal(
+      (await floorState(NIGHT)).seats.find((s) => s.id === FREE)?.state,
+      "available",
+    );
+    /* …and back on the floor for guests, who can hold and book it again. */
+    assert.equal(
+      (await seatAvailability({ eventId: NIGHT })).reserved.includes(FREE),
+      false,
+    );
+    assert.ok((await acquireHold({ eventId: NIGHT, seatId: FREE, token: BOJAN })).ok);
+
+    /* Nothing was deleted, and who let it go is written on the row. */
+    const kept = await reservationStore.find(reservation.id);
+    assert.equal(kept?.status, "cancelled");
+    assert.equal(kept?.updatedBy, "Uprava");
+    assert.equal(kept?.name, reservation.name);
+  });
+
+  it("lets the office correct what the guest typed", async () => {
+    const reservation = await bookOne(FREE);
+
+    const edited = await editReservation(
+      reservation.id,
+      { name: "Marko Marinković", phone: "0641234567", note: "Rođendan" },
+      "Uprava",
+    );
+    assert.ok(edited.ok);
+    assert.equal(edited.reservation.name, "Marko Marinković");
+    assert.equal(edited.reservation.note, "Rođendan");
+    assert.equal(edited.reservation.updatedBy, "Uprava");
+
+    /* CORRECTING IS NOT RE-BOOKING. The table, the night and the status are
+       untouched, so a booking never lets go of the floor while it is edited. */
+    assert.equal(edited.reservation.seatId, FREE);
+    assert.equal(edited.reservation.status, "confirmed");
+    assert.ok((await seatAvailability({ eventId: NIGHT })).reserved.includes(FREE));
+  });
+
+  it("still refuses a guest a second table, and still lets staff give one", async () => {
+    /* The duplicate rule was never about the approval step and is unchanged:
+       one table per telephone and per email on the site, and staff trusted to
+       know that the same number is ringing about the cousins. */
+    const who = guest();
+
+    assert.ok((await acquireHold({ eventId: NIGHT, seatId: FREE, token: ANA })).ok);
+    const first = await requestReservation(
+      { eventId: NIGHT, seatId: FREE, guests: partyFor(FREE), ...who },
+      { ...freshSource(), holdToken: ANA },
+    );
+    assert.ok(first.ok);
+    assert.equal(first.reservation.status, "confirmed");
+
+    assert.ok((await acquireHold({ eventId: NIGHT, seatId: OTHER_FREE, token: ANA })).ok);
+    const second = await requestReservation(
+      { eventId: NIGHT, seatId: OTHER_FREE, guests: partyFor(OTHER_FREE), ...who },
+      { ...freshSource(), holdToken: ANA },
+    );
+    assert.equal(second.ok, false);
+    assert.equal(second.ok === false && second.reason, "duplicate");
+
+    /* And the three minutes she spent on the refusal are handed back. */
+    assert.ok(await getHoldStatus({ eventId: NIGHT, seatId: OTHER_FREE, token: ANA }));
   });
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { INK } from "@/components/floor-plan/plan-ink";
+import { seatTurn } from "@/lib/floor-plan";
 import type { Seat } from "@/lib/floor-availability";
 
 /* What every table on the plan has in common.
@@ -82,10 +83,10 @@ export function SeatShell({
   const taken = state === "taken" || state === "held";
 
   /* A booth set at an angle on the paper is turned about its own centre, and
-     the target over it turns with it. */
-  const turn = seat.rotation
-    ? `rotate(${seat.rotation} ${seat.x} ${seat.y})`
-    : undefined;
+     the target over it turns with it. The turn is worked out in one place for
+     the whole project — see `seatTurn` in lib/floor-plan.ts, and the note there
+     about what happens to a map that pivots about a corner instead. */
+  const turn = seatTurn(seat);
 
   /* A table that is gone is still drawn — the guest needs to see the room is
      filling up, and a plan with holes in it is not the club's floor. But it is

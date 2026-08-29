@@ -12,6 +12,8 @@ import {
 import {
   LANG_STORAGE_KEY,
   messages,
+  resolveCaption,
+  type Caption,
   type Lang,
   type MessageKey,
 } from "@/lib/i18n";
@@ -53,16 +55,20 @@ function writeLang(next: Lang) {
 type LanguageValue = {
   lang: Lang;
   setLang: (next: Lang) => void;
-  /* Plain string. */
-  t: (key: MessageKey) => string;
-  /* Same string, with *starred* words rendered as <em>. */
+  /* Plain string. A dictionary key, a sentence already resolved into both
+     languages, or the club's own words straight off an event row — see
+     `Caption` in lib/i18n.ts. Every existing call passes a key and is
+     unaffected. */
+  t: (value: Caption) => string;
+  /* Same string, with *starred* words rendered as <em>. Emphasis is a thing the
+     SITE does to its own copy, so this one still takes a key. */
   tRich: (key: MessageKey) => React.ReactNode;
 };
 
 const LanguageContext = createContext<LanguageValue>({
   lang: "sr",
   setLang: () => {},
-  t: (key) => messages.sr[key],
+  t: (value) => resolveCaption(value, "sr"),
   tRich: (key) => messages.sr[key],
 });
 
@@ -79,7 +85,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   }, [lang]);
 
   const value = useMemo<LanguageValue>(() => {
-    const t = (key: MessageKey) => messages[lang][key] ?? messages.sr[key];
+    const t = (value: Caption) => resolveCaption(value, lang);
 
     const tRich = (key: MessageKey) =>
       /* Odd segments sit between the asterisks — those are the emphasis. */

@@ -1,7 +1,8 @@
 "use client";
 
 import { INK } from "@/components/floor-plan/plan-ink";
-import { cornerPath } from "@/lib/floor-plan";
+import { SeatOutline } from "@/components/floor-plan/plan-shapes";
+import { seatBox } from "@/lib/floor-plan";
 import {
   SeatId,
   SeatShell,
@@ -30,14 +31,10 @@ export function FloorPlanBooth({
   const state = seatState(seat, picked, hovered);
   const ink = seatInk(state);
 
-  const x = seat.x - seat.w / 2;
-  const y = seat.y - seat.h / 2;
-  const upright = seat.h > seat.w;
-
-  /* The back runs along the long side that faces the wall. */
-  const back = upright
-    ? { x1: x, y1: y + 3, x2: x, y2: y + seat.h - 3 }
-    : { x1: x + 3, y1: y, x2: x + seat.w - 3, y2: y };
+  /* The plan states a table's CENTRE; this is the box that follows from it.
+     Only the picked glow needs it here — the outline works it out for itself
+     from the same helper. */
+  const { x, y } = seatBox(seat);
 
   return (
     <SeatShell
@@ -65,43 +62,17 @@ export function FloorPlanBooth({
         />
       ) : null}
 
-      {seat.corner ? (
-        /* Wrapped into a corner — the same separe, drawn as the L it is. */
-        <path
-          d={cornerPath(x, y, seat.w, seat.h, seat.depth ?? 18, seat.corner)}
-          fill={ink.fill}
-          stroke={ink.stroke}
-          strokeWidth={ink.width}
-          strokeLinejoin="round"
-          style={{ transition: "stroke 400ms ease, fill 400ms ease" }}
-          pointerEvents="none"
-        />
-      ) : (
-        <>
-          <rect
-            x={x}
-            y={y}
-            width={seat.w}
-            height={seat.h}
-            rx={3}
-            fill={ink.fill}
-            stroke={ink.stroke}
-            strokeWidth={ink.width}
-            style={{ transition: "stroke 400ms ease, fill 400ms ease" }}
-            pointerEvents="none"
-          />
-
-          <line
-            {...back}
-            stroke={ink.stroke}
-            strokeWidth={ink.width * 2.2}
-            strokeLinecap="round"
-            opacity={0.8}
-            style={{ transition: "stroke 400ms ease" }}
-            pointerEvents="none"
-          />
-        </>
-      )}
+      {/* The box, the seat-back and the corner L are all drawn by the shared
+          plan — see components/floor-plan/plan-shapes.tsx — so the office's map
+          wraps the same separes into the same corners. */}
+      <SeatOutline
+        seat={seat}
+        ink={{
+          ...ink,
+          pointerEvents: "none",
+          style: { transition: "stroke 400ms ease, fill 400ms ease" },
+        }}
+      />
 
       {showId || state === "picked" || state === "hover" ? (
         <SeatId seat={seat} state={state} size={12} />

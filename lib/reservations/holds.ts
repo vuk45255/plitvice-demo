@@ -1,4 +1,4 @@
-import { findEvent, isBookable } from "@/lib/events";
+import { tableBookingGate } from "@/lib/reservations/gate";
 import { SEATS } from "@/lib/floor-plan";
 import { reservedSeats } from "@/lib/floor-availability";
 import {
@@ -106,10 +106,11 @@ export async function acquireHold(input: {
   seatId: string;
   token: string;
 }): Promise<HoldResult> {
-  const event = findEvent(input.eventId);
-  if (!event || !isBookable(event) || !event.tables.enabled) {
-    return { ok: false, reason: "unavailable" };
-  }
+  /* The night, and whether it is taking tables at all — read off its row, so
+     the REZERVACIJE switch in the office is what decides. See gate.ts. */
+  const gate = await tableBookingGate(input.eventId);
+  if (!gate.open) return { ok: false, reason: "unavailable" };
+  const event = gate.event;
 
   const seat = SEATS.find((s) => s.id === input.seatId);
   if (!seat) return { ok: false, reason: "unavailable" };

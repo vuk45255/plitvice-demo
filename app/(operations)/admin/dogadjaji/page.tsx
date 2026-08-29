@@ -1,28 +1,43 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Empty, PageHeader, Panel, Scroller } from "@/components/admin/shell";
-import { Badge } from "@/components/admin/badge";
-import { EventCreateForm } from "@/components/admin/event-create-form";
-import { allTicketingEvents, saleState } from "@/lib/ticketing/events";
+import { Plus } from "lucide-react";
+import { Empty, PageHeader, Panel } from "@/components/admin/shell";
+import { EventCard } from "@/components/admin/event-card";
+import { allTicketingEvents } from "@/lib/ticketing/events";
 import { countsFor } from "@/lib/ticketing/store";
-import { eventDate, price } from "@/lib/ticketing/copy";
+import {
+  GROUP_LABELS,
+  groupEvents,
+  toCard,
+  type EventGroup,
+} from "@/lib/club/event-manager";
 import { requireStaff } from "@/lib/staff/guard";
 
-/* /admin/dogadjaji — every night the system knows about.
+/* /admin/dogadjaji — THE PROGRAMME.
  *
- * A list and a form to add one. Not a CMS: the poster, the ambient colour and
- * the copy on the wall belong to lib/events.ts and to a deploy, because they
- * are design decisions and the club does not make those at one in the morning.
- * What is here is what the club genuinely changes at one in the morning — a
- * price, a capacity, whether the thing is selling.
+ * ═══ THREE GROUPS AND A DRAWER ════════════════════════════════════════════
  *
- * THE NEXT NIGHT IS THE LOUD ONE. It gets a card of its own at the top with its
- * numbers in full; everything else is a row, and a night that has already
- * happened is dimmed rather than hidden — the club reads last night's figures
- * the next afternoon.
+ * AKTIVNI first, because it is what the club is working on tonight. DRAFT
+ * second, because those are the ones somebody has started and not finished and
+ * they should nag. ZAVRŠENI third, read the next afternoon for the figures.
+ * ARHIVA last and collapsed, because it is where nights go to stop being in
+ * the way — a `<details>` rather than a second page, so it is one tap away and
+ * costs nothing when it is shut.
  *
- * SOLD AND REMAINING ARE COUNTED PER NIGHT, in one query each. See `countsFor`:
- * there is no stored total anywhere in this system. */
+ * An empty group is not rendered at all. Four headings with nothing under
+ * three of them is a screen that looks broken on the club's first night.
+ *
+ * ═══ WHAT REPLACED WHAT ═══════════════════════════════════════════════════
+ *
+ * This used to be a "next night" hero, a card list for phones, an eight-column
+ * table for laptops, and a create form pinned to the bottom. The table could
+ * not hold a poster and the column that mattered was always the name; the form
+ * at the bottom meant every visit to the list scrolled past the whole
+ * programme. Now: one card shape that reflows, and NOVI DOGAĐAJ is a button
+ * that goes to its own screen.
+ *
+ * SOLD AND REMAINING ARE STILL COUNTED PER NIGHT, in one query each. There is
+ * no stored total anywhere in this system — see `countsFor`. */
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,190 +51,84 @@ export default async function AdminEventsPage() {
   await requireStaff("admin");
 
   const events = await allTicketingEvents();
-  const rows = await Promise.all(
-    events.map(async (event) => ({ event, counts: await countsFor(event.id) })),
-  );
-
   const now = new Date();
-  const upcoming = rows
-    .filter(({ event }) => new Date(event.startsAt) >= now && event.status !== "ended")
-    .sort((a, b) => a.event.startsAt.localeCompare(b.event.startsAt));
-  const past = rows
-    .filter((row) => !upcoming.includes(row))
-    .sort((a, b) => b.event.startsAt.localeCompare(a.event.startsAt));
 
-  const [next, ...rest] = upcoming;
+  const cards = await Promise.all(
+    events.map(async (event) => toCard(event, await countsFor(event.id), now)),
+  );
+  const grouped = groupEvents(cards);
+
+  const working: EventGroup[] = ["active", "draft", "finished"];
+  const nothingAtAll = cards.length === 0;
 
   return (
     <>
       <PageHeader
         eyebrow="Program"
         title="Događaji"
-        lede="Cena, kapacitet i prodaja se menjaju ovde i odmah važe. Poster i tekst na sajtu se menjaju u kodu."
+        lede="Sve što se menja na jednom mestu: datum, poster, karte, stolovi. Novo veče se pravi za minut."
+        action={
+          <Link
+            href="/admin/dogadjaji/novi"
+            className="adm-btn adm-btn--primary adm-btn--sm"
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Novi događaj
+          </Link>
+        }
       />
 
-      {next ? (
-        <section className="adm-panel mb-6 px-5 py-5 sm:px-6">
-          <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
-            <div className="min-w-0">
-              <p className="adm-eyebrow">Sledeće veče · {eventDate(next.event.startsAt)}</p>
-              <h2 className="adm-display mt-2 text-[clamp(1.375rem,4vw,1.875rem)] text-[var(--adm-ink)]">
-                {next.event.title}
-              </h2>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <Badge kind="event" value={next.event.status} />
-                <Badge
-                  kind="sale"
-                  value={
-                    saleState(next.event, next.counts.taken).open
-                      ? "open"
-                      : (saleState(next.event, next.counts.taken) as { reason: string })
-                          .reason
-                  }
-                />
-              </div>
-            </div>
-
-            <Link
-              href={`/admin/dogadjaji/${next.event.id}`}
-              className="adm-btn adm-btn--primary adm-btn--sm"
-            >
-              Uredi
-            </Link>
-          </div>
-
-          <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-[var(--adm-line-soft)] pt-4 sm:grid-cols-4">
-            <Figure label="Cena" value={next.event.ticketPrice ? price(next.event.ticketPrice) : "—"} />
-            <Figure label="Kapacitet" value={String(next.counts.capacity)} />
-            <Figure label="Prodato" value={String(next.counts.paid)} tone="gold" />
-            <Figure label="Preostalo" value={String(next.counts.available)} />
-          </dl>
-        </section>
+      {nothingAtAll ? (
+        <Panel>
+          <Empty
+            action={
+              <Link href="/admin/dogadjaji/novi" className="adm-btn adm-btn--primary">
+                Napravi prvo veče
+              </Link>
+            }
+          >
+            Još nema nijednog događaja.
+          </Empty>
+        </Panel>
       ) : null}
 
-      <Panel
-        title="Svi događaji"
-        action={
-          <span className="adm-figure text-[0.75rem] text-[var(--adm-ink-3)]">
-            {events.length}
-          </span>
-        }
-      >
-        {events.length === 0 ? (
-          <Empty>Nema nijednog događaja. Dodajte prvo veče ispod.</Empty>
-        ) : (
-          <>
-            {/* On a phone: one row per night, three lines each. */}
-            <ul className="sm:hidden">
-              {[...rest, ...past].map(({ event, counts }) => (
-                <li key={event.id} className={`adm-row ${isPast(event.startsAt, now) ? "opacity-60" : ""}`}>
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                    <Link
-                      href={`/admin/dogadjaji/${event.id}`}
-                      className="text-[0.9375rem] text-[var(--adm-ink)]"
-                    >
-                      {event.title}
-                    </Link>
-                    <Badge kind="event" value={event.status} />
-                  </div>
-                  <p className="mt-1 text-[0.6875rem] text-[var(--adm-ink-4)]">
-                    {eventDate(event.startsAt)}
-                  </p>
-                  <p className="adm-figure mt-2 text-[0.8125rem] text-[var(--adm-ink-2)]">
-                    {counts.paid} / {counts.capacity} prodato · {counts.available} slobodno
-                    {event.ticketPrice ? ` · ${price(event.ticketPrice)}` : ""}
-                  </p>
-                </li>
+      {working.map((group) =>
+        grouped[group].length > 0 ? (
+          <Panel
+            key={group}
+            title={GROUP_LABELS[group]}
+            action={
+              <span className="adm-figure text-[0.75rem] text-[var(--adm-ink-3)]">
+                {grouped[group].length}
+              </span>
+            }
+          >
+            <ul>
+              {grouped[group].map((card) => (
+                <EventCard key={card.event.id} card={card} />
               ))}
             </ul>
+          </Panel>
+        ) : null,
+      )}
 
-            <Scroller>
-              <table className="adm-table hidden min-w-[48rem] sm:table">
-                <thead>
-                  <tr>
-                    <th>Naziv</th>
-                    <th>Datum</th>
-                    <th>Status</th>
-                    <th>Prodaja</th>
-                    <th className="text-right">Cena</th>
-                    <th className="text-right">Kapacitet</th>
-                    <th className="text-right">Prodato</th>
-                    <th className="text-right">Preostalo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...upcoming, ...past].map(({ event, counts }) => {
-                    const state = saleState(event, counts.taken);
-                    const dim = isPast(event.startsAt, now);
-                    return (
-                      <tr key={event.id} className={dim ? "opacity-55" : undefined}>
-                        <td>
-                          <Link
-                            href={`/admin/dogadjaji/${event.id}`}
-                            className="text-[0.875rem] text-[var(--adm-ink)] transition-colors hover:text-[var(--adm-gold)]"
-                          >
-                            {event.title}
-                          </Link>
-                          <span className="mt-0.5 block font-mono text-[0.625rem] text-[var(--adm-ink-4)]">
-                            {event.slug}
-                          </span>
-                        </td>
-                        <td className="text-[0.75rem]">{eventDate(event.startsAt)}</td>
-                        <td>
-                          <Badge kind="event" value={event.status} />
-                        </td>
-                        <td>
-                          <Badge
-                            kind="sale"
-                            value={state.open ? "open" : state.reason}
-                          />
-                        </td>
-                        <td className="adm-figure text-right">
-                          {event.ticketPrice ? price(event.ticketPrice) : "—"}
-                        </td>
-                        <td className="adm-figure text-right">{counts.capacity}</td>
-                        <td className="adm-figure text-right text-[var(--adm-gold-light)]">
-                          {counts.paid}
-                        </td>
-                        <td className="adm-figure text-right">{counts.available}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </Scroller>
-          </>
-        )}
-      </Panel>
-
-      <Panel title="Novo veče">
-        <EventCreateForm />
-      </Panel>
+      {/* Shut by default and one tap from open. Nothing in here is urgent; it
+          is where a night goes when the club has finished with it. */}
+      {grouped.archived.length > 0 ? (
+        <details className="adm-panel mb-6">
+          <summary className="adm-panel-head cursor-pointer list-none">
+            <h2 className="adm-panel-title">{GROUP_LABELS.archived}</h2>
+            <span className="adm-figure text-[0.75rem] text-[var(--adm-ink-3)]">
+              {grouped.archived.length}
+            </span>
+          </summary>
+          <ul>
+            {grouped.archived.map((card) => (
+              <EventCard key={card.event.id} card={card} />
+            ))}
+          </ul>
+        </details>
+      ) : null}
     </>
   );
 }
-
-function Figure({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone?: "gold";
-}) {
-  return (
-    <div>
-      <dt className="adm-label">{label}</dt>
-      <dd
-        className={`adm-figure mt-1.5 text-[1.25rem] ${
-          tone === "gold" ? "text-[var(--adm-gold-light)]" : "text-[var(--adm-ink)]"
-        }`}
-      >
-        {value}
-      </dd>
-    </div>
-  );
-}
-
-const isPast = (startsAt: string, now: Date) => new Date(startsAt) < now;

@@ -132,10 +132,17 @@ export const reservationStore = {
    *
    * There is no check before the insert on purpose. A check is a read, and a
    * read followed by a write is the race. The database refuses, and the
-   * refusal is turned back into one of the two words the panel knows. */
+   * refusal is turned back into one of the two words the panel knows.
+   *
+   * THE STATUS IS PART OF THAT ONE STATEMENT and is why there is no second one.
+   * Both doors write `confirmed` — the site because spending a live hold on a
+   * free table is the confirmation, the telephone because the conversation was.
+   * Inserting `pending` and updating it to `confirmed` afterwards would be two
+   * statements with a window between them, and a booking stranded in that
+   * window holds a table nobody has been told about. */
   async claim(
     draft: ReservationDraft,
-    status: ReservationStatus = "pending",
+    status: ReservationStatus = "confirmed",
   ): Promise<ClaimOutcome> {
     try {
       const result = await query<ReservationRow>(

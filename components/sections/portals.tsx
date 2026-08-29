@@ -10,7 +10,7 @@ import { SectionWord } from "@/components/section-word";
 import { LightLeaks } from "@/components/light-leaks";
 import { useLang } from "@/components/providers/language";
 import { atmosfera, trenutciClips } from "@/lib/gallery";
-import { posters } from "@/lib/events";
+import type { Poster } from "@/lib/club/poster-assets";
 
 /* Three windows into the club, hung on the dark.
  *
@@ -31,7 +31,9 @@ import { posters } from "@/lib/events";
 
 const sizes = "(min-width: 768px) 20vw, 72vw";
 
-export function Portals() {
+/* The artwork cycling in the middle window is every night's poster, in the
+   programme's own order, handed in from the page. */
+export function Portals({ posters }: { posters: Poster[] }) {
   const { t } = useLang();
 
   return (
