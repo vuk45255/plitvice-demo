@@ -62,7 +62,39 @@ import type { RedemptionResult } from "@/lib/ticketing/types";
  * A camera decoding five frames a second sees the same QR five times a second.
  * Three separate things stop that becoming twenty requests: a busy flag while
  * one is in flight, the decoder being STOPPED the moment a code is accepted,
- * and a short memory of the last string that was sent. */
+ * and a short memory of the last string that was sent.
+ *
+ * ═══ THE <video> IS MOUNTED ONCE AND NEVER UNMOUNTED ══════════════════════
+ *
+ * THIS IS A RULE, NOT A DETAIL, and breaking it is what put a black rectangle
+ * in front of a doorman with a queue.
+ *
+ * `QrScanner` takes a video element in its constructor and holds it as
+ * `readonly $video` — see node_modules/qr-scanner/types/qr-scanner.d.ts. There
+ * is no way to point a live instance at a different element. So the moment the
+ * result screen was rendered with an early `return`, the whole scanning tree
+ * went with it: React detached that <video>, the instance kept its reference to
+ * the orphan, and "Skeniraj sledeću" mounted a BRAND NEW element that no
+ * decoder had ever heard of. The restart below then dutifully started the
+ * camera — into the detached element. Torch on, nothing on screen, and because
+ * the state still said `ready` the overlay that would have explained it was
+ * suppressed. Only a full reload, which remounts this component and builds a
+ * scanner around the live element, could clear it.
+ *
+ * So the verdict is rendered BESIDE the scanner and the scanner is hidden with
+ * a class, never unmounted. Note that it must be a class: Tailwind's `flex` is
+ * an author style and would win against the `hidden` attribute's rule in the
+ * user-agent sheet, so the element would stay visible.
+ *
+ * ═══ WHAT DECIDES WHETHER THE CAMERA IS RUNNING ═══════════════════════════
+ *
+ * One derived boolean — `shouldScan` — and not a transition. It used to be an
+ * effect on `result`, which meant the camera was restarted only by a verdict
+ * arriving and then going away. Every other way a scan can end left the door
+ * dead: `onScan` stops the decoder BEFORE it posts, so a 401, a 409 or a
+ * dropped connection at the door set a message, left `result` null, and
+ * nothing ever started the camera again. Same black rectangle, different
+ * morning. Asking "should it be running now" instead has no such gaps. */
 
 type CameraState =
   | "idle"
@@ -100,6 +132,8 @@ export function Scanner({
   /* And the last thing that was sent, with the moment it was sent, for the
      same reason a second time over. */
   const lastSent = useRef<{ value: string; at: number } | null>(null);
+  /* The camera track currently being watched for an unexpected end. */
+  const watchedTrack = useRef<MediaStreamTrack | null>(null);
   /* Bumped to start the camera again after a failure. */
   const [attempt, setAttempt] = useState(0);
 
@@ -237,18 +271,63 @@ export function Scanner({
     };
   }, [onScan, attempt]);
 
-  /* While a verdict is on the screen the camera stays stopped — both so it
-     cannot post the same code again behind the result, and so the phone is not
-     running a decoder nobody is looking at. */
+  /* A stream can die underneath the page without anything throwing: the camera
+     is taken by another application, the device sleeps, a track is revoked. The
+     picture simply stops. `ended` is the browser saying so — and it is NOT
+     fired when we stop a track ourselves, which is exactly the distinction
+     wanted here. Reported as `failed`, which is the state that carries a retry
+     button, so nobody is left tapping a black square. */
+  const watchStream = useCallback(() => {
+    const stream = videoRef.current?.srcObject;
+    if (!(stream instanceof MediaStream)) return;
+    const [track] = stream.getVideoTracks();
+    /* Once per track, not once per scan. A quick verdict is dismissed inside
+       the library's own 300ms grace period, so the stream — and this exact
+       track — is often still the one from an hour ago; without this a busy
+       night would hang hundreds of listeners on it. */
+    if (!track || track === watchedTrack.current) return;
+    watchedTrack.current = track;
+    track.addEventListener(
+      "ended",
+      () => setCamera((state) => (state === "ready" ? "failed" : state)),
+      { once: true },
+    );
+  }, []);
+
+  /* THE CAMERA RUNS WHEN THERE IS NOTHING IN THE WAY OF IT.
+     Not while a verdict is being read — both so it cannot post the same code
+     again behind the result and so the phone is not running a decoder nobody is
+     looking at — and not while a request is in flight. Anything else, it runs. */
+  const shouldScan = !result && !checking;
+
   useEffect(() => {
     const scanner = scannerRef.current;
     if (!scanner || camera !== "ready") return;
-    if (result) {
+
+    if (!shouldScan) {
       scanner.stop();
       return;
     }
-    void scanner.start().catch(() => setCamera("failed"));
-  }, [result, camera]);
+
+    /* `start()` is safe to call on a scanner that is already running — the
+       library returns early unless it is stopped or paused — so this cannot
+       stack up a second stream on a re-render. */
+    let cancelled = false;
+    scanner.start().then(
+      () => {
+        if (!cancelled) watchStream();
+      },
+      () => {
+        /* The camera would not come back: another application took it while the
+           verdict was on screen, or permission was withdrawn in settings. A
+           retry button, never a page somebody has to reload. */
+        if (!cancelled) setCamera("failed");
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [shouldScan, camera, watchStream]);
 
   /* An admission clears itself, because a queue moves and nobody wants to tap
      a phone between every guest. Every refusal stays until it is dismissed:
@@ -259,78 +338,83 @@ export function Scanner({
     return () => clearTimeout(timer);
   }, [result]);
 
-  if (result) {
-    return <ScanResult result={result} onDismiss={() => setResult(null)} />;
-  }
-
   const notice = CAMERA_NOTICE[camera];
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* ── which night ────────────────────────────────────────────────── */}
-      {eventTitle ? (
-        <p className="text-center text-[0.625rem] uppercase tracking-[0.28em] text-night-ink/35">
-          {t.scanningFor} <span className="text-night-ink/70">{eventTitle}</span>
-        </p>
-      ) : (
-        <p
-          role="alert"
-          className="border border-[#e6a091]/30 bg-[#e6a091]/[0.06] px-4 py-3 text-center text-[0.75rem] leading-relaxed text-[#e6a091]"
-        >
-          {t.noEventTonight}
-        </p>
-      )}
+    <>
+      {result ? (
+        <ScanResult result={result} onDismiss={() => setResult(null)} />
+      ) : null}
 
-      {/* ── the camera frame ───────────────────────────────────────────── */}
-      <div className="relative aspect-square w-full overflow-hidden border border-line bg-black">
-        <video
-          ref={videoRef}
-          className="h-full w-full object-cover"
-          playsInline
-          muted
-        />
+      {/* HIDDEN, NEVER UNMOUNTED — see the note at the top of this file. The
+          <video> below is the element the decoder was built around, and it has
+          to be the same element for the whole life of the page. */}
+      <div className={result ? "hidden" : "flex flex-col gap-6"}>
+        {/* ── which night ────────────────────────────────────────────────── */}
+        {eventTitle ? (
+          <p className="text-center text-[0.625rem] uppercase tracking-[0.28em] text-night-ink/35">
+            {t.scanningFor} <span className="text-night-ink/70">{eventTitle}</span>
+          </p>
+        ) : (
+          <p
+            role="alert"
+            className="border border-[#e6a091]/30 bg-[#e6a091]/[0.06] px-4 py-3 text-center text-[0.75rem] leading-relaxed text-[#e6a091]"
+          >
+            {t.noEventTonight}
+          </p>
+        )}
 
-        {camera !== "ready" ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-night px-6 text-center">
-            <p className="text-[0.6875rem] uppercase tracking-[0.28em] text-night-ink/70">
-              {notice.title}
-            </p>
-            {notice.body ? (
-              <p className="max-w-[20rem] text-[0.8125rem] leading-relaxed text-night-ink/45">
-                {notice.body}
+        {/* ── the camera frame ───────────────────────────────────────────── */}
+        <div className="relative aspect-square w-full overflow-hidden border border-line bg-black">
+          <video
+            ref={videoRef}
+            className="h-full w-full object-cover"
+            playsInline
+            muted
+          />
+
+          {camera !== "ready" ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-night px-6 text-center">
+              <p className="text-[0.6875rem] uppercase tracking-[0.28em] text-night-ink/70">
+                {notice.title}
               </p>
-            ) : null}
-            {notice.retry ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setCamera("idle");
-                  setAttempt((n) => n + 1);
-                }}
-                className="mt-2 text-[0.6875rem] uppercase tracking-[0.24em] text-gold underline-offset-4 hover:underline"
-              >
-                {t.cameraRetry}
-              </button>
-            ) : null}
-          </div>
+              {notice.body ? (
+                <p className="max-w-[20rem] text-[0.8125rem] leading-relaxed text-night-ink/45">
+                  {notice.body}
+                </p>
+              ) : null}
+              {notice.retry ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCamera("idle");
+                    setAttempt((n) => n + 1);
+                  }}
+                  className="mt-2 text-[0.6875rem] uppercase tracking-[0.24em] text-gold underline-offset-4 hover:underline"
+                >
+                  {t.cameraRetry}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        {camera === "ready" ? (
+          <p className="text-center text-[0.6875rem] uppercase tracking-[0.28em] text-night-ink/45">
+            {checking ? t.checking : t.scannerReady}
+          </p>
         ) : null}
+
+        {problem ? (
+          <p role="alert" className="text-center text-[0.8125rem] text-[#e6a091]">
+            {problem}
+          </p>
+        ) : null}
+
+        {/* ── the same door, typed ─────────────────────────────────────── */}
+        <ManualEntry busy={checking} onSubmit={(typed) => submit({ typed })} />
       </div>
-
-      {camera === "ready" ? (
-        <p className="text-center text-[0.6875rem] uppercase tracking-[0.28em] text-night-ink/45">
-          {checking ? t.checking : t.scannerReady}
-        </p>
-      ) : null}
-
-      {problem ? (
-        <p role="alert" className="text-center text-[0.8125rem] text-[#e6a091]">
-          {problem}
-        </p>
-      ) : null}
-
-      {/* ── the same door, typed ───────────────────────────────────────── */}
-      <ManualEntry busy={checking} onSubmit={(typed) => submit({ typed })} />
-    </div>
+    </>
   );
 }
 
