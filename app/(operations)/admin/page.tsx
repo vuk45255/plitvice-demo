@@ -9,6 +9,7 @@ import { failedDeliveries } from "@/lib/mail/send";
 import { providerName } from "@/lib/mail/provider";
 import { mediaReadiness } from "@/lib/media/provider";
 import { allTicketingEvents, saleState } from "@/lib/ticketing/events";
+import { hasEnded } from "@/lib/ticketing/event-rules";
 import { countsFor, listOrders, recentScans } from "@/lib/ticketing/store";
 import { eventDate, eventTime, price, scanMoment } from "@/lib/ticketing/copy";
 import { requireStaff } from "@/lib/staff/guard";
@@ -54,14 +55,22 @@ export default async function AdminHome() {
   const kind = await databaseKind();
   const media = mediaReadiness();
 
-  /* Tonight, or the next one: the soonest night that has not finished. Twelve
-     hours' grace, because a Saturday night is still "tonight" at four on
-     Sunday morning and that is exactly when somebody is looking at this. If
-     everything is past, the most recent one stands. */
+  /* Tonight, or the next one: the soonest night that has not finished.
+   *
+   * THIS USED TO KEEP ITS OWN CLOCK — `startsAt > now - 12h`, a grace period
+   * written here and nowhere else — and that is precisely the shape of bug the
+   * lifecycle rule exists to remove. A Saturday night is still "tonight" at
+   * four on Sunday morning, which is exactly when somebody is looking at this
+   * screen; but with a rule of its own, this screen led with a night that
+   * /admin/dogadjaji had already filed under ZAVRŠENI, whose sale badge read
+   * closed and whose tables both gates were refusing.
+   *
+   * `hasEnded` says the night runs until five, which is the same answer this
+   * grace period was reaching for and the same answer every other surface now
+   * gives. If everything is past, the most recent one stands. */
   const now = new Date();
-  const stillTonight = new Date(now.getTime() - 12 * 3600_000);
   const ahead = [...events]
-    .filter((event) => event.status !== "ended" && new Date(event.startsAt) > stillTonight)
+    .filter((event) => event.status !== "ended" && !hasEnded(event, now))
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   const current = ahead[0] ?? [...events].sort((a, b) => b.startsAt.localeCompare(a.startsAt))[0];
 

@@ -1,4 +1,5 @@
 import { findTicketingEvent, type TicketingEvent } from "@/lib/ticketing/events";
+import { hasEnded } from "@/lib/ticketing/event-rules";
 
 /* MAY A TABLE BE TAKEN FOR THIS NIGHT — asked of the database, in one place.
  *
@@ -65,7 +66,11 @@ export async function tableBookingGate(
     return { open: false, reason: "not-public" };
   }
 
-  if (event.status === "ended" || new Date(event.startsAt) < now) {
+  /* OVER, NOT MERELY BEGUN. A guest asking for a table at half past ten on
+     the night itself is asking for a table the club still has, and this used
+     to refuse them the moment the doors opened. `hasEnded` is the one rule —
+     the same one the office groups by and the wall reads. */
+  if (event.status === "ended" || hasEnded(event, now)) {
     return { open: false, reason: "past" };
   }
 
@@ -95,7 +100,7 @@ export async function bookableNights(now = new Date()): Promise<TicketingEvent[]
         event.status !== "draft" &&
         event.status !== "ended" &&
         event.tablesEnabled &&
-        new Date(event.startsAt) >= now,
+        !hasEnded(event, now),
     )
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 }

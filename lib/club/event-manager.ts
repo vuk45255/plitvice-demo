@@ -3,6 +3,7 @@
    database client on its first line, so naming it here would put `pg` into the
    bundle of every client component that renders one label out of this file. */
 import {
+  hasEnded,
   saleState,
   type SaleState,
   type TicketingEvent,
@@ -53,18 +54,12 @@ export function eventGroupOf(event: TicketingEvent, now = new Date()): EventGrou
   if (event.archivedAt) return "archived";
   if (event.status === "draft") return "draft";
   if (event.status === "ended") return "finished";
-  /* The evening itself is the line: a night that has started is no longer one
-     the office is preparing, whatever its status column still says. */
-  return hasHappened(event, now) ? "finished" : "active";
-}
-
-/* WHEN A NIGHT IS OVER — its own function because it is a HOUSE RULE, and the
-   next club will answer it differently. Here a night is over once its start
-   has passed, which is right for a place that opens at midnight and closes at
-   five; somewhere that runs an eight-o'clock show would want the doors time
-   plus a duration. One place to change, and no screen has to know. */
-function hasHappened(event: TicketingEvent, now: Date): boolean {
-  return new Date(event.startsAt) < now;
+  /* THE EVENING ITSELF IS THE LINE, AND THE LINE IS THE END OF IT. A night
+     that has STARTED is the night the club is working on right now — it stays
+     under AKTIVNI until it is actually over. See `hasEnded` in
+     lib/ticketing/event-rules.ts, which is the one place that decides, and
+     which the public wall and both table gates ask as well. */
+  return hasEnded(event, now) ? "finished" : "active";
 }
 
 /* ── what a list row needs ──────────────────────────────────────────────── */
@@ -159,6 +154,25 @@ export function actionsFor(card: EventCardModel): {
 
   const primary: EventAction[] = ["edit"];
   const more: EventAction[] = ["preview", "duplicate"];
+
+  /* A NIGHT THAT IS OVER IS NOT OFFERED THE MOVES OF A NIGHT THAT IS COMING.
+   *
+   * This is the other half of the inconsistency the lifecycle rule fixed. A
+   * night filed under ZAVRŠENI whose status column still reads `on_sale` was
+   * being offered PAUZIRAJ PRODAJU — pause the sale of a night that finished
+   * hours ago — and OBJAVI, publish a night that has been and gone. Neither is
+   * a move anybody wants; both read as though the screen had not noticed.
+   *
+   * What is left is what the office actually does the next afternoon: read it,
+   * close the sale if nobody got round to it, copy it into next week, put it
+   * away. `close` is offered only where there is still a sale to close. */
+  if (group === "finished") {
+    if (event.status === "on_sale" || event.status === "sold_out") {
+      more.push("close");
+    }
+    more.push("archive");
+    return { primary, more };
+  }
 
   if (event.status === "draft") {
     /* A draft with no price cannot be published into a sale, but it can still

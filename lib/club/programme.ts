@@ -1,4 +1,5 @@
 import { allTicketingEvents, type TicketingEvent } from "@/lib/ticketing/events";
+import { hasEnded } from "@/lib/ticketing/event-rules";
 import { posterFor } from "@/lib/club/poster-assets";
 import type { LocalText } from "@/lib/i18n";
 import type { PartyEvent, Ticketing } from "@/lib/events";
@@ -101,11 +102,10 @@ function ticketingFor(event: TicketingEvent, past: boolean): Ticketing {
   return { enabled: true, sale, types: [], maxPerOrder: event.maxPerOrder };
 }
 
-/* Whether the evening has gone. The same question `eventGroupOf` asks in the
-   office, and it must stay the same answer: a night cannot be over for staff
-   and still ahead for guests. */
-const hasHappened = (event: TicketingEvent, now: Date) =>
-  new Date(event.startsAt) < now;
+/* Whether the evening has gone. THE SAME FUNCTION `eventGroupOf` asks in the
+   office — not the same question answered twice, which is what it used to be
+   and how the wall and the office came to disagree at ten o'clock. */
+const hasHappened = (event: TicketingEvent, now: Date) => hasEnded(event, now);
 
 /* ONE ROW, AS THE WALL READS IT. */
 export function toPartyEvent(event: TicketingEvent, now = new Date()): PartyEvent {

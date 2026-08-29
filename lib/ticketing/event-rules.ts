@@ -96,6 +96,59 @@ export type TicketingEvent = {
   /* Off every working list, with its history intact. Never deleted. */
   archivedAt?: string;
 };
+/* ── when a night is over ───────────────────────────────────────────────── */
+
+/* HOW LONG A CLUB NIGHT LASTS ONCE IT HAS STARTED, AND WHY THAT IS A NUMBER.
+ *
+ * ═══ THE BUG THIS EXISTS TO REMOVE ════════════════════════════════════════
+ *
+ * A night used to be over the instant `startsAt` passed. So at 22:00 on the
+ * Saturday, with the doors open and the room filling, the office filed the
+ * night under ZAVRŠENI, the sale badge said "prodaja zatvorena", the public
+ * wall moved the poster into the archive, and the reservation gate refused
+ * every table with reason "past" — all while the club was still working. The
+ * start of a night is the WORST possible moment to call it finished; it is the
+ * moment it begins.
+ *
+ * ═══ THE RULE, AND WHY IT IS THIS ONE ═════════════════════════════════════
+ *
+ * There is no `ends_at` column, and this is deliberately not the change that
+ * adds one — a column means a form field, a validation rule and a decision the
+ * club has to make for every night for ever. What the club actually has is one
+ * shape of evening: doors at ten, lights up at five. So a night ends a FIXED
+ * SEVEN HOURS after it starts, and 22:00 → 05:00 is exactly that evening.
+ *
+ * It is elapsed time on two instants, never wall-clock arithmetic, so it is
+ * the same seven hours on the night the clocks change. Every timestamp in this
+ * system is a `timestamptz` and every comparison here is between instants;
+ * Europe/Belgrade enters only where a human reads one (lib/ticketing/copy.ts).
+ *
+ * ═══ ONE ANSWER, SIX CALLERS ══════════════════════════════════════════════
+ *
+ * The office's grouping, the control centre's "tonight", the sale gate, the
+ * public wall and the two table gates all ask THIS function. That is the whole point: a night cannot be over
+ * for the guest and still running for the doorman, and it used to be able to
+ * be — each of those places had its own copy of `startsAt < now`.
+ *
+ * THE SEAM, IF A NIGHT EVER NEEDS ITS OWN END. This function is where an
+ * `ends_at` column would be read, and nothing above it would change. */
+export const NIGHT_LENGTH_HOURS = 7;
+
+/* When this night is over, as an instant. Derived today; a stored end time
+   would be returned from here instead and nothing else would move. */
+export function eventEndsAt(event: TicketingEvent): string {
+  return new Date(
+    Date.parse(event.startsAt) + NIGHT_LENGTH_HOURS * 60 * 60 * 1000,
+  ).toISOString();
+}
+
+/* Whether the evening has actually gone. NOT whether the club has closed it —
+   that is `status === "ended"`, a decision rather than a clock, and callers
+   combine the two exactly as they did before. */
+export function hasEnded(event: TicketingEvent, now: Date = new Date()): boolean {
+  return now >= new Date(eventEndsAt(event));
+}
+
 /* ── the rules about a night, which are pure and stay pure ──────────────── */
 
 /* Whether money may be taken for this night, and if not, why not.
@@ -152,8 +205,15 @@ export function saleState(
   if (event.salesEnd && now > new Date(event.salesEnd)) {
     return { open: false, reason: "too_late" };
   }
-  /* The night itself is the last moment a ticket is worth anything. */
-  if (now > new Date(event.startsAt) && !event.testOnly) {
+  /* THE END OF THE NIGHT IS THE LAST MOMENT A TICKET IS WORTH ANYTHING —
+     not the start of it. A guest walking up at half past midnight is a guest
+     the club wants to sell to, and until now the site told them the sale was
+     shut. A club that wants the sale to stop earlier says so with `salesEnd`,
+     which is checked immediately above and is the club's own decision.
+
+     Test nights keep selling whatever their date says, as they always have:
+     a fixture with a date in the past is how a laptop has something to sell. */
+  if (hasEnded(event, now) && !event.testOnly) {
     return { open: false, reason: "too_late" };
   }
   if (sold >= event.capacity) return { open: false, reason: "sold_out" };

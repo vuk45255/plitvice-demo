@@ -57,6 +57,26 @@ beforeEach(async () => {
   await query(`DELETE FROM ticket_orders`);
   await query(`DELETE FROM seat_holds`);
   await query(`DELETE FROM reservations`);
+
+  /* THE SEEDED NIGHT, KEPT AHEAD OF THE CLOCK.
+   *
+   * `saturday-madness` is seeded at a FIXED instant — 29 August 2026, 22:00 —
+   * and this suite books tables on it. So on the evening of 29 August 2026 the
+   * night went past while the suite was running and fifty-seven cases went red
+   * on the clock rather than on a commit; from the morning after, they would
+   * have stayed red for ever.
+   *
+   * The year is moved forward and NOTHING ELSE IS: 29 August at 22:00, in a
+   * year nobody will be running this in. The wall-clock date and time are the
+   * ones the club's own row carries, so a test that reads "29. avgust" or
+   * "22:00" still reads it — only the year, which nothing asserts, has moved.
+   *
+   * This is the suite's own idiom. Time is moved by ageing a column, never by
+   * sleeping and never by mocking a clock; see the hold expiries below. */
+  await query(
+    `UPDATE events SET starts_at = $1, doors_at = $1 WHERE slug = 'saturday-madness'`,
+    [`${new Date().getUTCFullYear() + 5}-08-29T22:00:00+02:00`],
+  );
 });
 
 /* ═══ 1 — WHAT A GUEST MAY BE SHOWN ══════════════════════════════════════ */
@@ -277,10 +297,23 @@ describe("za koju žurku", () => {
   });
 
   it("grows when the office publishes another night, with nothing else touched", async () => {
+    /* LATER THAN THE CLUB'S OWN NIGHT, DERIVED FROM IT rather than typed out.
+       What this case says is "a night published after the existing one appears
+       after it", and a literal October date only said that by luck: it stopped
+       being true the moment the seeded night was moved past it, and it would
+       have stopped being true anyway on 1 November — when October is in the
+       past and drops out of `upcoming` altogether. */
+    const seeded = (
+      await query(`SELECT starts_at FROM events WHERE slug = $1`, [MADNESS])
+    ).rows[0];
+    const laterThanMadness = new Date(
+      new Date(seeded.starts_at as string | Date).getTime() + 63 * 24 * 60 * 60 * 1000,
+    ).toISOString();
+
     const made = await createEvent({
       title: "Halloween",
       slug: "halloween",
-      startsAt: "2026-10-31T22:00:00+02:00",
+      startsAt: laterThanMadness,
       capacity: 400,
       ticketPrice: 0,
       status: "on_sale",

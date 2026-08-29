@@ -46,6 +46,8 @@ import {
   slugify,
   toCard,
 } from "@/lib/club/event-manager";
+import { NIGHT_LENGTH_HOURS, hasEnded } from "@/lib/ticketing/event-rules";
+import { tableBookingGate } from "@/lib/reservations/gate";
 import { MAX_POSTER_BYTES, posterKey, storePoster } from "@/lib/media/images";
 import { mediaReadiness } from "@/lib/media/provider";
 import { staffFromCookie } from "@/lib/staff/guard";
@@ -221,6 +223,92 @@ describe("what a night is called and where it is filed", () => {
     /* It was never put on, so filing it with the nights that happened would be
        a lie about the club's own history. */
     assert.equal(eventGroupOf(event), "draft");
+  });
+
+  /* ═══ THE NIGHT ITSELF ═══════════════════════════════════════════════════
+   *
+   * THE BUG THESE EXIST TO KEEP OUT. On the Saturday, at 22:00, the moment the
+   * doors opened: the office filed Saturday Madness under ZAVRŠENI while its
+   * card still read "U prodaji" and still offered PAUZIRAJ PRODAJU, the sale
+   * gate said "prodaja zatvorena", the public wall archived the poster, and
+   * the reservation gate refused every table with "past". The club was open.
+   *
+   * Fifty-seven tests in this suite went red on the clock rather than on a
+   * commit, because every reservation case books `saturday-madness`. */
+  const hoursFromNow = (hours: number) =>
+    new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+
+  it("keeps a night that has started ACTIVE while the club is still open", async () => {
+    /* An hour in: the doors are open, the room is filling. */
+    const tonight = await aNight({ startsAt: hoursFromNow(-1), status: "on_sale" });
+    assert.equal(eventGroupOf(tonight), "active");
+    assert.equal(hasEnded(tonight), false);
+  });
+
+  it("files it as FINISHED once the night is actually over", async () => {
+    const over = await aNight({
+      startsAt: hoursFromNow(-(NIGHT_LENGTH_HOURS + 1)),
+      status: "on_sale",
+    });
+    assert.equal(eventGroupOf(over), "finished");
+    assert.equal(hasEnded(over), true);
+  });
+
+  it("goes on selling entry during the night, and stops when it ends", async () => {
+    /* A guest walking up at half past midnight is a guest the club wants. */
+    const tonight = await aNight({ startsAt: hoursFromNow(-1), status: "on_sale" });
+    assert.equal(saleState(tonight, 0).open, true);
+
+    const over = await aNight({
+      startsAt: hoursFromNow(-(NIGHT_LENGTH_HOURS + 1)),
+      status: "on_sale",
+    });
+    const shut = saleState(over, 0);
+    assert.equal(shut.open, false);
+    assert.equal(shut.open === false && shut.reason, "too_late");
+  });
+
+  it("gives the same answer to the office, the sale and the floor", async () => {
+    /* ONE RULE, NOT FOUR AGREEING BY COINCIDENCE. A night cannot be over for
+       the guest and still running for the doorman. */
+    const tonight = await aNight({
+      startsAt: hoursFromNow(-1),
+      status: "on_sale",
+      tablesEnabled: true,
+    });
+    assert.equal(eventGroupOf(tonight), "active");
+    assert.equal(saleState(tonight, 0).open, true);
+    assert.equal((await tableBookingGate(tonight.slug)).open, true);
+
+    const over = await aNight({
+      startsAt: hoursFromNow(-(NIGHT_LENGTH_HOURS + 1)),
+      status: "on_sale",
+      tablesEnabled: true,
+    });
+    assert.equal(eventGroupOf(over), "finished");
+    assert.equal(saleState(over, 0).open, false);
+    const gate = await tableBookingGate(over.slug);
+    assert.equal(gate.open, false);
+    assert.equal(gate.open === false && gate.reason, "past");
+  });
+
+  it("stops offering to pause the sale of a night that is over", async () => {
+    const counts = { capacity: 0, paid: 0, available: 0, taken: 0 };
+    const over = await aNight({
+      startsAt: hoursFromNow(-(NIGHT_LENGTH_HOURS + 1)),
+      status: "on_sale",
+    });
+    const { primary, more } = actionsFor(toCard(over, counts));
+
+    assert.ok(!primary.includes("pause"), "a finished night cannot have its sale paused");
+    assert.ok(!primary.includes("publish"), "a finished night is not published");
+    /* What the office actually does the next afternoon. */
+    assert.ok(more.includes("close"));
+    assert.ok(more.includes("archive"));
+
+    /* And the night that is running keeps both. */
+    const tonight = await aNight({ startsAt: hoursFromNow(-1), status: "on_sale" });
+    assert.ok(actionsFor(toCard(tonight, counts)).primary.includes("pause"));
   });
 
   it("sorts the nights ahead soonest first and the past most recent first", async () => {
