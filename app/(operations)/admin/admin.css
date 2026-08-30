@@ -395,6 +395,38 @@
     line-height: 1.5;
     resize: vertical;
   }
+  /* ═══ THE TWO INPUTS THAT DO NOT HONOUR A WIDTH ═══════════════════════
+   *
+   * A date and a time field are not one box: each is a little row of spinners
+   * the browser builds inside the input, and that row carries its own
+   * intrinsic minimum. On a narrow Android — Samsung Internet especially, and
+   * Chrome with a large system font — that minimum can be wider than the
+   * column the field sits in, and the field then pushes the whole form
+   * sideways however many times `width: 100%` is written above.
+   *
+   * `min-width: 0` on the input alone does not reach it, because the minimum
+   * belongs to the shadow row inside. So the constraint is stated on the field
+   * AND the internal editor is allowed to shrink with it. The controls stay
+   * native — this only stops them setting the form's width. */
+  input[type="date"].adm-field,
+  input[type="time"].adm-field,
+  input[type="datetime-local"].adm-field {
+    min-width: 0;
+    max-width: 100%;
+  }
+  input[type="date"].adm-field::-webkit-date-and-time-value,
+  input[type="time"].adm-field::-webkit-date-and-time-value,
+  input[type="datetime-local"].adm-field::-webkit-date-and-time-value {
+    min-width: 0;
+    text-align: left;
+  }
+  input[type="date"].adm-field::-webkit-datetime-edit,
+  input[type="time"].adm-field::-webkit-datetime-edit,
+  input[type="datetime-local"].adm-field::-webkit-datetime-edit {
+    min-width: 0;
+    overflow: hidden;
+  }
+
   /* A native select's own menu is the operating system's; only the closed
      control is ours. The options are painted dark by color-scheme. */
   select.adm-field {
@@ -485,6 +517,13 @@
     border-bottom: 1px solid var(--adm-line-soft);
     overflow-x: auto;
     scrollbar-width: none;
+    /* The strip scrolls sideways on a phone; the PAGE must not, and a sideways
+       flick that runs off the end of the tabs must not turn into the browser's
+       back gesture halfway through choosing a tab. */
+    overscroll-behavior-x: contain;
+    /* When the active tab is brought into view, stop it against the edge of
+       the strip rather than flush against it. */
+    scroll-padding-inline: 1rem;
   }
   .adm-tabs::-webkit-scrollbar {
     display: none;
@@ -984,6 +1023,22 @@
   .adm-menu-list a {
     display: flex;
     align-items: center;
+    /* ITEMS START AT THE SAME EDGE, WHICHEVER COMPONENT DREW THEM.
+     *
+     * Three of these rows — ARHIVIRAJ, OBRIŠI, ZATVORI PRODAJU — come from
+     * `Confirm`, which renders its trigger as an `.adm-btn`, and an .adm-btn
+     * centres its content. Nothing above overrode it: this rule outranks
+     * `.adm-btn` on specificity but simply never declared `justify-content`,
+     * so the centring came through unopposed and those three sat in the middle
+     * of a menu whose other rows were hard left. `text-align` could not fix it
+     * either — the row is a flex box, and text-align does not distribute flex
+     * children.
+     *
+     * Declared here rather than by touching `.adm-btn`, which is the same
+     * button the whole office is built from. This changes alignment inside the
+     * menu and nowhere else, and no dimension anywhere: the row is already
+     * `width: 100%`. */
+    justify-content: flex-start;
     gap: 0.5rem;
     width: 100%;
     min-height: 2.75rem;
@@ -1006,6 +1061,43 @@
   }
   .adm-menu-list .adm-menu-danger {
     color: var(--adm-bad);
+  }
+
+  /* ═══ AND ON A PHONE IT IS ANCHORED TO THE ROW, NOT TO THE DOTS ════════
+   *
+   * `right: 0` hangs the list off the trigger's right edge, which is correct
+   * on a laptop — the dots sit at the end of a wide row, and the menu opens
+   * back into the page. On a phone it is wrong, and wrong in the one way that
+   * loses content: on a card whose only buttons are UREDI and the dots, the
+   * trigger's right edge is about 140px from the left, so a 13rem list hung
+   * off it starts at −68px and opens two thirds off the side of the screen.
+   * "KAKO GOST VIDI" arrives as "ST VIDI".
+   *
+   * So below 40rem the list is anchored to the ACTIONS ROW instead. The row is
+   * inside the page gutters by construction, and `.adm-actions` is made the
+   * full width of its column, so a list pinned to its right edge and capped at
+   * `max-width: 100%` CANNOT leave the viewport — at any width, without
+   * measuring anything and without a negative margin anywhere.
+   *
+   * `top` is left alone. With no `top` an absolutely positioned box keeps its
+   * static position, which is directly under the summary it belongs to, so the
+   * menu still opens beneath the dots exactly as it does on a laptop. */
+  @media (max-width: 39.999rem) {
+    .adm-actions {
+      position: relative;
+      width: 100%;
+    }
+    /* The dots stop being the containing block; the row becomes it. */
+    .adm-menu {
+      position: static;
+    }
+    .adm-menu-list {
+      right: 0;
+      left: auto;
+      min-width: 0;
+      width: 13rem;
+      max-width: 100%;
+    }
   }
 
   /* ── the guided editor ─────────────────────────────────────────────── */

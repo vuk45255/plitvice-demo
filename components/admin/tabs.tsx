@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { KeepActiveTabVisible } from "@/components/admin/tabs-scroll";
 
 /* THE FOUR VIEWS OF ONE NIGHT.
  *
@@ -18,7 +19,22 @@ import Link from "next/link";
  *
  * It is a real tablist for a screen reader — `aria-current` on the one you are
  * on — and it scrolls sideways inside itself on a narrow phone rather than
- * wrapping to two rows or pushing the page wide. */
+ * wrapping to two rows or pushing the page wide.
+ *
+ * ═══ AND THE TAB YOU ARE ON HAS TO BE THE ONE YOU CAN SEE ═════════════════
+ *
+ * That sideways scroll starts at zero, and the five names are 531px wide on a
+ * 360px phone. So arriving on PODEŠAVANJA — which is exactly where UREDI VEČE
+ * lands somebody — showed a strip reading PREGLED · PRODAJA · REZERVACIJE with
+ * no gold underline anywhere on it: the current tab sat 70px past the right
+ * edge of its own scroller, and the screen looked like a tab strip that had
+ * been cut off rather than one that had scrolled.
+ *
+ * This is the one piece of behaviour a query-string tab strip cannot express
+ * as a link, so it is the one piece of JavaScript here — and it is kept in a
+ * component of its own, `KeepActiveTabVisible`, so that THIS file stays a
+ * server component. It has to: `href` below is a function, and a function
+ * cannot be handed across the boundary into a client component. */
 
 export type TabItem<T extends string> = {
   id: T;
@@ -42,6 +58,7 @@ export function Tabs<T extends string>({
 }) {
   return (
     <nav className="adm-tabs" aria-label="Prikaz događaja">
+      <KeepActiveTabVisible active={String(active)} />
       <ul className="adm-tabs-list">
         {tabs.map((tab) => {
           const current = tab.id === active;

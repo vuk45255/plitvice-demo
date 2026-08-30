@@ -64,7 +64,9 @@ export function EventActions({
   const size = compact ? "adm-btn--sm" : "";
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    /* `adm-actions` is what the three-dot menu anchors to on a phone — see the
+       note beside `.adm-menu-list` in admin.css. It is inert on a laptop. */
+    <div className="adm-actions flex flex-wrap items-center gap-2">
       {primary.map((action) => (
         <PrimaryAction key={action} action={action} id={id} size={size} />
       ))}

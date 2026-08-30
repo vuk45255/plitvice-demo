@@ -79,7 +79,15 @@ export function PageHeader({
           </p>
         ) : null}
       </div>
-      {action ? <div className="flex flex-wrap gap-2.5">{action}</div> : null}
+      {/* ON A PHONE THE ACTIONS GET THE WHOLE ROW. `justify-between` leaves
+          this block shrink-to-fit, which on a 360px screen strands it a third
+          of the way in with the buttons wrapping inside 188px — and it is what
+          gave the three-dot menu a container too narrow to open into. Full
+          width below 40rem puts the title on its own line and the buttons on
+          theirs, left-aligned like everything else. Unchanged from `sm` up. */}
+      {action ? (
+        <div className="flex w-full flex-wrap gap-2.5 sm:w-auto">{action}</div>
+      ) : null}
     </header>
   );
 }
