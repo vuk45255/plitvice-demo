@@ -33,6 +33,40 @@ import {
  * floor. That is the whole of what "reusable for another club" means at this
  * stage, and it costs nothing to hold to. */
 
+/* ── a poster, or a night this system ran ───────────────────────────────── */
+
+/* THE ONE DEFINITION OF "OPERATIONAL", AND EVERY SCREEN ASKS IT HERE.
+ *
+ * ═══ WHAT THE DISTINCTION ACTUALLY IS ═════════════════════════════════════
+ *
+ * The club's record is older than the club's software. Ten nights on the public
+ * wall — Dara Bubamara, Rasta, Katarina Živković, White Party & Semafor,
+ * Teodora, Sajfer, THCF, Relja, Inas, My Lucky Numb3r — existed as artwork and
+ * nothing else. Nobody sold a ticket for one of them here, nobody scanned
+ * anybody in, nobody took a table on this floor plan. They are photographs.
+ *
+ * ═══ WHY A FLAG AND NOT AN INFERENCE ══════════════════════════════════════
+ *
+ * The tempting test is "it has no orders, so it must be legacy". That is the
+ * bug, not the rule: a real night the club announced and then cancelled has no
+ * orders either, and so does a real night three hours before the sale opens.
+ * Absence of rows cannot distinguish "we did not run this here" from "nothing
+ * has happened yet" — and getting it wrong in the second direction quietly
+ * deletes a live night from the office's own dashboard.
+ *
+ * So it is a column, written from the seed, and it says where the night came
+ * from rather than how it is going. See lib/db/schema.ts.
+ *
+ * ═══ WHAT IT CHANGES, AND WHAT IT DOES NOT ════════════════════════════════
+ *
+ * A legacy night is NOT hidden and NOT deleted. It keeps its row, its artwork
+ * and its place on the public wall; it can still be opened in the office, where
+ * it says plainly what it is. What it does not do is stand in a list of
+ * operational nights carrying a column of zeros that look like measurements. */
+export function isOperational(event: TicketingEvent): boolean {
+  return !event.legacyArchive;
+}
+
 /* ── how a night is filed ───────────────────────────────────────────────── */
 
 /* FOUR GROUPS, AND THE ORDER IS THE ORDER OF ATTENTION.
@@ -60,6 +94,47 @@ export function eventGroupOf(event: TicketingEvent, now = new Date()): EventGrou
      lib/ticketing/event-rules.ts, which is the one place that decides, and
      which the public wall and both table gates ask as well. */
   return hasEnded(event, now) ? "finished" : "active";
+}
+
+/* ── the one word a night is described by ───────────────────────────────── */
+
+/* WHAT TO PUT ON THE EVENT BADGE, AND WHY IT IS NOT THE COLUMN.
+ *
+ * The `status` column is what the office SET; it is not the whole of what is
+ * true. Two things it cannot say on its own:
+ *
+ *   · a published night three weeks away and a published night happening
+ *     right now both read `on_sale`, and they are not the same news;
+ *   · a night whose evening has passed still reads `on_sale` until somebody
+ *     closes it, and the clock already knows better — `hasEnded` is the rule
+ *     every other surface asks.
+ *
+ * So the badge is derived once, here, and every screen renders what this
+ * returns. That is the same discipline `eventGroupOf` holds: nothing in a
+ * component gets its own opinion about when a Saturday is over.
+ *
+ * AND IT IS NOT THE SALE. Whether entry is being sold on the site is a
+ * different question with a different answer, and it is `saleState`. See the
+ * note above EVENT in components/admin/badge.tsx. */
+export type EventStatusBadge =
+  | "draft"
+  | "upcoming"
+  | "on_sale"
+  | "sold_out"
+  | "ended";
+
+export function eventStatusBadge(
+  event: TicketingEvent,
+  now = new Date(),
+): EventStatusBadge {
+  if (event.status === "draft") return "draft";
+  /* The clock outranks the column, in that direction only: a night the office
+     has closed early is closed, and a night whose evening has gone is over
+     whatever the column still says. */
+  if (event.status === "ended" || hasEnded(event, now)) return "ended";
+  if (event.status === "sold_out") return "sold_out";
+  /* Published, not finished: either it is running or it is coming. */
+  return Date.parse(event.startsAt) > now.getTime() ? "upcoming" : "on_sale";
 }
 
 /* ── what a list row needs ──────────────────────────────────────────────── */
@@ -202,7 +277,11 @@ export const ACTION_LABELS: Record<EventAction, string> = {
   publish: "Objavi",
   pause: "Pauziraj prodaju",
   close: "Zatvori prodaju",
-  preview: "Pregledaj",
+  /* NOT "Pregledaj" any more. The night's own screen now opens on a tab called
+     PREGLED — the operational report — and two different things called the
+     same word on the same screen is how somebody clicks the wrong one. This
+     action opens the guest-facing checklist, so it says what that is. */
+  preview: "Šta gost vidi",
   duplicate: "Dupliraj",
   archive: "Arhiviraj",
   restore: "Vrati iz arhive",

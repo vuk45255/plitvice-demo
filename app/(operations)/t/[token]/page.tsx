@@ -64,7 +64,6 @@ export default async function TicketPage({ params }: PageProps<"/t/[token]">) {
       <TicketFace
         eventTitle={event.title}
         eventStartsAt={event.startsAt}
-        eventDoorsAt={event.doorsAt}
         reference={ticket.reference}
         status={ticket.status}
         scannedAt={ticket.scannedAt}

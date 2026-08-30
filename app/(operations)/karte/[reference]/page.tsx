@@ -68,7 +68,7 @@ export default async function OrderTicketsPage({
           {eventDate(event.startsAt)}
         </p>
         <p className="mt-2 text-[0.8125rem] tabular-nums text-night-ink/50">
-          {t.doors} {eventTime(event.doorsAt ?? event.startsAt)}
+          {t.doors} {eventTime(event.startsAt)}
         </p>
       </header>
 

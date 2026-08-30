@@ -2,11 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ExternalLink } from "lucide-react";
-import { Notice, PageHeader, Panel } from "@/components/admin/shell";
+import { Line, Notice, PageHeader, Panel } from "@/components/admin/shell";
 import { Badge } from "@/components/admin/badge";
 import { findTicketingEvent } from "@/lib/ticketing/events";
 import { countsFor } from "@/lib/ticketing/store";
-import { eventTiers, posterUrl, toCard } from "@/lib/club/event-manager";
+import { eventStatusBadge, eventTiers, posterUrl, toCard } from "@/lib/club/event-manager";
 import { eventDate, eventTime, price } from "@/lib/ticketing/copy";
 import { requireStaff } from "@/lib/staff/guard";
 
@@ -73,7 +73,6 @@ export default async function EventPreviewPage({
   return (
     <>
       <PageHeader
-        eyebrow="Pregled"
         title={event.title}
         lede="Ovo su podaci koje gost vidi. Proverite ih pre objave."
         action={
@@ -109,7 +108,7 @@ export default async function EventPreviewPage({
 
       <Panel title="Kako veče stoji">
         <div className="flex flex-wrap items-center gap-2 px-[1.125rem] py-5">
-          <Badge kind="event" value={event.status} />
+          <Badge kind="event" value={eventStatusBadge(event)} />
           {event.ticketingEnabled ? (
             <Badge kind="sale" value={card.sale.open ? "open" : card.sale.reason} />
           ) : (
@@ -144,13 +143,8 @@ export default async function EventPreviewPage({
             <Line label="Naziv" value={event.title} />
             <Line label="Datum" value={eventDate(event.startsAt)} />
             <Line label="Početak" value={eventTime(event.startsAt)} />
-            <Line
-              label="Vrata"
-              value={event.doorsAt ? eventTime(event.doorsAt) : undefined}
-            />
             <Line label="DJ / izvođač" value={event.lineup} />
-            <Line label="Žanr" value={event.genre} />
-            <Line label="Starosno ograničenje" value={event.ageRestriction} />
+            <Line label="Uzrast" value={event.ageRestriction} />
             <Line label="Dress code" value={event.dressCode} />
             <Line label="Napomena o ulazu" value={event.entryNote} />
             <Line label="Promocija" value={event.promotion} />
@@ -185,28 +179,3 @@ export default async function EventPreviewPage({
   );
 }
 
-/* One fact, or the honest absence of one. A missing value is shown as missing
-   rather than hidden — finding out what is not filled in yet is the reason
-   somebody opened this screen. */
-function Line({
-  label,
-  value,
-  wide,
-}: {
-  label: string;
-  value?: string;
-  wide?: boolean;
-}) {
-  return (
-    <div className={wide ? "sm:col-span-2" : undefined}>
-      <dt className="adm-label">{label}</dt>
-      <dd
-        className={`mt-1.5 text-[0.875rem] leading-relaxed ${
-          value ? "text-[var(--adm-ink)]" : "text-[var(--adm-ink-4)]"
-        }`}
-      >
-        {value || "nije uneto"}
-      </dd>
-    </div>
-  );
-}

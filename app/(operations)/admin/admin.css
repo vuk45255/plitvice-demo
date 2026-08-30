@@ -147,11 +147,17 @@
     transition: border-color 120ms ease, box-shadow 120ms ease;
   }
 
+  /* A FIGURE THAT IS A PRICE IS NOT A FIGURE THAT IS A COUNT. Two digits and
+     "12.400 RSD" go in the same card, and at a fixed 1.75rem the second one
+     overflows a two-up grid on a 360px phone. The size is therefore a function
+     of the space — it opens up to what it was on a laptop and steps down on a
+     phone — and a value still too long breaks rather than escaping the card. */
   .adm-stat-value {
-    font-size: 1.75rem;
+    font-size: clamp(1.375rem, 5.2vw, 1.75rem);
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.03em;
     line-height: 1;
+    overflow-wrap: anywhere;
     color: var(--adm-ink);
   }
 
@@ -185,6 +191,45 @@
   }
   .adm-stat--gold .adm-stat-value {
     color: var(--adm-gold-light);
+  }
+
+  /* ═══ THE NIGHT AT THE TOP OF THE CONTROL CENTRE ═══════════════════════ */
+
+  /* The one panel on the dashboard allowed more weight than the rest: it is
+     the answer to "which night are we on", and everything under it is detail
+     about this night. The weight is a breath of the club's violet fading out
+     of the top edge — no glow, no second border, no accent bar. It is the same
+     purple the room is lit with, at the strength a panel can carry without
+     becoming the loudest thing on a screen full of numbers. */
+  .adm-hero {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(42, 18, 63, 0.55) 0%,
+        rgba(42, 18, 63, 0) 42%
+      ),
+      var(--adm-panel);
+    border-color: var(--adm-line);
+  }
+
+  .adm-hero-poster {
+    flex: none;
+    width: 3.75rem;
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+    border-radius: 2px;
+    border: 1px solid var(--adm-line-soft);
+    background: var(--adm-panel-2);
+  }
+  .adm-hero-poster img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  @media (min-width: 40rem) {
+    .adm-hero-poster {
+      width: 4.5rem;
+    }
   }
 
   /* ═══ BADGES ═══════════════════════════════════════════════════════════ */
@@ -407,6 +452,209 @@
   }
   .adm-row:first-child {
     border-top: 0;
+  }
+
+  /* One fact per line, name left and figure right. The shape a summary takes
+     when it is eight related numbers rather than four headline ones — eight
+     stat tiles is a wall nobody reads, eight rows is a table of contents. */
+  .adm-data-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1.25rem;
+    padding: 0.6875rem 1.125rem;
+    border-top: 1px solid var(--adm-line-soft);
+  }
+  .adm-data-row:first-child {
+    border-top: 0;
+  }
+
+  /* ═══ TABS ═════════════════════════════════════════════════════════════ */
+
+  /* THE FOUR VIEWS OF A NIGHT. A rail of links under the title, marked by a
+     gold underline rather than a filled pill — the office already spends its
+     one gold on the thing that matters, and a row of filled buttons reads as
+     four calls to action rather than as where you are.
+
+     IT SCROLLS SIDEWAYS INSIDE ITSELF. Four Serbian words with counts do not
+     fit across 360px, and the two wrong answers are wrapping to a second row
+     (which moves the content down and looks broken) and shrinking the type
+     (which is unreadable at the door). */
+  .adm-tabs {
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid var(--adm-line-soft);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .adm-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .adm-tabs-list {
+    display: flex;
+    gap: 0.25rem;
+    min-width: max-content;
+  }
+
+  .adm-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    /* Tall enough to be a comfortable target on a phone — 44px of height with
+       the border, which is the smallest thing a thumb finds reliably. */
+    padding: 0.75rem 0.875rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--adm-ink-3);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 120ms ease, border-color 120ms ease;
+  }
+  .adm-tab:hover {
+    color: var(--adm-ink);
+  }
+  .adm-tab[aria-current="page"] {
+    color: var(--adm-ink);
+    border-bottom-color: var(--adm-gold);
+  }
+
+  .adm-tab-count {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.6875rem;
+    letter-spacing: 0;
+    padding: 0.0625rem 0.375rem;
+    border-radius: 2px;
+    background: var(--adm-panel-3);
+    color: var(--adm-ink-3);
+  }
+  .adm-tab[aria-current="page"] .adm-tab-count {
+    background: rgba(200, 164, 93, 0.16);
+    color: var(--adm-gold-light);
+  }
+
+  /* ═══ A TABLE THAT BECOMES CARDS ═══════════════════════════════════════ */
+
+  /* AN ORDER LIST IS SEVEN COLUMNS AND A PHONE IS 360 PIXELS WIDE.
+   *
+   * Squeezing seven columns into that gives a horizontal scroll where the
+   * column that matters — who, and how much — is off screen. So below 48rem
+   * the same markup is re-laid as one card per order: each cell becomes a line
+   * with its column name in front of it, taken from `data-label`. No second
+   * component, no duplicated markup, and the desktop table is a real table
+   * with real headers for anything reading it aloud. */
+  @media (max-width: 47.999rem) {
+    .adm-table--cards thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    .adm-table--cards,
+    .adm-table--cards tbody,
+    .adm-table--cards tr,
+    .adm-table--cards td {
+      display: block;
+      width: auto;
+    }
+    .adm-table--cards tr {
+      padding: 0.875rem 1.125rem;
+      border-top: 1px solid var(--adm-line-soft);
+    }
+    .adm-table--cards tr:first-child {
+      border-top: 0;
+    }
+    .adm-table--cards td {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.1875rem 0;
+      border: 0;
+      text-align: right;
+    }
+    .adm-table--cards td::before {
+      content: attr(data-label);
+      font-size: 0.5625rem;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: var(--adm-ink-4);
+      text-align: left;
+      flex: none;
+    }
+    /* The first cell of a card is its heading: no label in front of it, and
+       it carries the weight the row's name should have. */
+    .adm-table--cards td:first-child {
+      padding-bottom: 0.4375rem;
+      font-size: 0.9375rem;
+      color: var(--adm-ink);
+    }
+    .adm-table--cards td:first-child::before {
+      content: none;
+    }
+  }
+
+  /* ═══ ZOOM ON THE FLOOR PLAN ═══════════════════════════════════════════ */
+
+  /* One segmented control at the head of the map: − 100% + CELA SALA. It sits
+     in the legend row rather than floating over the drawing, because a control
+     floating on a phone covers the tables it exists to help you read. */
+  .adm-zoom {
+    display: inline-flex;
+    align-items: stretch;
+    border: 1px solid var(--adm-line);
+    border-radius: 3px;
+    overflow: hidden;
+    background: var(--adm-panel-2);
+  }
+
+  .adm-zoom-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4375rem;
+    /* 40px of height and at least 40px of width — a thumb target, not an
+       icon. The office is used standing up. */
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    padding: 0 0.625rem;
+    font-size: 0.625rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--adm-ink-2);
+    border-left: 1px solid var(--adm-line-soft);
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+  .adm-zoom-btn:first-child {
+    border-left: 0;
+  }
+  .adm-zoom-btn:hover:not(:disabled) {
+    background: var(--adm-panel-3);
+    color: var(--adm-ink);
+  }
+  .adm-zoom-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  .adm-zoom-btn--wide {
+    white-space: nowrap;
+  }
+
+  /* The reading between the two buttons. Tabular so 100% and 225% are the same
+     width and the control does not twitch as somebody zooms. */
+  .adm-zoom-level {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 3.25rem;
+    padding: 0 0.25rem;
+    font-size: 0.6875rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--adm-ink);
+    border-left: 1px solid var(--adm-line-soft);
   }
 
   /* ═══ THE NAVIGATION ═══════════════════════════════════════════════════ */

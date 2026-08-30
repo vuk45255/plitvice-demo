@@ -33,7 +33,6 @@ import type { TicketStatus } from "@/lib/ticketing/types";
 export type TicketFaceProps = {
   eventTitle: string;
   eventStartsAt: string;
-  eventDoorsAt?: string;
   reference: string;
   status: TicketStatus;
   scannedAt?: string;
@@ -47,7 +46,6 @@ export type TicketFaceProps = {
 export function TicketFace({
   eventTitle,
   eventStartsAt,
-  eventDoorsAt,
   reference,
   status,
   scannedAt,
@@ -71,7 +69,7 @@ export function TicketFace({
         </p>
 
         <dl className="mt-7 flex items-baseline justify-center gap-8">
-          <Fact label={t.doors} value={eventTime(eventDoorsAt ?? eventStartsAt)} />
+          <Fact label={t.doors} value={eventTime(eventStartsAt)} />
           {position ? (
             <Fact
               label={t.ticket}

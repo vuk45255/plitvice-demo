@@ -60,6 +60,60 @@ async function paths() {
   const token = orderPage.match(/href="\/t\/([A-Za-z0-9_-]+)"/)?.[1];
   if (!token) throw new Error("the order page listed no tickets");
 
+  /* THE EVENT WORKSPACE, EVERY TAB. It is the densest thing in the office —
+     an order table, a reservation table, a metric grid and an editor — and it
+     is therefore the most likely to push a phone sideways. The night is taken
+     off the programme rather than written down here, so this keeps working
+     when the club's own events change. */
+  /* IT THROWS RATHER THAN MEASURING NOTHING. If staff auth is configured the
+     request lands on /osoblje, and a production gate 404s — either way the
+     regex finds no id. Silently returning an empty list would print
+     "no horizontal overflow" without having opened one of the six views this
+     was added for, which is worse than failing: it is a green tick for work
+     that did not happen. Every other prerequisite here throws; so does this. */
+  const list = await fetch(`${BASE}/admin/dogadjaji`).then((r) => r.text());
+
+  /* ═══ AN OPERATIONAL NIGHT, NOT A POSTER ════════════════════════════════
+   *
+   * The page ends with the "Arhiva postera" drawer, whose rows link to the ten
+   * legacy nights with the same `/admin/dogadjaji/evt_…` shape. Matching the
+   * whole document can therefore pick one of those — and a legacy night has no
+   * tabs at all, so every `?tab=` URL renders the identical one-panel screen
+   * and the script reports "no horizontal overflow" for six views it never
+   * rendered. That is the green tick for work that did not happen this check
+   * exists to prevent, so the search stops at the drawer. */
+  const operational = list.split("Arhiva postera")[0];
+  const eventId = operational.match(/\/admin\/dogadjaji\/(evt_[A-Za-z0-9_-]+)/)?.[1];
+  if (!eventId) {
+    throw new Error(
+      "could not find an operational event on /admin/dogadjaji. Is the admin " +
+        "reachable without a staff password on this server, and does the " +
+        "programme have at least one event this system runs?",
+    );
+  }
+
+  /* And the id is confirmed to be one that actually has the tabs on it, so a
+     future change to that drawer's heading cannot silently reintroduce the
+     same hole. */
+  const workspaceHtml = await fetch(`${BASE}/admin/dogadjaji/${eventId}`).then((r) =>
+    r.text(),
+  );
+  if (!workspaceHtml.includes("adm-tabs")) {
+    throw new Error(
+      `/admin/dogadjaji/${eventId} rendered no tab strip — the id picked is ` +
+        "probably a legacy archive night, so the workspace views would not be measured.",
+    );
+  }
+
+  const workspace = [
+    `/admin/dogadjaji/${eventId}`,
+    `/admin/dogadjaji/${eventId}?tab=prodaja`,
+    `/admin/dogadjaji/${eventId}?tab=rezervacije`,
+    `/admin/dogadjaji/${eventId}?tab=ulaz`,
+    `/admin/dogadjaji/${eventId}?tab=podesavanja`,
+    `/admin/dogadjaji/${eventId}/pregled`,
+  ];
+
   return [
     "/osoblje",
     "/scanner",
@@ -68,6 +122,7 @@ async function paths() {
     "/admin/plan",
     "/admin/dogadjaji",
     "/admin/rezervacije",
+    ...workspace,
     `/karte/${checkout.order}`,
     `/t/${token}`,
     "/dev/ticketing",

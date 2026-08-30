@@ -88,13 +88,23 @@ export type TicketingEvent = {
   posterKey?: string;
   /* What the night is, for whoever is reading a poster. All optional. */
   lineup?: string;
-  genre?: string;
   ageRestriction?: string;
   entryNote?: string;
   dressCode?: string;
   promotion?: string;
   /* Off every working list, with its history intact. Never deleted. */
   archivedAt?: string;
+  /* ═══ A POSTER, OR A NIGHT THIS SYSTEM RAN ═════════════════════════════
+   *
+   * True for the nights that existed only as artwork on the public wall
+   * before this software did. They have no orders, no tickets, no scans and
+   * no reservations, and never will — so every figure the office could print
+   * about one is a zero that means "not measured" rather than "none sold".
+   *
+   * The office reports on operational nights; the public wall keeps the
+   * whole record. Read it through `isOperational` in lib/club/event-manager.ts
+   * rather than testing the field, so there is one definition of the word. */
+  legacyArchive: boolean;
 };
 /* ── when a night is over ───────────────────────────────────────────────── */
 

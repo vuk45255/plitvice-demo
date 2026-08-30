@@ -242,8 +242,13 @@ export function MobileHeader() {
                 dead centre in a full-height panel leaves a hole under the head
                 that reads as something missing. The bottom padding is what
                 lifts them, so the group stays balanced at any phone height. */}
+            {/* Opening the menu stops Lenis, and a stopped Lenis
+                preventDefault()s every touchmove — so on a short phone this
+                list could not be scrolled to its last door. Same one-attribute
+                escape as the admission notice and the booking card. */}
             <nav
               aria-label="Plitvice"
+              data-lenis-prevent
               className="relative flex-1 overflow-y-auto overscroll-contain px-6 pb-[9vh] pt-4"
             >
               <ul className="flex min-h-full flex-col items-center justify-center gap-8 text-center">

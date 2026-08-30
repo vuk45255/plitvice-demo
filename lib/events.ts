@@ -121,11 +121,20 @@ export type PartyEvent = {
    * where this club writes them. Giving any of them a line of its own is a
    * change to the design, not to the data, and is not made here. */
   lineup?: string;
-  genre?: string;
   ageRestriction?: string;
   entryNote?: string;
   dressCode?: string;
   promotion?: string;
+
+  /* ═══ A POSTER FROM BEFORE THE SOFTWARE ════════════════════════════════
+   *
+   * True for a night that only ever existed as artwork on this wall. It
+   * changes NOTHING about how the night is drawn — the archive is a record
+   * and a poster from 2025 is as much a part of it as last Saturday. It is
+   * read once, by `toProgramme`, to decide WHICH nights get the archive's
+   * limited slots when there are more nights than places to hang them: the
+   * ones this club actually ran go up first. See the note there. */
+  legacy: boolean;
 };
 
 /* ── the rules, which are pure and stay pure ────────────────────────────── */

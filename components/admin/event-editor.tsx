@@ -114,19 +114,11 @@ export function EventEditor({
           />
         </Field>
 
-        <Field
-          label="Vreme otvaranja vrata"
-          htmlFor="doorsTime"
-          hint="Nije obavezno. Prazno znači isto kad i početak."
-        >
-          <input
-            id="doorsTime"
-            name="doorsTime"
-            type="time"
-            defaultValue={split(event?.doorsAt).time}
-            className="adm-field"
-          />
-        </Field>
+        {/* VREME OTVARANJA VRATA IS GONE. The club opens the doors when the
+            night starts, so the form asked twice for one fact and every screen
+            then had to decide which of the two to print. One time, on the row,
+            everywhere. The column stays in the database untouched — dropping
+            one from a live events table buys nothing — and nothing reads it. */}
 
         {/* The slug is the public address of the night. It is DERIVED from the
             title when a night is created — nobody should have to type a URL to
@@ -266,39 +258,36 @@ export function EventEditor({
           hint="Gosti biraju sto na planu sale."
           defaultChecked={event?.tablesEnabled ?? false}
         >
-          <Field
-            label="Plan sale"
-            htmlFor="floorPlan"
-            hint="Raspored stolova se ne crta ovde — ovo bira koji plan veče koristi."
-          >
+          <Field label="Plan sale" htmlFor="floorPlan">
             <select
               id="floorPlan"
               name="floorPlan"
               defaultValue={event?.floorPlan ?? "default"}
               className="adm-field"
             >
+              {/* THE UPSTAIRS IS LISTED AND CANNOT BE CHOSEN.
+                  Hiding it would be a lie by omission — the club knows a
+                  second level is coming and would ask where it is. Offering
+                  it would be worse: there are no level-two tables drawn, so a
+                  Saturday filed against it would open bookings onto an empty
+                  room. So it is here, marked USKORO, and disabled. See
+                  FLOOR_PLANS in lib/venue.ts, where `ready` is the one switch
+                  that opens it. */}
               {FLOOR_PLANS.map((plan) => (
-                <option key={plan.id} value={plan.id}>
+                <option key={plan.id} value={plan.id} disabled={!plan.ready}>
                   {plan.label}
+                  {plan.ready ? "" : " — uskoro"}
                 </option>
               ))}
             </select>
           </Field>
 
-          {/* SAID PLAINLY, BECAUSE A SWITCH THAT LOOKS LIVE AND IS NOT IS
-              WORSE THAN NO SWITCH. The gate the public booking flow actually
-              reads is still the poster wall's — lib/events.ts, checked in
-              lib/reservations/{service,holds,admin}.ts — and it stays that
-              way until somebody deliberately moves it, because ANDing this
-              column into those three checks today would close table bookings
-              on every existing night at once (the column defaults to false).
-              So this is the event manager's own record of the intent, kept on
-              the row, and it is honest about that here rather than in a
-              comment nobody in the office reads. */}
-          <p className="text-[0.6875rem] leading-relaxed text-[var(--adm-ink-4)] sm:col-span-2">
-            Za postojeća večera javni izbor stolova i dalje prati podešavanje sa
-            javnog sajta. Ovo je podešavanje večera u sistemu.
-          </p>
+          {/* The paragraph that used to sit here explained to the OFFICE which
+              layer of the codebase enforces table booking. That is a note for
+              whoever maintains this, and it now lives where such notes belong:
+              the gate the public booking flow reads is lib/reservations/gate.ts
+              and the reasoning is written there. Staff get a switch that does
+              what it says. */}
         </SwitchSection>
 
         {/* ── 5 ───────────────────────────────────────────────────────── */}
@@ -314,17 +303,7 @@ export function EventEditor({
           />
         </Field>
 
-        <Field label="Žanr" htmlFor="genre">
-          <input
-            id="genre"
-            name="genre"
-            defaultValue={event?.genre ?? ""}
-            placeholder="House, RnB, domaće"
-            className="adm-field"
-          />
-        </Field>
-
-        <Field label="Starosno ograničenje" htmlFor="ageRestriction">
+        <Field label="Uzrast" htmlFor="ageRestriction">
           <input
             id="ageRestriction"
             name="ageRestriction"

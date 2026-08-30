@@ -66,13 +66,7 @@ export default async function AdminReservationsPage({
   return (
     <>
       <PageHeader
-        eyebrow="Sala"
         title="Rezervacije"
-        lede={
-          chosen
-            ? "Sajt i telefon pišu u istu knjigu — sto obećan telefonom nestaje sa plana istog trenutka."
-            : undefined
-        }
         action={
           chosen ? (
             <>

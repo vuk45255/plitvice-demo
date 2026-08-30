@@ -1,4 +1,4 @@
-import { PROGRAMME } from "@/lib/club/programme-seed";
+import { legacyArchiveIds, PROGRAMME } from "@/lib/club/programme-seed";
 import type { Queryable } from "@/lib/db/client";
 import { devMode } from "@/lib/ticketing/config";
 
@@ -362,6 +362,25 @@ const STATEMENTS: string[] = [
      it off every working list and leaves every report intact. */
   `ALTER TABLE events ADD COLUMN IF NOT EXISTS archived_at timestamptz`,
 
+  /* ═══ A POSTER, OR A NIGHT THIS SYSTEM RAN ═══════════════════════════════
+   *
+   * The club's record goes back further than the software. Ten of those nights
+   * are on the public wall as artwork and nothing else: they were put on before
+   * anything here existed, so there is no order, no ticket, no scan and no
+   * reservation against them and there never will be.
+   *
+   * The column exists because the ABSENCE of those rows is indistinguishable
+   * from a night that sold nothing. `0 / 500 prodato` is a true sentence about
+   * both, and it is a measurement of only one of them. This flag is what lets
+   * the office report on the nights it actually ran and lets the wall keep the
+   * rest.
+   *
+   * DEFAULT false — every night made in /admin is operational by construction,
+   * which is the only way a night can be made now. Classification of the
+   * seeded record happens in `classifyLegacyArchive` below, from the seed
+   * itself. */
+  `ALTER TABLE events ADD COLUMN IF NOT EXISTS legacy_archive boolean NOT NULL DEFAULT false`,
+
   /* ═══ THE ONE BACKFILL, AND WHY IT IS SAFE ═══════════════════════════════
    *
    * `tables_enabled` was added with DEFAULT false, because false is what a new
@@ -417,6 +436,7 @@ export async function ensureSchema(db: Migratable): Promise<void> {
     await q.query("SELECT pg_advisory_xact_lock($1)", [MIGRATION_LOCK]);
     for (const statement of STATEMENTS) await q.query(statement);
     await seedProgramme(q);
+    await classifyLegacyArchive(q);
     await adoptProgrammeOnce(q);
     await seedFixtures(q);
   });
@@ -439,9 +459,10 @@ async function seedProgramme(q: Queryable): Promise<void> {
          id, slug, title, starts_at, doors_at, description, image, status,
          ticket_price, currency, capacity, max_per_order, test_only,
          venue_id, ticketing_enabled, tables_enabled, floor_plan,
-         lineup, genre, age_restriction, entry_note, dress_code, promotion
+         lineup, genre, age_restriction, entry_note, dress_code, promotion,
+         legacy_archive
        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'RSD',$10,$11,false,
-                 'plitvice',$12,$13,'default',$14,$15,$16,$17,$18,$19)
+                 'plitvice',$12,$13,'default',$14,$15,$16,$17,$18,$19,$20)
        ON CONFLICT (id) DO NOTHING`,
       [
         night.id,
@@ -458,14 +479,46 @@ async function seedProgramme(q: Queryable): Promise<void> {
         night.ticketingEnabled,
         night.tablesEnabled,
         night.lineup ?? null,
-        night.genre ?? null,
+        /* `genre` is gone from the product — see lib/ticketing/event-rules.ts.
+           The column stays (dropping one from a live events table buys
+           nothing) and is written empty rather than taken out of the insert,
+           which keeps every parameter after it on the number it already had. */
+        null,
         night.ageRestriction ?? null,
         night.entryNote ?? null,
         night.dressCode ?? null,
         night.promotion ?? null,
+        night.legacy ?? false,
       ],
     );
   }
+}
+
+/* ═══ CLASSIFYING A DATABASE SEEDED BEFORE THE FLAG EXISTED ════════════════
+ *
+ * `legacy_archive` defaults to false, which is right for every night made in
+ * the office and wrong for the ten poster nights already sitting in the table
+ * from before the column was added. This puts them right.
+ *
+ * IT IS SAFE TO REPEAT, which is the rule every statement here answers to. The
+ * id list is a constant in this repository — the `past(...)` entries in the
+ * seed and nothing else — so it is the same statement on every start, matching
+ * the same ten rows. It is not a backfill from evidence and it is not
+ * reversible from the office, because being a poster is a fact about where a
+ * night came from rather than a setting anybody should toggle: nothing in the
+ * application writes this column and deliberately nothing will.
+ *
+ * IT ONLY EVER SETS THE FLAG ON, and only for ids named in this repository. A
+ * night the office creates is operational by construction and is never named
+ * here, so no amount of re-running can reach one. */
+async function classifyLegacyArchive(q: Queryable): Promise<void> {
+  const ids = legacyArchiveIds();
+  if (ids.length === 0) return;
+  await q.query(
+    `UPDATE events SET legacy_archive = true
+      WHERE id = ANY($1::text[]) AND legacy_archive = false`,
+    [ids],
+  );
 }
 
 /* ═══ THE ONE-TIME ADOPTION, AND WHY IT NEEDS A LEDGER ═════════════════════
@@ -543,7 +596,9 @@ async function adoptProgrammeOnce(q: Queryable): Promise<void> {
         night.ticketingEnabled,
         night.tablesEnabled,
         night.lineup ?? null,
-        night.genre ?? null,
+        /* `genre` left empty — the concept is gone from the product and this
+           parameter only survives so the numbering after it does. */
+        null,
         night.ageRestriction ?? null,
         night.entryNote ?? null,
         night.dressCode ?? null,

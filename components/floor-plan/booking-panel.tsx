@@ -537,6 +537,21 @@ export function BookingPanel({
          Windows scrollbar down the side of this would be the loudest thing
          on the screen. */
       style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(200,164,93,0.35) transparent" }}
+      /* AND THIS IS WHY THE SCROLL ABOVE ACTUALLY HAPPENS ON A PHONE.
+       *
+       * The card has had `overflow-y-auto` all along and it still would not
+       * move under a thumb, because opening the room calls `lenis.stop()`
+       * (floor-plan-overlay.tsx) and a stopped Lenis preventDefault()s every
+       * touchmove on the document — the inner scroller included. A guest could
+       * see POTVRDI below the fold and had no way to reach it.
+       *
+       * [data-lenis-prevent] is the escape Lenis itself provides: its
+       * onVirtualScroll walks the composed path and returns before the
+       * preventDefault when it finds this. The floor plan's own gestures are
+       * untouched — pan and pinch live on the <svg>, which is a SIBLING of
+       * this card and keeps its `touch-action: none`. So the map still pans
+       * where the map is, and the form scrolls where the form is. */
+      data-lenis-prevent
       /* HOW TALL THE SHEET IS ALLOWED TO BE, on a phone, as a share of the map
          it is standing on. Choosing a table needs two thirds and leaves the
          floor plainly in view; filling the booking in needs nearly all of it,

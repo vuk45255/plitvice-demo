@@ -52,8 +52,8 @@ const COLUMNS = `id, slug, title, starts_at, doors_at, description, image, statu
                  ticket_price, currency, capacity, max_per_order,
                  sales_start, sales_end, test_only,
                  venue_id, ticketing_enabled, tables_enabled, floor_plan,
-                 poster_key, lineup, genre, age_restriction, entry_note,
-                 dress_code, promotion, archived_at`;
+                 poster_key, lineup, age_restriction, entry_note,
+                 dress_code, promotion, archived_at, legacy_archive`;
 
 /* The same list, qualified, for the one query that joins a count beside it. */
 const COLUMNS_E = COLUMNS.split(",").map((c) => `e.${c.trim()}`).join(", ");
@@ -80,12 +80,12 @@ type EventRow = {
   floor_plan: string | null;
   poster_key: string | null;
   lineup: string | null;
-  genre: string | null;
   age_restriction: string | null;
   entry_note: string | null;
   dress_code: string | null;
   promotion: string | null;
   archived_at: Date | string | null;
+  legacy_archive: boolean | null;
 };
 
 /* One instant, written the one way the rest of the system reads it. Both
@@ -125,12 +125,15 @@ function toEvent(row: EventRow): TicketingEvent {
     floorPlan: row.floor_plan && isFloorPlan(row.floor_plan) ? row.floor_plan : "default",
     posterKey: row.poster_key ?? undefined,
     lineup: row.lineup ?? undefined,
-    genre: row.genre ?? undefined,
     ageRestriction: row.age_restriction ?? undefined,
     entryNote: row.entry_note ?? undefined,
     dressCode: row.dress_code ?? undefined,
     promotion: row.promotion ?? undefined,
     archivedAt: iso(row.archived_at),
+    /* Defensive like the rest: a row read before the column existed is an
+       operational night, which is what this system did before there was a
+       flag and what every night made in the office is. */
+    legacyArchive: Boolean(row.legacy_archive ?? false),
   };
 }
 
@@ -235,7 +238,6 @@ export type EventPatch = Partial<
     | "floorPlan"
     | "posterKey"
     | "lineup"
-    | "genre"
     | "ageRestriction"
     | "entryNote"
     | "dressCode"
@@ -346,7 +348,6 @@ async function writeEvent(
      that is how the form removes a dress code — and `undefined` leaves it
      alone, exactly as it does for a description. */
   if (patch.lineup !== undefined) push("lineup", patch.lineup || null);
-  if (patch.genre !== undefined) push("genre", patch.genre || null);
   if (patch.ageRestriction !== undefined) push("age_restriction", patch.ageRestriction || null);
   if (patch.entryNote !== undefined) push("entry_note", patch.entryNote || null);
   if (patch.dressCode !== undefined) push("dress_code", patch.dressCode || null);
@@ -397,7 +398,6 @@ export type NewEvent = {
   floorPlan?: FloorPlanId;
   posterKey?: string;
   lineup?: string;
-  genre?: string;
   ageRestriction?: string;
   entryNote?: string;
   dressCode?: string;
@@ -443,9 +443,9 @@ export async function createEvent(input: NewEvent): Promise<EventWriteResult> {
          id, slug, title, starts_at, doors_at, description, image, status,
          ticket_price, currency, capacity, max_per_order, test_only,
          venue_id, ticketing_enabled, tables_enabled, floor_plan, poster_key,
-         lineup, genre, age_restriction, entry_note, dress_code, promotion
+         lineup, age_restriction, entry_note, dress_code, promotion
        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'RSD',$10,$11,false,
-                 $12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
+                 $12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
        RETURNING ${COLUMNS}`,
       [
         newEventId(),
@@ -465,7 +465,6 @@ export async function createEvent(input: NewEvent): Promise<EventWriteResult> {
         input.floorPlan ?? "default",
         input.posterKey || null,
         input.lineup || null,
-        input.genre || null,
         input.ageRestriction || null,
         input.entryNote || null,
         input.dressCode || null,
@@ -557,7 +556,6 @@ export async function duplicateEvent(
     tablesEnabled: source.tablesEnabled,
     floorPlan: source.floorPlan,
     lineup: source.lineup,
-    genre: source.genre,
     ageRestriction: source.ageRestriction,
     entryNote: source.entryNote,
     dressCode: source.dressCode,

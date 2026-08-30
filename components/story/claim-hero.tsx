@@ -8,6 +8,7 @@ import {
   useReducedMotion,
 } from "framer-motion";
 import { EASE } from "@/components/reveal";
+import { ScrollCue } from "@/components/scroll-cue";
 import { useFilmInView } from "@/lib/use-film";
 import { site } from "@/lib/site";
 
@@ -218,6 +219,12 @@ export function ClaimHero() {
         </AnimatePresence>
       )}
 
+      {/* One screen of statement and nothing under it — on a phone the words
+          sit dead centre with half a screen of night below, which is exactly
+          the composition a first-time visitor reads as the whole page. The cue
+          is not dismissed by anything: it belongs to the hero and it leaves
+          with it. */}
+      <ScrollCue className="z-20" />
     </section>
   );
 }

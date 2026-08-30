@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { Badge } from "@/components/admin/badge";
 import { EventActions } from "@/components/admin/event-actions";
-import { actionsFor, posterUrl, type EventCardModel } from "@/lib/club/event-manager";
+import {
+  actionsFor,
+  eventStatusBadge,
+  posterUrl,
+  type EventCardModel,
+} from "@/lib/club/event-manager";
+import type { ReportSummary } from "@/lib/club/event-report";
 import { eventDate, eventTime, price } from "@/lib/ticketing/copy";
 
 /* ONE NIGHT, AS A LIST READS IT.
@@ -30,20 +36,33 @@ import { eventDate, eventTime, price } from "@/lib/ticketing/copy";
  * It is a SERVER component. Only the actions need JavaScript, and they are
  * their own island. */
 
-export function EventCard({ card }: { card: EventCardModel }) {
+export function EventCard({
+  card,
+  /* The night's operational figures, already fetched in one aggregate for the
+     whole list — see `reportSummaries`. Optional so a caller that has not got
+     them renders the row without the numbers rather than querying per card. */
+  summary,
+}: {
+  card: EventCardModel;
+  summary?: ReportSummary;
+}) {
   const { event, counts, sale, group } = card;
   const { primary, more } = actionsFor(card);
   const poster = posterUrl(event);
-  const dim = group === "finished" || group === "archived";
+  const finished = group === "finished" || group === "archived";
+  const dim = finished;
 
   return (
     <li className={`adm-event ${dim ? "adm-event--dim" : ""}`}>
       {/* The poster doubles as the way in, because it is the biggest target on
-          the row and on a phone that matters more than it looks. */}
+          the row and on a phone that matters more than it looks. It opens the
+          night's REPORT, like every other link on this card; UREDI below is
+          the one that opens the form, and the label used to say "Uredi" about
+          a link that no longer goes there. */}
       <Link
         href={`/admin/dogadjaji/${event.id}`}
         className="adm-event-poster"
-        aria-label={`Uredi ${event.title}`}
+        aria-label={`Otvori ${event.title}`}
       >
         {poster ? (
           /* A plain <img>: the source is whatever object store the club has
@@ -62,7 +81,7 @@ export function EventCard({ card }: { card: EventCardModel }) {
         <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
           <div className="min-w-0">
             <p className="adm-eyebrow">
-              {eventDate(event.startsAt)} · {eventTime(event.doorsAt ?? event.startsAt)}
+              {eventDate(event.startsAt)} · {eventTime(event.startsAt)}
             </p>
             <Link
               href={`/admin/dogadjaji/${event.id}`}
@@ -80,7 +99,7 @@ export function EventCard({ card }: { card: EventCardModel }) {
 
         {/* ── the states ──────────────────────────────────────────────── */}
         <div className="mt-2.5 flex flex-wrap items-center gap-2">
-          <Badge kind="event" value={event.status} />
+          <Badge kind="event" value={eventStatusBadge(event)} />
           {/* The sale badge only means something for a night that sells; for a
               free-door night it would say "cena nije podešena" about a night
               that has no price on purpose. */}
@@ -101,20 +120,48 @@ export function EventCard({ card }: { card: EventCardModel }) {
           ) : null}
         </div>
 
-        {/* ── the numbers, when there are any ─────────────────────────── */}
-        {event.ticketingEnabled ? (
+        {/* ── the numbers, when there are any ─────────────────────────────
+         *
+         * WHAT A ROW IS ASKED, IN ORDER: how is the sale going, how full is
+         * the floor, and — once the night is over — how many actually came.
+         * The last of those is the figure a finished night is opened for, and
+         * it used not to be here at all.
+         *
+         * Each line is printed only where it means something. A night that
+         * does not sell online has no sale line, because `0 / 500 prodato`
+         * about a free door is a report of a failure that never happened. */}
+        {event.ticketingEnabled || (summary && summary.tablesTaken > 0) ? (
           <p className="adm-figure mt-2.5 text-[0.8125rem] text-[var(--adm-ink-2)]">
-            {counts.paid} / {counts.capacity} prodato
-            {counts.available > 0 ? (
+            {event.ticketingEnabled ? (
+              <>
+                {counts.paid} / {counts.capacity} prodato
+                {counts.available > 0 ? (
+                  <span className="text-[var(--adm-ink-4)]">
+                    {" · "}
+                    {counts.available} slobodno
+                  </span>
+                ) : null}
+                {event.ticketPrice > 0 ? (
+                  <span className="text-[var(--adm-ink-4)]">
+                    {" · "}
+                    {price(event.ticketPrice)}
+                  </span>
+                ) : null}
+              </>
+            ) : null}
+            {summary && summary.tablesTaken > 0 ? (
               <span className="text-[var(--adm-ink-4)]">
-                {" · "}
-                {counts.available} slobodno
+                {event.ticketingEnabled ? " · " : ""}
+                {summary.tablesTaken} stolova
               </span>
             ) : null}
-            {event.ticketPrice > 0 ? (
-              <span className="text-[var(--adm-ink-4)]">
+            {/* Scanned is a fact about a night that has happened. On a night
+                still ahead it is a zero that means "not yet" and reads as
+                "nobody came". */}
+            {finished && summary && summary.admitted > 0 ? (
+              <span className="text-[var(--adm-good)]">
                 {" · "}
-                {price(event.ticketPrice)}
+                {summary.admitted} ušlo
               </span>
             ) : null}
           </p>

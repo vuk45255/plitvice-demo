@@ -98,15 +98,7 @@ function Wordmark() {
 
 /* ── the laptop ─────────────────────────────────────────────────────────── */
 
-export function AdminSidebar({
-  staffName,
-  role,
-  signOut,
-}: {
-  staffName: string;
-  role: string;
-  signOut: React.ReactNode;
-}) {
+export function AdminSidebar({ signOut }: { signOut: React.ReactNode }) {
   return (
     <aside className="sticky top-0 hidden h-dvh w-[13.5rem] shrink-0 flex-col justify-between overflow-y-auto border-r border-[var(--adm-line-soft)] px-3 py-6 lg:flex">
       <div>
@@ -118,28 +110,19 @@ export function AdminSidebar({
         </div>
       </div>
 
-      <div className="border-t border-[var(--adm-line-soft)] px-3 pt-4">
-        <p className="text-[0.6875rem] text-[var(--adm-ink-2)]">{staffName}</p>
-        <p className="mt-0.5 text-[0.5625rem] uppercase tracking-[0.22em] text-[var(--adm-ink-4)]">
-          {role === "admin" ? "Uprava" : "Ulaz"}
-        </p>
-        <div className="mt-3">{signOut}</div>
-      </div>
+      {/* JUST THE WAY OUT. This used to carry the signed-in name and the role
+          under it — "Razvoj / UPRAVA" — which is a session debug line wearing a
+          label. Somebody standing at the door already knows who they are and
+          which office they are in; what they occasionally need is to sign out
+          of a shared phone, and that is now the whole of the footer. */}
+      <div className="border-t border-[var(--adm-line-soft)] px-3 pt-4">{signOut}</div>
     </aside>
   );
 }
 
 /* ── the phone ──────────────────────────────────────────────────────────── */
 
-export function AdminTopBar({
-  staffName,
-  role,
-  signOut,
-}: {
-  staffName: string;
-  role: string;
-  signOut: React.ReactNode;
-}) {
+export function AdminTopBar({ signOut }: { signOut: React.ReactNode }) {
   const [open, setOpen] = useState(false);
 
   /* Arriving somewhere closes the menu you arrived through — done on the link
@@ -201,11 +184,7 @@ export function AdminTopBar({
             </div>
 
             <div className="border-t border-[var(--adm-line-soft)] px-3 pt-4">
-              <p className="text-[0.75rem] text-[var(--adm-ink-2)]">{staffName}</p>
-              <p className="mt-0.5 text-[0.5625rem] uppercase tracking-[0.22em] text-[var(--adm-ink-4)]">
-                {role === "admin" ? "Uprava" : "Ulaz"}
-              </p>
-              <div className="mt-3">{signOut}</div>
+              {signOut}
             </div>
           </div>
         </div>

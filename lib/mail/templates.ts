@@ -123,7 +123,7 @@ export function ticketMail(delivery: TicketDelivery): MailMessage {
     `<tr><td style="padding:24px 28px 0 28px;">
       <h1 style="margin:0;font-size:22px;line-height:1.3;color:${INK};font-weight:400;">${esc(event.title)}</h1>
       <p style="margin:10px 0 0 0;font-size:14px;color:${MUTED};">
-        ${esc(eventDate(event.startsAt))} &middot; ${esc(eventTime(event.doorsAt ?? event.startsAt))}
+        ${esc(eventDate(event.startsAt))} &middot; ${esc(eventTime(event.startsAt))}
       </p>
     </td></tr>
 

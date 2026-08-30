@@ -192,8 +192,30 @@ export function ReservationGate() {
             </div>
 
             {/* The conditions. Given their own scroll so a small phone never
-                pushes the button off the bottom of the screen. */}
-            <div className="relative min-h-0 flex-1 overflow-y-auto px-6 py-6 md:px-9">
+                pushes the button off the bottom of the screen.
+
+                THE ATTRIBUTE IS WHAT MAKES THAT SCROLL WORK ON A PHONE, and it
+                is not decoration. Opening this notice calls `lenis.stop()` on
+                the line above, and a stopped Lenis calls preventDefault() on
+                EVERY touchmove it sees — see onVirtualScroll in lenis 1.3.26:
+
+                    if (this.isStopped || this.isLocked) {
+                      if (event.cancelable) event.preventDefault()
+                      return
+                    }
+
+                which killed native scrolling inside this box as well as behind
+                it. The one escape is the composedPath test immediately above
+                that branch, which returns early for [data-lenis-prevent] — so
+                the guest's finger reaches the browser instead of Lenis. Every
+                other gesture is unchanged, the page behind is still held, and
+                app/globals.css already gives this attribute
+                `overscroll-behavior: contain` so the swipe cannot chain
+                through to the room underneath. */}
+            <div
+              data-lenis-prevent
+              className="relative min-h-0 flex-1 overflow-y-auto px-6 py-6 md:px-9"
+            >
               <div className="space-y-4">
                 {CONDITIONS.map((line) => (
                   <p

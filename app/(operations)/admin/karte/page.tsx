@@ -119,7 +119,6 @@ export default async function AdminTicketsPage({
   return (
     <>
       <PageHeader
-        eyebrow="Prodaja"
         title="Karte"
         lede="Pretražite po imenu, broju telefona, email adresi, broju porudžbine ili broju karte."
       />

@@ -65,7 +65,24 @@ export type MediaStoreName = "vercel-blob" | "s3" | "local" | "none";
 
 export function mediaStoreName(): MediaStoreName {
   const raw = process.env.MEDIA_STORE?.trim().toLowerCase();
-  if (!raw || raw === "none") return "none";
+
+  /* ═══ A LAPTOP GETS A STORE WITHOUT BEING ASKED ═══════════════════════════
+   *
+   * Unset used to mean "no store" everywhere, which is right in production and
+   * wrong on a development machine: it made PROMENI SLIKU inert on every
+   * checkout of this repository, so the feature looked unimplemented until
+   * somebody found the variable. A developer running `npm run dev` should be
+   * able to pick a poster and see it, and `.data/media` costs nothing and is
+   * already where this project keeps the things that are real but local.
+   *
+   * IT CHANGES NOTHING IN PRODUCTION. Unset still means no store there, and
+   * the local store additionally refuses to run in production on its own
+   * account — see the guard below and lib/media/local.ts. Both of those stay
+   * exactly as they were; this only picks a default for the one environment
+   * where writing to a disk is a real thing to do. */
+  if (!raw) return process.env.NODE_ENV === "development" ? "local" : "none";
+
+  if (raw === "none") return "none";
   if (raw === "vercel-blob" || raw === "blob" || raw === "vercel") return "vercel-blob";
   if (raw === "s3" || raw === "r2") return "s3";
   if (raw === "local") return "local";

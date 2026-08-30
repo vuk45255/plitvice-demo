@@ -20,6 +20,9 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function Zurke() {
-  const { next, past } = await programme();
-  return <ZurkePage next={next} past={past} />;
+  /* THE WALL, NOT THE WHOLE RECORD. `archive` is the record with the club's
+     own nights given the frames first and the older posters filling whatever
+     is left — see ARCHIVE_SLOTS in lib/club/programme.ts. */
+  const { next, archive } = await programme();
+  return <ZurkePage next={next} past={archive} />;
 }

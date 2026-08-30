@@ -119,7 +119,6 @@ describe("making a night", () => {
       tablesEnabled: true,
       floorPlan: "default",
       lineup: "DJ Wolf",
-      genre: "House",
       ageRestriction: "18+",
       entryNote: "Ulaz besplatan",
       dressCode: "Elegantno",

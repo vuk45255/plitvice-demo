@@ -24,7 +24,7 @@ import { programme } from "@/lib/club/programme";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const { next, past, events } = await programme();
+  const { next, archive, events } = await programme();
   const posters = events.map((event) => event.poster).filter((p) => p !== undefined);
 
   return (
@@ -33,7 +33,7 @@ export default async function Home() {
       <SiteHeader />
       <main id="main">
         <Hero />
-        <Events next={next} past={past} />
+        <Events next={next} past={archive} />
         <Portals posters={posters} />
         {/* the signature band — and the one door on the home page into the
             story of the house, which has a page of its own at /o-nama */}

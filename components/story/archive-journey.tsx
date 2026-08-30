@@ -12,6 +12,7 @@ import {
 } from "framer-motion";
 import Image from "next/image";
 import { useScrollTrack } from "@/components/story/use-scroll-track";
+import { ScrollCue } from "@/components/scroll-cue";
 import { useLang } from "@/components/providers/language";
 import type { MessageKey } from "@/lib/i18n";
 import { useWideScreen } from "@/lib/use-media";
@@ -712,6 +713,24 @@ export function ArchiveJourney() {
   );
   const wallFade = useTransform(morph, [0.06, 0.4], [1, 0]);
 
+  /* THE FIRST BEAT OF THE RAIL, BEFORE THE RAIL HAS ANYTHING TO SAY.
+   *
+   * A pinned stage is the one place on the site where scrolling does not move
+   * the page, and the wall opens on a single held composition — so the screen
+   * that says PLITVICE NISU NASTALE PREKO NOĆI reads as a whole page rather
+   * than as the first frame of five. The timeline below it is the house's own
+   * answer to that, and it is already there; it is simply drawn at nothing on
+   * the frame the pin engages on, and takes until 0.035 to come up.
+   *
+   * So this is a hand-over and not a second instrument. The cue holds the foot
+   * of the stage while the rail is still at nought, and is gone by 0.026 —
+   * by which point the rail is about three quarters up and plainly the thing
+   * being read. They cross rather than queue, which is what makes it one
+   * gesture; what must not happen is the pin engaging on an empty foot, and it
+   * cannot, because the cue is at full strength exactly where the rail is at
+   * none. */
+  const cue = useTransform(progress, [0, 0.008, 0.026], [1, 1, 0]);
+
   const onScreen = useInView(ref);
 
   return reduced ? (
@@ -749,6 +768,7 @@ export function ArchiveJourney() {
 
         <Seams progress={progress} />
         <Rail progress={progress} />
+        <ScrollCue opacity={cue} className="z-40" />
       </div>
     </section>
   );

@@ -41,7 +41,6 @@ export default async function NewEventPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Program"
         title="Novi događaj"
         lede="Naziv i datum su dovoljni. Sve ostalo možete dodati kasnije."
         action={

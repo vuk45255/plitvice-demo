@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Minus, Plus, Scan } from "lucide-react";
 import {
   PLAN,
   SEATS,
@@ -89,6 +90,61 @@ const OFFICE_INK: PlanInk = {
   zoneMark: "rgba(244,240,230,0.10)",
 };
 
+/* ═══ LOOKING CLOSER, WITHOUT MOVING A TABLE ══════════════════════════════
+ *
+ * THE ZOOM IS THE `viewBox` AND NOTHING ELSE. Every table's x and y stays
+ * exactly what lib/floor-plan.ts says; what changes is the rectangle of the
+ * drawing the SVG is asked to show. That is what makes this viewport-only by
+ * construction rather than by discipline — there is no code path here that
+ * could write a coordinate even if somebody tried, and a click still lands on
+ * the right table at any magnification because the browser maps pointer
+ * positions through the viewBox itself.
+ *
+ * It also means no second implementation of the plan. `PlanArchitecture` and
+ * `SeatOutline` are drawn once, the way they always were.
+ *
+ * THE LIMITS. Fitted is 1× and is the floor; four times is as close as the
+ * drawing has detail for. The visible rectangle is always clamped inside the
+ * plan, so panning cannot strand somebody in empty space with no way back. */
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 4;
+const ZOOM_STEP = 1.5;
+
+/* How far a pointer may move between press and release and still count as a
+   tap on a table. Below this it is a click; above it, it was a drag and the
+   click that follows is swallowed — dragging the map must never book a
+   separe. */
+const DRAG_SLOP = 4;
+
+type View = { zoom: number; x: number; y: number };
+
+const FITTED: View = { zoom: 1, x: 0, y: 0 };
+
+/* The visible rectangle, clamped inside the plan. Written once because three
+   different gestures all have to agree about what a legal view is. */
+function clamp(view: View): View {
+  const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, view.zoom));
+  const w = PLAN.width / zoom;
+  const h = PLAN.height / zoom;
+  return {
+    zoom,
+    x: Math.min(Math.max(0, view.x), PLAN.width - w),
+    y: Math.min(Math.max(0, view.y), PLAN.height - h),
+  };
+}
+
+/* Zoom about a fixed point of the DRAWING, so whatever was under the pointer
+   (or in the middle of the screen) is still under it afterwards. */
+function zoomAbout(view: View, factor: number, planX: number, planY: number): View {
+  const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, view.zoom * factor));
+  const w = PLAN.width / zoom;
+  const h = PLAN.height / zoom;
+  /* Where the focal point sat within the old view, as a fraction. */
+  const fx = (planX - view.x) / (PLAN.width / view.zoom);
+  const fy = (planY - view.y) / (PLAN.height / view.zoom);
+  return clamp({ zoom, x: planX - fx * w, y: planY - fy * h });
+}
+
 export function FloorMap({
   initial,
   eventSlug,
@@ -147,21 +203,240 @@ export function FloorMap({
   );
   const selected = chosen ? byId.get(chosen) : undefined;
 
+  /* ── the viewport ─────────────────────────────────────────────────────── */
+
+  const [view, setView] = useState<View>(FITTED);
+  const frame = useRef<HTMLDivElement>(null);
+  /* ═══ THE DRAWING'S OWN BOX, NOT THE PADDED ONE ════════════════════════
+   *
+   * The frame carries `p-3` and the svg is `w-full h-auto`, so the two boxes
+   * differ by 24px in each direction AND have different aspect ratios. Mapping
+   * a pointer through the frame therefore got both scale factors wrong, and
+   * wrong by different amounts — so zooming about a table near an edge drifted
+   * away from it, and the error compounded over successive steps. Everything
+   * that converts screen pixels to plan units measures THIS. */
+  const surface = useRef<SVGSVGElement>(null);
+  /* Live pointers, for a two-finger pinch. A Map because a phone can put a
+     third finger down and the arithmetic should not care. */
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const pinch = useRef<{ distance: number } | null>(null);
+  /* Set the moment a gesture turns out to be a drag, and read by the seat
+     click handler on the way through. Ref rather than state: it has to be
+     true DURING the click event, which is before any re-render. */
+  const swallowClick = useRef(false);
+
+  /* A point on the screen, in the drawing's own coordinates. */
+  const toPlan = useCallback(
+    (clientX: number, clientY: number) => {
+      const box = surface.current?.getBoundingClientRect();
+      if (!box || box.width === 0 || box.height === 0) return null;
+      return {
+        x: view.x + ((clientX - box.left) / box.width) * (PLAN.width / view.zoom),
+        y: view.y + ((clientY - box.top) / box.height) * (PLAN.height / view.zoom),
+      };
+    },
+    [view],
+  );
+
+  const step = useCallback((factor: number) => {
+    setView((current) =>
+      zoomAbout(
+        current,
+        factor,
+        current.x + PLAN.width / current.zoom / 2,
+        current.y + PLAN.height / current.zoom / 2,
+      ),
+    );
+  }, []);
+
+  /* ═══ THE WHEEL ZOOMS ONLY WITH A MODIFIER, AND THAT IS DELIBERATE ══════
+   *
+   * A plain wheel over a map that swallowed it would trap the page: the floor
+   * plan sits in a scrolling admin page, and somebody scrolling past it would
+   * find the page stuck while the map zoomed instead. So the page keeps the
+   * plain wheel and the map takes ctrl/⌘ + wheel — which is also exactly what
+   * a trackpad pinch sends, so pinching on a laptop zooms the map with no
+   * special case. The +/− buttons are the discoverable control; this is the
+   * shortcut for somebody who already knows it. */
+  useEffect(() => {
+    const node = frame.current;
+    if (!node) return;
+
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      event.preventDefault();
+      const at = toPlan(event.clientX, event.clientY);
+      if (!at) return;
+      /* A wheel notch is coarse; a trackpad pinch is fine. Both are mapped
+         through the same exponential so neither jumps. */
+      setView((current) =>
+        zoomAbout(current, Math.exp(-event.deltaY / 320), at.x, at.y),
+      );
+    };
+
+    /* `passive: false` is what makes `preventDefault` work on a wheel in
+       Chrome, and it is why this is an effect rather than a React prop. */
+    node.addEventListener("wheel", onWheel, { passive: false });
+    return () => node.removeEventListener("wheel", onWheel);
+  }, [toPlan]);
+
+  function onPointerDown(event: React.PointerEvent) {
+    pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    if (pointers.current.size === 2) {
+      const [a, b] = [...pointers.current.values()];
+      pinch.current = { distance: Math.hypot(a.x - b.x, a.y - b.y) };
+      drag.current = null;
+      return;
+    }
+
+    /* One finger pans only when there is somewhere to pan to. At the fitted
+       view the whole plan is on screen, so a drag there is somebody trying to
+       scroll the page and must be left alone. */
+    if (pointers.current.size === 1 && view.zoom > MIN_ZOOM) {
+      drag.current = { x: event.clientX, y: event.clientY, moved: false };
+      (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+    }
+  }
+
+  function onPointerMove(event: React.PointerEvent) {
+    if (!pointers.current.has(event.pointerId)) return;
+    pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    if (pinch.current && pointers.current.size >= 2) {
+      const [a, b] = [...pointers.current.values()];
+      const distance = Math.hypot(a.x - b.x, a.y - b.y);
+      if (pinch.current.distance > 0) {
+        const at = toPlan((a.x + b.x) / 2, (a.y + b.y) / 2);
+        const factor = distance / pinch.current.distance;
+        if (at) setView((current) => zoomAbout(current, factor, at.x, at.y));
+      }
+      pinch.current = { distance };
+      swallowClick.current = true;
+      return;
+    }
+
+    const from = drag.current;
+    if (!from) return;
+
+    const dx = event.clientX - from.x;
+    const dy = event.clientY - from.y;
+    if (!from.moved && Math.hypot(dx, dy) < DRAG_SLOP) return;
+
+    from.moved = true;
+    swallowClick.current = true;
+    drag.current = { x: event.clientX, y: event.clientY, moved: true };
+
+    /* Both dimensions guarded: the y term divides by height, and a frame with
+       no height would otherwise put NaN into the viewBox and render nothing. */
+    const box = surface.current?.getBoundingClientRect();
+    if (!box || box.width === 0 || box.height === 0) return;
+    setView((current) =>
+      clamp({
+        ...current,
+        x: current.x - (dx / box.width) * (PLAN.width / current.zoom),
+        y: current.y - (dy / box.height) * (PLAN.height / current.zoom),
+      }),
+    );
+  }
+
+  function onPointerUp(event: React.PointerEvent) {
+    pointers.current.delete(event.pointerId);
+    if (pointers.current.size < 2) pinch.current = null;
+    if (pointers.current.size === 0) drag.current = null;
+    /* Cleared on the next tick so the click event that follows this release
+       still sees it. */
+    if (swallowClick.current) {
+      setTimeout(() => {
+        swallowClick.current = false;
+      }, 0);
+    }
+  }
+
+  const fitted = view.zoom === MIN_ZOOM;
+
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-[var(--adm-line-soft)] px-[1.125rem] py-3">
-        <Key tone="available" label="Slobodno" count={floor.counts.available} />
-        <Key tone="held" label="Zadržano" count={floor.counts.held} />
-        <Key tone="reserved" label="Rezervisano" count={floor.counts.reserved} />
+      <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3 border-b border-[var(--adm-line-soft)] px-[1.125rem] py-3">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <Key tone="available" label="Slobodno" count={floor.counts.available} />
+          <Key tone="held" label="Zadržano" count={floor.counts.held} />
+          <Key tone="reserved" label="Rezervisano" count={floor.counts.reserved} />
+        </div>
+
+        {/* − 100% + and a way back. Four small controls at the head of the map
+            rather than floating over it: on a phone a floating control sits on
+            top of the very tables it is there to help you read. */}
+        <div className="adm-zoom" role="group" aria-label="Uvećanje plana">
+          <button
+            type="button"
+            onClick={() => step(1 / ZOOM_STEP)}
+            disabled={fitted}
+            aria-label="Umanji"
+            className="adm-zoom-btn"
+          >
+            <Minus className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+          <span className="adm-zoom-level" aria-live="polite">
+            {Math.round(view.zoom * 100)}%
+          </span>
+          <button
+            type="button"
+            onClick={() => step(ZOOM_STEP)}
+            disabled={view.zoom >= MAX_ZOOM}
+            aria-label="Uvećaj"
+            className="adm-zoom-btn"
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setView(FITTED)}
+            disabled={fitted}
+            className="adm-zoom-btn adm-zoom-btn--wide"
+          >
+            <Scan className="h-3.5 w-3.5" aria-hidden="true" />
+            Cela sala
+          </button>
+        </div>
       </div>
 
       {/* Map on the left, the chosen table on the right — on a phone the panel
           simply falls underneath, which is where a thumb already is. */}
       <div className="grid lg:grid-cols-[1fr_19rem]">
-        <div className="w-full overflow-x-auto p-3">
+        {/* ═══ THE FRAME, WHICH IS THE ONLY THING THAT SCROLLS ═════════════
+         *
+         * It used to be `overflow-x-auto` with `min-w-[34rem]` on the drawing,
+         * which on a 360px phone meant the map was a sideways scroll and the
+         * far side of the room was off screen with no way to see how much of
+         * it there was. Now the whole plan is FITTED to whatever width there
+         * is and looking closer is the zoom.
+         *
+         * `touch-action` is the one rule that makes one-finger panning
+         * possible: at the fitted view it is `pan-y`, so a finger on the map
+         * scrolls the page exactly as it would anywhere else; zoomed in it is
+         * `none`, so the same finger moves the map. The gesture only changes
+         * when there is somewhere to move to. */}
+        <div
+          ref={frame}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          className="w-full select-none overflow-hidden p-3"
+          style={{
+            touchAction: fitted ? "pan-y" : "none",
+            cursor: fitted ? undefined : "grab",
+          }}
+        >
           <svg
-            viewBox={`0 0 ${PLAN.width} ${PLAN.height}`}
-            className="h-auto w-full min-w-[34rem]"
+            ref={surface}
+            /* THE ZOOM, AND THE WHOLE OF IT. Not a transform on a group and
+               not a change to a single coordinate — the window onto the
+               drawing moves, so pointer positions map through it for free. */
+            viewBox={`${view.x} ${view.y} ${PLAN.width / view.zoom} ${PLAN.height / view.zoom}`}
+            className="h-auto w-full"
             role="img"
             aria-label="Raspored stolova"
           >
@@ -185,7 +460,14 @@ export function FloorMap({
                   seat={seat}
                   state={state}
                   active={chosen === seat.id}
-                  onPick={() => setChosen(chosen === seat.id ? null : seat.id)}
+                  /* A DRAG IS NOT A CHOICE. Panning across the room passes
+                     the pointer over a dozen tables and releases it on one;
+                     without this, exploring the map would keep opening
+                     separes nobody asked about. */
+                  onPick={() => {
+                    if (swallowClick.current) return;
+                    setChosen(chosen === seat.id ? null : seat.id);
+                  }}
                 />
               );
             })}

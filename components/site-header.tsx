@@ -97,6 +97,9 @@ export function SiteHeader() {
                 animate={reduced ? { opacity: 1 } : { x: 0 }}
                 exit={reduced ? { opacity: 0 } : { x: "-100%" }}
                 transition={{ duration: reduced ? 0 : 0.65, ease: EASE }}
+                /* Stopped Lenis eats touchmove; this drawer scrolls itself.
+                   See the note in components/reservation/reservation-gate.tsx. */
+                data-lenis-prevent
                 className="fixed inset-y-0 left-0 flex w-[88%] max-w-[380px] flex-col justify-between overflow-y-auto border-r border-line bg-night px-8 pb-12 pt-24 text-night-ink sm:w-[380px] md:pt-28"
               >
                 {/* one lamp in the far corner, and a little haze under it */}

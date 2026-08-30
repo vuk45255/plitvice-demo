@@ -119,7 +119,7 @@ export function toPartyEvent(event: TicketingEvent, now = new Date()): PartyEven
     artist: event.title,
     date: localDate(event.startsAt),
     description: event.description,
-    startTime: clockTime(event.doorsAt ?? event.startsAt),
+    startTime: clockTime(event.startsAt),
     /* A PRICE ONLY WHERE THERE IS A SALE TO PRICE. A night taken at the door
        carries a zero because nobody set an online price, and printing "0 RSD"
        under the poster would be worse than printing nothing at all. */
@@ -134,11 +134,11 @@ export function toPartyEvent(event: TicketingEvent, now = new Date()): PartyEven
        away on a Saturday that has been and gone. */
     tables: { enabled: event.tablesEnabled && !past },
     lineup: event.lineup,
-    genre: event.genre,
     ageRestriction: event.ageRestriction,
     entryNote: event.entryNote,
     dressCode: event.dressCode,
     promotion: event.promotion,
+    legacy: event.legacyArchive,
   };
 }
 
@@ -156,9 +156,57 @@ export type Programme = {
      wall exactly as it hung. */
   events: PartyEvent[];
   upcoming: PartyEvent[];
+  /* EVERY night that has happened, in date order. Nothing is dropped here —
+     this is the record, and the record is complete. */
   past: PartyEvent[];
+  /* The record as a WALL WITH A FIXED NUMBER OF FRAMES on it. See below. */
+  archive: PartyEvent[];
   next?: PartyEvent;
 };
+
+/* ═══ HOW MANY FRAMES THE ARCHIVE WALL HAS ════════════════════════════════
+ *
+ * The wall is a two-column grid on a phone and a three-column grid from
+ * `md`, so twelve fills both without a ragged last row. It is a DESIGN
+ * measure, not a data one: the record itself is unbounded and `past` above
+ * carries all of it.
+ *
+ * This is the number that makes the archive turn over. */
+export const ARCHIVE_SLOTS = 12;
+
+/* ═══ WHICH NIGHTS GET THE FRAMES ═════════════════════════════════════════
+ *
+ * THE CLUB'S OWN NIGHTS FIRST, AND THE POSTERS FILL THE REST.
+ *
+ * The wall opened with ten nights that this software never ran — artwork from
+ * before it existed, and the whole of the club's record at the time. As the
+ * club runs nights THROUGH the system, those become the record: they have a
+ * date this system watched pass, a poster the office uploaded, and, where the
+ * night sold anything, a report behind them.
+ *
+ * So the selection is by priority and the DISPLAY is by date. Every real
+ * finished night takes a frame; whatever is left over is filled with posters,
+ * most recent first. Two real nights and ten posters is two and ten; a third
+ * real night finishes and it is three and nine. The oldest poster leaves the
+ * wall, one at a time, without anybody deciding to remove it and without a
+ * single file being deleted — the row and the artwork both stay exactly where
+ * they are, and `past` still carries them.
+ *
+ * THE ORDER ON THE WALL IS STILL THE DATE. Sorting the real ones to the front
+ * would file last Saturday above a night from August of the previous year and
+ * make the archive read as a ranking. It is a record; it hangs in time. */
+export function archiveWall(
+  past: PartyEvent[],
+  when: (event: PartyEvent) => string,
+  slots = ARCHIVE_SLOTS,
+): PartyEvent[] {
+  const ours = past.filter((event) => !event.legacy);
+  const posters = past.filter((event) => event.legacy);
+
+  const chosen = [...ours.slice(0, slots), ...posters.slice(0, Math.max(0, slots - ours.length))];
+
+  return chosen.sort((a, b) => when(b).localeCompare(when(a)));
+}
 
 /* ═══ THE ORDER, AND IT IS TWO ORDERS ═════════════════════════════════════
  *
@@ -185,7 +233,13 @@ export function toProgramme(rows: TicketingEvent[], now = new Date()): Programme
     .filter((event) => event.status === "past")
     .sort((a, b) => when(b).localeCompare(when(a)));
 
-  return { events: [...upcoming, ...past], upcoming, past, next: upcoming[0] };
+  return {
+    events: [...upcoming, ...past],
+    upcoming,
+    past,
+    archive: archiveWall(past, when),
+    next: upcoming[0],
+  };
 }
 
 /* THE WHOLE PROGRAMME, ONCE, FOR A SERVER COMPONENT TO HAND DOWNWARDS.

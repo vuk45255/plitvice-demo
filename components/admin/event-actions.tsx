@@ -97,8 +97,15 @@ function PrimaryAction({
   size: string;
 }) {
   if (action === "edit") {
+    /* STRAIGHT TO THE FORM. A night's own screen now opens on its report, so
+       the bare address lands on PREGLED — and a button that says UREDI must
+       not put somebody on a read-only page to hunt for the tab they asked
+       for. The control centre's "Uredi veče" points at the same place. */
     return (
-      <Link href={`/admin/dogadjaji/${id}`} className={`adm-btn ${size}`}>
+      <Link
+        href={`/admin/dogadjaji/${id}?tab=podesavanja`}
+        className={`adm-btn ${size}`}
+      >
         {ACTION_LABELS.edit}
       </Link>
     );

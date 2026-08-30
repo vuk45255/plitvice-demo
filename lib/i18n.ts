@@ -36,6 +36,11 @@ const sr = {
   "common.language": "Jezik",
   "common.openInstagram": "otvori Instagram",
   "common.back": "Nazad na sajt",
+  /* Under a composition that fills the screen and could be mistaken for the
+     end of the page — see components/scroll-cue.tsx. The hero's own cue below
+     is a different line and stays where it is: that one is an invitation to
+     begin, this one only says the page has not finished. */
+  "common.scrollOn": "Nastavi dole",
 
   "hero.scroll": "Skroluj da uđeš",
   "hero.heading": "Plitvice — Grand Club, Inđija",
@@ -482,6 +487,7 @@ const en: Record<MessageKey, string> = {
   "common.language": "Language",
   "common.openInstagram": "open Instagram",
   "common.back": "Back to the site",
+  "common.scrollOn": "Continue down",
 
   "hero.scroll": "Scroll to enter",
   "hero.heading": "Plitvice — Grand Club, Inđija",
@@ -494,7 +500,7 @@ const en: Record<MessageKey, string> = {
   "events.lastGuest": "Last guest",
   "events.archived": "Past",
 
-  "event.doors": "Doors",
+  "event.doors": "Start",
   "event.ticket": "Ticket",
   "event.info": "Info",
 

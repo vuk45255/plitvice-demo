@@ -58,16 +58,31 @@ export type ProgrammeNight = {
   capacity: number;
   maxPerOrder: number;
   lineup?: string;
-  genre?: string;
   ageRestriction?: string;
   entryNote?: string;
   dressCode?: string;
   promotion?: string;
+  /* ═══ POSTER, OR NIGHT THIS SYSTEM RAN ═══════════════════════════════════
+   *
+   * True for a night that existed ONLY as artwork on the public wall before
+   * this software did — see `past()` below. It is not a lesser event and it is
+   * not hidden from anybody: it is a photograph of a night, and the difference
+   * that matters is that THERE IS NOTHING TO REPORT ON IT. No order was ever
+   * taken through this system, no ticket was ever minted, nobody was ever
+   * scanned in. A dashboard that lists it beside Saturday Madness with 0 / 500
+   * sold and 0 scanned is not reporting a quiet night — it is inventing a
+   * measurement of a night nobody measured.
+   *
+   * So the office works with the operational programme and the public wall
+   * keeps the record. See `isOperational` in lib/club/event-manager.ts. */
+  legacy?: boolean;
 };
 
-/* A finished night: it sells nothing, takes no tables, and keeps its artwork.
-   Capacity is the room's, because that is what the room holds whatever else is
-   true; the price is zero because there is no sale to price. */
+/* A finished night that only ever existed as a poster: it sells nothing, takes
+   no tables, and keeps its artwork. Capacity is the room's, because that is
+   what the room holds whatever else is true; the price is zero because there is
+   no sale to price — and `legacy` is what stops the office reading either of
+   those zeros as a measurement. */
 const past = (
   id: string,
   slug: string,
@@ -86,7 +101,15 @@ const past = (
   ticketPrice: 0,
   capacity: 500,
   maxPerOrder: 10,
+  legacy: true,
 });
+
+/* The nights this file files as poster-only, by id — what the schema uses to
+   classify a database that was seeded before the flag existed. Derived from the
+   list below rather than written out again, so the two can never drift. */
+export function legacyArchiveIds(): string[] {
+  return PROGRAMME.filter((night) => night.legacy).map((night) => night.id);
+}
 
 export const PROGRAMME: ProgrammeNight[] = [
   {

@@ -38,7 +38,7 @@ export default async function AdminFloorPage({
   if (!chosen) {
     return (
       <>
-        <PageHeader eyebrow="Sala" title="Plan stolova" />
+        <PageHeader title="Plan stolova" size="lg" />
         <Panel>
           <Empty>Nijedno veče trenutno ne prima rezervacije stolova.</Empty>
         </Panel>
@@ -51,9 +51,8 @@ export default async function AdminFloorPage({
   return (
     <>
       <PageHeader
-        eyebrow="Sala"
         title="Plan stolova"
-        lede="Stanje dolazi sa servera i osvežava se samo. Zadržani stolovi se oslobađaju sami kada istekne vreme."
+        size="lg"
         action={
           <Link
             href={`/admin/rezervacije?event=${encodeURIComponent(chosen.slug)}`}
@@ -85,8 +84,6 @@ export default async function AdminFloorPage({
       </form>
 
       <Panel title={chosen.title}>
-        {/* The map refreshes itself every few seconds against the server; what
-            is rendered here is only the first answer. */}
         <FloorMap initial={floor} eventSlug={chosen.slug} />
       </Panel>
     </>

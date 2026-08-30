@@ -103,40 +103,6 @@ const joined = (form: FormData, dateKey: string, timeKey: string): string | unde
   return belgradeInstant(`${date}T${time}`);
 };
 
-/* ═══ WHEN THE DOORS OPEN, GIVEN ONLY A TIME ══════════════════════════════
- *
- * The doors are asked for as a time alone, because they are always the same
- * night as the party and asking for the date twice is asking a question whose
- * answer is already on the screen.
- *
- * THE ONE SUBTLETY, AND IT IS THE REAL CASE HERE: a night that starts at 01:00
- * has its doors at 22:00 THE PREVIOUS CALENDAR DAY. So a doors time later than
- * the start time means the evening before — the doors always open before the
- * party starts, and that fact is what resolves the ambiguity rather than any
- * guess about how clubs work.
- *
- * Equal times are the same instant, which is exactly what "doors when it
- * starts" means. */
-const doorsInstant = (
-  form: FormData,
-  startsAt: string,
-): string | undefined => {
-  const date = text(form, "date");
-  const start = text(form, "startTime");
-  const doors = text(form, "doorsTime");
-  /* Present-but-empty clears it; that is what the writer turns into NULL. */
-  if (!doors) return "";
-  if (!date || !start) return "";
-
-  const sameDay = belgradeInstant(`${date}T${doors}`);
-  if (!sameDay) return "";
-  /* A whole day earlier, computed on the INSTANT rather than on the date
-     string, so it stays correct across a daylight-saving change. */
-  return Date.parse(sameDay) > Date.parse(startsAt)
-    ? new Date(Date.parse(sameDay) - 24 * 60 * 60 * 1000).toISOString()
-    : sameDay;
-};
-
 /* ── creating and editing ───────────────────────────────────────────────── */
 
 /* The intent the button carried. THREE BUTTONS, THREE MEANINGS, and the one
@@ -227,13 +193,11 @@ export async function saveEvent(
   const shared = {
     title,
     startsAt,
-    doorsAt: doorsInstant(form, startsAt),
     description: optional(form, "description"),
     ticketingEnabled: flag(form, "ticketingEnabled"),
     tablesEnabled: flag(form, "tablesEnabled"),
     floorPlan: floorPlanRaw,
     lineup: optional(form, "lineup"),
-    genre: optional(form, "genre"),
     ageRestriction: optional(form, "ageRestriction"),
     entryNote: optional(form, "entryNote"),
     dressCode: optional(form, "dressCode"),

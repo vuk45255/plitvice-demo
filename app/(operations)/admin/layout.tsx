@@ -33,7 +33,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
-  const staff = await requireStaff("admin");
+  /* THE GATE, AND IT IS THE CALL THAT MATTERS RATHER THAN ITS ANSWER. The
+     navigation no longer prints who is signed in, so nothing needs the session
+     object — but this still runs, and still redirects anybody who is not an
+     admin before a single child renders. */
+  await requireStaff("admin");
 
   /* Rendered once and handed to both shapes of the navigation, so signing out
      is the same server action whichever one is on screen. */
@@ -47,10 +51,10 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
 
   return (
     <div className="adm min-h-dvh">
-      <AdminTopBar staffName={staff.name} role={staff.role} signOut={signOutButton} />
+      <AdminTopBar signOut={signOutButton} />
 
       <div className="flex min-h-dvh">
-        <AdminSidebar staffName={staff.name} role={staff.role} signOut={signOutButton} />
+        <AdminSidebar signOut={signOutButton} />
 
         <main className="min-w-0 flex-1">
           <div className="mx-auto w-full max-w-[78rem] px-4 pb-24 pt-5 sm:px-6 lg:px-10 lg:pt-8">

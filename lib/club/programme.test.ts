@@ -240,9 +240,23 @@ describe("what the office changes, the guest reads", () => {
     assert.equal(moved?.date.sr, "5. septembar");
     assert.equal(moved?.date.en, "5 September");
 
-    /* The doors are their own field, and the wall prints those. */
+    /* ═══ ONE TIME ON A NIGHT, AND IT IS THE START ══════════════════════
+     *
+     * The wall used to print `doorsAt` and fall back to `startsAt`. The club
+     * opens the doors when the night starts, so the form asked twice for one
+     * fact and every screen then had to choose between two answers — see the
+     * note where the field was removed in components/admin/event-editor.tsx.
+     *
+     * The column still exists and nothing writes it any more. This is the
+     * assertion that says so: a night carrying a DIFFERENT doors time still
+     * prints its start, so a stale value left on an old row cannot come back
+     * and contradict the one time the office set. */
     assert.ok((await updateEvent(id, { doorsAt: "2026-09-05T21:00:00+02:00" })).ok);
-    assert.equal((await shown(MADNESS))?.startTime, "21:00");
+    assert.equal(
+      (await shown(MADNESS))?.startTime,
+      "23:30",
+      "the wall prints the start, never a doors time",
+    );
 
     await restore({
       startsAt: "2026-08-29T22:00:00+02:00",

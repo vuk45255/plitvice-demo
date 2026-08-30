@@ -57,21 +57,57 @@ const TICKET: Record<string, Entry> = {
   cancelled: { label: "Poništena", tone: "bad" },
 };
 
-/* A night. */
+/* ═══ A NIGHT'S OWN STATE, WHICH IS NOT ITS TICKET SALE ═══════════════════
+ *
+ * These two books used to say the same word and mean different things. The
+ * `status` column read U PRODAJI — "on sale" — for a night that was simply
+ * announced, including Saturday Madness, which sells nothing online at all and
+ * takes its entry at the door. So the badge that answers "is this night on"
+ * answered it in the language of ticketing, about a night with no tickets.
+ *
+ * They are now two questions with two vocabularies, and nothing merges them:
+ *
+ *   EVENT — is the club running this night?  AKTIVNO · ZAVRŠENO · NACRT
+ *   SALE  — is entry being sold on the site?  PRODAJA OTVORENA · BEZ ONLINE
+ *           PRODAJE · RASPRODATO · …
+ *
+ * `on_sale` keeps its stored value — it is written on every event row and in
+ * the CHECK constraint, and renaming a column's vocabulary to improve a label
+ * is a migration with nothing to gain. What changed is the word on the screen.
+ *
+ * AND "IS IT ON TONIGHT OR ON SATURDAY" IS NOT A THIRD STATE. A published
+ * night reads AKTIVNO whether its evening has come or not — the office asks
+ * this badge one question and both are the same answer to it, with the date
+ * beside it saying which. `eventStatusBadge` still distinguishes the two,
+ * because it is a real property of the night; the vocabulary here simply does
+ * not spend a word on it. */
 const EVENT: Record<string, Entry> = {
   draft: { label: "Nacrt", tone: "muted" },
-  on_sale: { label: "U prodaji", tone: "good" },
+  on_sale: { label: "Aktivno", tone: "good" },
   sold_out: { label: "Rasprodato", tone: "gold" },
   ended: { label: "Završeno", tone: "muted" },
+  /* ═══ A PUBLISHED NIGHT IS AKTIVNO, WHETHER OR NOT IT HAS STARTED ══════
+   *
+   * `upcoming` and `on_sale` are two lifecycle answers with one word on the
+   * screen, and that is deliberate. The office asks one question of this
+   * badge — is the club running this night — and "yes, on Saturday" and "yes,
+   * right now" are the same answer to it. Which of the two it is is already
+   * on the row beside this badge, in the date.
+   *
+   * The distinction is kept in `eventStatusBadge` rather than collapsed
+   * there, because it is a real property of the night and a later screen may
+   * want it. Nothing about the lifecycle, the stored status column or the
+   * sale state changed to make this label read the way it does. */
+  upcoming: { label: "Aktivno", tone: "good" },
 };
 
-/* Why a night is not selling, from `saleState`. */
+/* Why a night is or is not selling entry online, from `saleState`. */
 const SALE: Record<string, Entry> = {
   open: { label: "Prodaja otvorena", tone: "good" },
   /* Not a failure to open a sale — a night that sells at the door. */
-  no_sale: { label: "Bez online prodaje", tone: "muted" },
+  no_sale: { label: "Online prodaja isključena", tone: "muted" },
   draft: { label: "Nije objavljeno", tone: "muted" },
-  ended: { label: "Završeno", tone: "muted" },
+  ended: { label: "Prodaja zatvorena", tone: "muted" },
   sold_out: { label: "Rasprodato", tone: "gold" },
   too_early: { label: "Prodaja još nije počela", tone: "warn" },
   too_late: { label: "Prodaja zatvorena", tone: "muted" },

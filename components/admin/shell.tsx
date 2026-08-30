@@ -19,34 +19,67 @@ import type { ReactNode } from "react";
 
 /* ── the top of a page ──────────────────────────────────────────────────── */
 
-/* Every screen opens the same way: a small eyebrow saying where you are, a
-   title in the house face, and — optionally — the one control that belongs to
-   the whole page. */
+/* Every screen opens the same way: the title in the house face, and —
+ * optionally — the one control that belongs to the whole page.
+ *
+ * ═══ THERE IS NO EYEBROW, AND THAT IS THE POINT ═══════════════════════════
+ *
+ * This used to carry a small upper-case label above every title: DOBAR DAN
+ * over the control centre, PREGLED over a preview, PROGRAM over the programme,
+ * SALA over the floor. Every one of them was decoration. The screen is already
+ * named — by the navigation, by the title under it, by the URL — and a word
+ * repeating that in 9px caps costs a line of vertical space on a phone and
+ * tells a manager at 1am precisely nothing they did not know.
+ *
+ * The labels that stayed are the ones INSIDE the cards: KARTE PRODATE,
+ * SKENIRANO, REZERVACIJE, ZAUZETI STOLOVI. Those name a figure that would be
+ * meaningless without them. That is the test — a label earns its place by
+ * saying what a number is, not by saying where you are. */
 export function PageHeader({
-  eyebrow,
   title,
+  /* One line of real information under the title where a screen genuinely has
+     one: a night's date and start time, a count, what the page is for. Not a
+     tagline — an empty `lede` is better than a decorative one. */
+  meta,
   lede,
   action,
+  /* `lg` for a screen whose title is the whole of its heading — the floor plan
+      has no eyebrow, no lede and nothing else at the top, and at the default
+      size it read as a caption over a large drawing rather than as the name of
+      the page. Two sizes, not a free number: a heading scale with more than
+      two steps in it is a heading scale nobody keeps to. */
+  size = "md",
 }: {
-  eyebrow?: string;
   title: string;
+  meta?: ReactNode;
   lede?: string;
   action?: ReactNode;
+  size?: "md" | "lg";
 }) {
   return (
     <header className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 pb-6 pt-1">
       <div className="min-w-0">
-        {eyebrow ? <p className="adm-eyebrow">{eyebrow}</p> : null}
-        <h1 className="adm-display mt-2 text-[clamp(1.375rem,4vw,1.75rem)] text-[var(--adm-ink)]">
+        <h1
+          className={`adm-display text-[var(--adm-ink)] ${
+            size === "lg"
+              ? "text-[clamp(1.75rem,5vw,2.25rem)]"
+              : "text-[clamp(1.375rem,4vw,1.75rem)]"
+          }`}
+        >
           {title}
         </h1>
+        {meta ? (
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-[0.8125rem] text-[var(--adm-ink-3)]">
+            {meta}
+          </div>
+        ) : null}
         {lede ? (
-          <p className="mt-2 max-w-[42ch] text-[0.8125rem] leading-relaxed text-[var(--adm-ink-3)]">
+          <p className="mt-2 max-w-[46ch] text-[0.8125rem] leading-relaxed text-[var(--adm-ink-3)]">
             {lede}
           </p>
         ) : null}
       </div>
-      {action ? <div className="flex flex-wrap gap-3">{action}</div> : null}
+      {action ? <div className="flex flex-wrap gap-2.5">{action}</div> : null}
     </header>
   );
 }
@@ -113,6 +146,107 @@ export function Stat({
         {of !== undefined ? <span className="adm-stat-of"> / {of}</span> : null}
       </p>
       {note ? <p className="adm-stat-note">{note}</p> : null}
+    </div>
+  );
+}
+
+/* THE GRID THE STAT CARDS STAND IN. One rule, so every metric row on every
+   screen breaks at the same widths — two up on a phone, and never one enormous
+   card per line, which is what `grid-cols-1` gives you at 360px and is a
+   scroll for no reason. */
+export function StatGrid({
+  children,
+  cols = 4,
+}: {
+  children: ReactNode;
+  /* How many across at the widest. Below that it is always 2 on a phone and 3
+     from `sm`, because that is what stays legible rather than what divides
+     evenly. */
+  cols?: 3 | 4 | 5 | 6;
+}) {
+  const wide = {
+    3: "lg:grid-cols-3",
+    4: "lg:grid-cols-4",
+    5: "lg:grid-cols-5",
+    6: "lg:grid-cols-6",
+  }[cols];
+  return (
+    <div className={`mb-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3 ${wide}`}>
+      {children}
+    </div>
+  );
+}
+
+/* ── one fact, listed ───────────────────────────────────────────────────── */
+
+/* A LABEL AND A VALUE, OR THE HONEST ABSENCE OF ONE.
+ *
+ * Used wherever the office is checking what a night says rather than reading a
+ * measurement. A missing value is SHOWN as missing rather than hidden: finding
+ * out what has not been filled in is usually the reason somebody opened the
+ * screen, and a field that disappears when empty cannot be noticed. */
+export function Line({
+  label,
+  value,
+  wide,
+  empty = "nije uneto",
+}: {
+  label: string;
+  value?: ReactNode;
+  wide?: boolean;
+  empty?: string;
+}) {
+  const missing = value === undefined || value === null || value === "";
+  return (
+    <div className={wide ? "sm:col-span-2" : undefined}>
+      <dt className="adm-label">{label}</dt>
+      <dd
+        className={`mt-1.5 text-[0.875rem] leading-relaxed ${
+          missing ? "text-[var(--adm-ink-4)]" : "text-[var(--adm-ink)]"
+        }`}
+      >
+        {missing ? empty : value}
+      </dd>
+    </div>
+  );
+}
+
+/* A row inside a panel: the name of a figure on the left, the figure on the
+   right. The shape a summary takes when it is a list of eight things rather
+   than four cards — a sales breakdown reads far better this way than as eight
+   tiles, and Fourvenues' own rate breakdown is the same shape for the same
+   reason. */
+export function DataRow({
+  label,
+  value,
+  note,
+  tone = "plain",
+}: {
+  label: string;
+  value: ReactNode;
+  note?: string;
+  tone?: "plain" | "good" | "warn" | "bad" | "gold" | "muted";
+}) {
+  const colour = {
+    plain: "text-[var(--adm-ink)]",
+    good: "text-[var(--adm-good)]",
+    warn: "text-[var(--adm-warn)]",
+    bad: "text-[var(--adm-bad)]",
+    gold: "text-[var(--adm-gold-light)]",
+    muted: "text-[var(--adm-ink-4)]",
+  }[tone];
+
+  return (
+    <div className="adm-data-row">
+      <div className="min-w-0">
+        <p className="text-[0.8125rem] text-[var(--adm-ink-2)]">{label}</p>
+        {note ? (
+          <p className="mt-0.5 text-[0.6875rem] leading-relaxed text-[var(--adm-ink-4)]">
+            {note}
+          </p>
+        ) : null}
+      </div>
+      <p className={`adm-figure shrink-0 text-[0.9375rem] ${colour}`}>{value}</p>
     </div>
   );
 }
