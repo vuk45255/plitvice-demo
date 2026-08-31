@@ -420,12 +420,35 @@ export function InfoGrid({
        grid changing shape at all. */
     queueMicrotask(measure);
 
-    const observer = new ResizeObserver(measure);
+    /* AND EVERY MEASUREMENT AFTER THE FIRST IS COALESCED ONTO A FRAME.
+
+       One pass through `measure` is nine `getBoundingClientRect` calls, three
+       state comparisons and a bump of the motion value the whole wave hangs
+       off. That is the right price to pay for a reflow; it is the wrong price
+       to pay several times in a row for the same one.
+
+       And on a phone it was being paid mid-scroll. A phone browser fires
+       `resize` while the page is moving, because showing and hiding the
+       address bar changes the height of the window — so the grid was
+       re-measuring itself in the middle of the gesture the measurements exist
+       to serve. The observer arrives in bursts alongside it. Both now queue
+       the same frame, and whatever lands in between costs nothing. */
+    let queued = 0;
+    const schedule = () => {
+      if (queued) return;
+      queued = requestAnimationFrame(() => {
+        queued = 0;
+        measure();
+      });
+    };
+
+    const observer = new ResizeObserver(schedule);
     observer.observe(node);
-    window.addEventListener("resize", measure);
+    window.addEventListener("resize", schedule, { passive: true });
     return () => {
+      if (queued) cancelAnimationFrame(queued);
       observer.disconnect();
-      window.removeEventListener("resize", measure);
+      window.removeEventListener("resize", schedule);
     };
   }, [measure, reduced, settled]);
 

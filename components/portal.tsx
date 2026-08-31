@@ -12,6 +12,7 @@ import {
   useTransform,
 } from "framer-motion";
 import { EASE } from "@/components/reveal";
+import { useCoarsePointer } from "@/lib/use-media";
 
 /* A window into one part of the club.
  *
@@ -89,6 +90,21 @@ export function Portal({
 }: PortalProps) {
   const ref = useRef<HTMLDivElement>(null);
   const reduced = useReducedMotion();
+  /* A WINDOW WITH NOTHING POINTING AT IT IS NOT PROMOTED TO A LAYER.
+   *
+   * Two of the three transforms in here — the frame that goes in under a
+   * press, and the picture that leans toward the cursor — are driven by the
+   * small frame loop below, and that loop returns on the first line for
+   * anything that is not a mouse. Their `will-change` hints did not: a phone
+   * was holding two permanently promoted compositor layers per window, six on
+   * the home page, for transforms that can never run there. That is texture
+   * memory spent on nothing and layers the compositor carries through every
+   * frame of every scroll. The third, the name travelling down the frame, is
+   * driven by the page's own scroll and keeps its hint everywhere. */
+  const coarse = useCoarsePointer();
+  const still = reduced || coarse;
+  /* The hint itself, so the three places it is written cannot drift apart. */
+  const promote = still ? "" : "will-change-transform";
   const [held, setHeld] = useState(false);
 
   /* A window nobody is looking at should cost nothing. */
@@ -200,7 +216,7 @@ export function Portal({
   );
 
   /* Nothing to hand the link at all where less movement was asked for. */
-  const pointer = reduced
+  const pointer = still
     ? undefined
     : {
         onPointerMove: track,
@@ -236,13 +252,13 @@ export function Portal({
           {/* The whole window goes in under a press — the frame and the name
               together, because pressing the picture alone inside its own clip
               would open a hairline of room at the edges. */}
-          <div ref={press} className="will-change-transform">
+          <div ref={press} className={promote}>
             <div
               className={`relative overflow-hidden ${PORTAL_RATIO} ring-1 ring-gold/0 transition-[box-shadow] duration-700 group-hover:ring-gold/40 group-focus-visible:ring-gold/40`}
             >
               {/* only the picture moves — the name is hung on the frame, not on
                   the photograph, so it never drifts or softens */}
-              <div ref={picture} className="absolute inset-0 will-change-transform">
+              <div ref={picture} className={`absolute inset-0 ${promote}`}>
                 <div className="absolute inset-0 transition-[scale,filter] duration-[620ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.02] group-hover:brightness-[1.06] group-hover:contrast-[1.03] group-hover:saturate-[1.08]">
                   {media({ playing: inView && !held })}
                 </div>
@@ -280,6 +296,10 @@ export function Portal({
                        letterforms stay sharp. */
                     textShadow: "0 1px 4px rgba(6,3,11,0.4)",
                   }}
+                  /* This one keeps its hint on every device: the name is
+                     carried down the frame by the scroll itself, so its
+                     transform is written on a phone exactly as it is on a
+                     desk. Only the two above are mouse-only. */
                   className="absolute left-0 top-0 isolate flex items-center gap-3 p-5 text-[0.6875rem] font-medium uppercase leading-none tracking-[0.42em] text-[#f7f0dd] transition-[translate,color] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform group-hover:translate-x-[6px] group-hover:text-gold-light md:p-6"
                 >
                   {/* The picture darkening a little exactly where the name is,

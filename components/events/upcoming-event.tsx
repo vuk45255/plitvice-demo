@@ -13,6 +13,7 @@ import {
 import { Arrow } from "@/components/arrow";
 import { EASE } from "@/components/reveal";
 import { useLang } from "@/components/providers/language";
+import { useCoarsePointer } from "@/lib/use-media";
 import { reserveHref, ticketAvailability, type PartyEvent } from "@/lib/events";
 
 /* The night ahead, arriving in the room.
@@ -62,6 +63,14 @@ export function UpcomingEvent({
 }) {
   const { t } = useLang();
   const reduced = useReducedMotion();
+  /* THE POSTER IS NOT HANDED A GESTURE IT CANNOT USE. `track` below returns on
+     its first line for anything that is not a mouse — but a finger dragging the
+     page over the artwork still fires a pointermove for every frame of the
+     scroll, and every one of them was being dispatched into React to be thrown
+     away. Asked of the device once instead, the handlers are simply not there
+     on a phone. */
+  const coarse = useCoarsePointer();
+  const still = reduced || coarse;
   const stage = useRef<HTMLDivElement>(null);
   const ease = cubicBezier(...EASE);
 
@@ -177,8 +186,8 @@ export function UpcomingEvent({
       <div
         ref={stage}
         className="relative"
-        onPointerMove={reduced ? undefined : track}
-        onPointerLeave={reduced ? undefined : release}
+        onPointerMove={still ? undefined : track}
+        onPointerLeave={still ? undefined : release}
       >
         {/* LAYER 3 — the light off the artwork, spilling into the dark. Sized
             well past the poster and falling away to nothing at the edge, so
@@ -223,7 +232,10 @@ export function UpcomingEvent({
         <motion.div
           style={reduced ? undefined : { scale, y: lift, opacity: fade }}
         >
-          <div ref={paper} className="will-change-transform">
+          {/* Promoted for the tilt, and the tilt is a mouse — so a phone,
+              where nothing ever writes this node's transform, is not asked to
+              hold a poster-sized texture for it. */}
+          <div ref={paper} className={still ? undefined : "will-change-transform"}>
             <Link
               href={href}
               aria-label={`${event.artist} — ${date} — ${cta}`}

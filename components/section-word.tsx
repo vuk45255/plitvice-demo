@@ -40,15 +40,42 @@ export function SectionWord({
   const reduced = useReducedMotion();
   const [travel, setTravel] = useState(0);
 
+  /* ONE MEASUREMENT PER FRAME AT MOST, AND NONE ON A PHONE THAT IS MERELY
+     SCROLLING.
+
+     `resize` is not the rare event it is on a desktop. Every phone browser
+     fires it while the page is being scrolled, because collapsing and
+     expanding the address bar changes the height of the window — so this
+     handler, which reads `offsetHeight` (a forced layout) and then sets state
+     (a render of the word), was running mid-scroll, on five of these at once
+     on the home page. The observer fires in bursts of its own for the same
+     reason.
+
+     So the reads are coalesced onto an animation frame: however many events
+     arrive, the layout is read once, and React is only entered if the number
+     actually moved. The word is drawn from the same measurement it always
+     was — this only decides when it is taken. */
   useEffect(() => {
     const node = ref.current;
     if (!node) return;
-    const measure = () => setTravel(node.offsetHeight + window.innerHeight);
-    measure();
+
+    let queued = 0;
+    const read = () => {
+      queued = 0;
+      const next = node.offsetHeight + window.innerHeight;
+      setTravel((current) => (current === next ? current : next));
+    };
+    const measure = () => {
+      if (queued) return;
+      queued = requestAnimationFrame(read);
+    };
+
+    read();
     const observer = new ResizeObserver(measure);
     observer.observe(node);
-    window.addEventListener("resize", measure);
+    window.addEventListener("resize", measure, { passive: true });
     return () => {
+      if (queued) cancelAnimationFrame(queued);
       observer.disconnect();
       window.removeEventListener("resize", measure);
     };

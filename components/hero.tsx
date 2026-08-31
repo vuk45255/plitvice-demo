@@ -127,6 +127,22 @@ export default function Hero() {
       className="relative h-[100svh] overflow-hidden bg-night"
       aria-label={`${site.tagline} ${site.name} ${site.town}`}
     >
+      {/* THE FIRST FRAME IS ASKED FOR WITH THE DOCUMENT, NOT AFTER IT.
+       *
+       * The film's poster is the first thing anybody sees of this club, and a
+       * `poster` attribute is not discovered by the browser's preload scanner
+       * — it is fetched when the element is constructed, which is after the
+       * page's JavaScript has arrived and run. On a phone that is most of a
+       * second of the house's own night and nothing else. React hoists this
+       * into the head, so the picture is on the wire with the stylesheet and
+       * the room is never empty. It is the same file the video below names;
+       * asking for it twice fetches it once. */}
+      <link
+        rel="preload"
+        as="image"
+        href="/images/hero.jpg"
+        fetchPriority="high"
+      />
       <motion.div
         className="absolute inset-0"
         style={{ y: reduced ? undefined : parallaxY }}

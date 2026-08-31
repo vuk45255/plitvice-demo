@@ -516,23 +516,44 @@ function Word({
 /* ─────────────────────────────── the media ─────────────────────────── */
 
 /* Whether the camera is close enough to a scene for its film to be worth
-   running. React bails out of the render while the answer is unchanged, which
-   is every frame but two per scene. */
+   running.
+
+   THE ANSWER IS KEPT OUTSIDE REACT AND ONLY HANDED IN WHEN IT CHANGES, which
+   is twice per scene across the whole journey. The camera moves on every frame
+   the wall does, and there are five of these listening to it: dispatching a
+   setter sixty times a second to be told the boolean has not moved is work
+   React has to be entered to discard, five times over, on the one thread the
+   travel is running on. A ref compares it for the price of a comparison. */
 function useWithin(camera: MotionValue<number>, from: number, to: number) {
   const [on, setOn] = useState(false);
+  const was = useRef(false);
 
-  useMotionValueEvent(camera, "change", (c) => setOn(c > from && c < to));
+  useMotionValueEvent(camera, "change", (c) => {
+    const now = c > from && c < to;
+    if (now === was.current) return;
+    was.current = now;
+    setOn(now);
+  });
 
   return on;
 }
 
 /* Whether the camera has come within reach of a point on the wall, latching
    once and never going back. One of these per film, so the archive is fetched
-   in the order it is read rather than all at once when the section pins. */
+   in the order it is read rather than all at once when the section pins.
+
+   Latched in a ref for the same reason as above — and this one is stronger,
+   because once it has fired every remaining frame of the journey is a call
+   that can only ever answer the same thing. */
 function useApproach(camera: MotionValue<number>, at: number) {
   const [near, setNear] = useState(false);
+  const latched = useRef(false);
 
-  useMotionValueEvent(camera, "change", (c) => setNear((was) => was || c > at));
+  useMotionValueEvent(camera, "change", (c) => {
+    if (latched.current || c <= at) return;
+    latched.current = true;
+    setNear(true);
+  });
 
   return near;
 }

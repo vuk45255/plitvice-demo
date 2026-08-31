@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -80,9 +80,27 @@ export function MobileHeader() {
   const closeRef = useRef<HTMLButtonElement>(null);
   const wasOpen = useRef(false);
 
-  const lenis = useLenis((l) => {
-    setScrolled(l.scroll > 32);
-  });
+  /* THE BAR ASKS REACT A QUESTION ONCE, NOT SIXTY TIMES A SECOND.
+   *
+   * Lenis calls this on every frame it moves the page, and it used to hand
+   * `l.scroll > 32` straight to a setter — a state dispatch per frame for the
+   * whole of every scroll, to answer the same boolean all but twice a visit.
+   * React discards the repeats, but it has to be entered to do it, and both
+   * this bar and the phone card were doing it at once. The last answer is kept
+   * here instead and React is only touched when it actually changes.
+   *
+   * The callback is also stable. `useLenis` lists it in its own effect
+   * dependencies, so a fresh closure on every render meant unsubscribing and
+   * resubscribing the scroll callback on every render as well. */
+  const was = useRef(false);
+  const onScroll = useCallback((l: { scroll: number }) => {
+    const now = l.scroll > 32;
+    if (now === was.current) return;
+    was.current = now;
+    setScrolled(now);
+  }, []);
+
+  const lenis = useLenis(onScroll);
 
   /* Nothing behind the panel moves while it is open, and Escape always closes
      it. The lock is `overflow: hidden` on the document rather than a fixed

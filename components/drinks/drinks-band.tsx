@@ -6,6 +6,7 @@ import { Arrow } from "@/components/arrow";
 import { Reveal } from "@/components/reveal";
 import { useLang } from "@/components/providers/language";
 import { drinkMarks } from "@/lib/drinks";
+import { useNearViewport } from "@/lib/use-near";
 
 /* THE BACK BAR — a thin cinematic band between the concierge and the address.
  *
@@ -85,9 +86,16 @@ const SWEEP =
 
 export function DrinksBand() {
   const { t } = useLang();
+  /* The band's two loops run only while the band is somewhere near the screen
+     — see the note on `animation-play-state` in app/globals.css. Both keep
+     their position while they are paused, so nothing about the composition
+     changes when the visitor comes back to it. */
+  const [band, near] = useNearViewport<HTMLElement>();
+  const idle = near ? undefined : "true";
 
   return (
     <section
+      ref={band}
       id="pice"
       aria-labelledby="drinks-title"
       /* `--band` is the one number the whole composition is built on: every
@@ -105,7 +113,7 @@ export function DrinksBand() {
         href="/cenovnik"
         className="group relative block h-full w-full [outline-offset:-10px]"
       >
-        <BackBar />
+        <BackBar idle={idle} />
 
         {/* the lamp, and then the dark the type stands in */}
         <div
@@ -114,6 +122,7 @@ export function DrinksBand() {
         >
           <div
             className="drink-sweep absolute left-0 top-[4%] h-[64%] w-[42%]"
+            data-idle={idle}
             style={{ background: SWEEP }}
           />
         </div>
@@ -168,7 +177,7 @@ export function DrinksBand() {
  * There is no state, no timer and no measuring pass here. Two masks and one
  * `transform` on one element, which is a job for the compositor and stays one
  * whether the band is 250px or 320px tall. */
-function BackBar() {
+function BackBar({ idle }: { idle?: "true" }) {
   return (
     <div
       className="absolute inset-0 overflow-hidden"
@@ -179,7 +188,10 @@ function BackBar() {
         className="h-full w-full"
         style={{ maskImage: FLOOR_MASK, WebkitMaskImage: FLOOR_MASK }}
       >
-        <div className="marquee-track h-full items-center [--marquee-duration:38s]">
+        <div
+          className="marquee-track h-full items-center [--marquee-duration:38s]"
+          data-idle={idle}
+        >
           <Run />
           <Run />
         </div>

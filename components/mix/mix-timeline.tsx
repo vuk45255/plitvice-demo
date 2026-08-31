@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { useMix } from "@/components/providers/mix";
+import { useMix, useMixTime } from "@/components/providers/mix";
 import { useLang } from "@/components/providers/language";
 
 /* The line through the set.
@@ -21,7 +21,11 @@ const NUDGE = 10;
 const JUMP = 60;
 
 export function MixTimeline({ compact = false }: { compact?: boolean }) {
-  const { currentTime, duration, seek } = useMix();
+  const { duration, seek } = useMix();
+  /* The playhead comes from its own context — see the note in
+     components/providers/mix.tsx. This component is only in the document
+     while the controls are open, which is the whole point of the split. */
+  const currentTime = useMixTime();
   const { t } = useLang();
   const trackRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);

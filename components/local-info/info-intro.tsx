@@ -1,6 +1,12 @@
 "use client";
 
-import { motion, useTransform, type MotionValue } from "framer-motion";
+import { useRef, useState } from "react";
+import {
+  motion,
+  useMotionValueEvent,
+  useTransform,
+  type MotionValue,
+} from "framer-motion";
 import { useLang } from "@/components/providers/language";
 import { InfoPhoto } from "@/components/local-info/info-photo";
 import { INFO } from "@/lib/local-info";
@@ -168,6 +174,28 @@ function Backdrop({
     [1.06, 1],
   );
 
+  /* AND ONLY THE ROOM BEING LOOKED AT IS PROMOTED TO A COMPOSITOR LAYER.
+   *
+   * All six of these are in the document for the whole of the story, and all
+   * six used to carry `will-change: transform` for the whole of it. Each one
+   * is the size of the screen, so on a phone that is six full-viewport
+   * textures held at once — the better part of a hundred megabytes of the
+   * graphics memory a phone has, five sixths of it for photographs that are
+   * either not up yet or completely covered by the one on top. Under that kind
+   * of pressure a phone starts throwing textures away and re-rastering them,
+   * which is the flicker on a stacked scene rather than a smooth one.
+   *
+   * The hint is now carried only across the room's own life on screen, with a
+   * whole slot of margin either side of it, so the layer is always created and
+   * released while the room is invisible and no frame of the scene can ever
+   * see it happen. `will-change` is a hint and nothing else — every pixel
+   * drawn here is drawn from the same two values it always was. */
+  const live = useLiveWithin(
+    progress,
+    arrives - span / 2 - 1 / INFO.length,
+    (index + 1) / INFO.length + span / 2 + 1 / INFO.length,
+  );
+
   return (
     <motion.div
       className="absolute inset-0"
@@ -175,13 +203,37 @@ function Backdrop({
       aria-hidden="true"
     >
       <motion.div
-        className="absolute inset-0 will-change-transform"
+        className={`absolute inset-0 ${live ? "will-change-transform" : ""}`}
         style={{ scale }}
       >
         <InfoPhoto category={INFO[index]} sizes="100vw" />
       </motion.div>
     </motion.div>
   );
+}
+
+/* Whether the track is inside a span, kept out of React until the answer moves.
+ *
+ * The progress value changes on every frame the story is being read, and there
+ * are six of these on it: the comparison is held in a ref so React is entered
+ * twice per room across the whole pass rather than sixty times a second, six
+ * times over. */
+function useLiveWithin(
+  progress: MotionValue<number>,
+  from: number,
+  to: number,
+) {
+  const [live, setLive] = useState(true);
+  const was = useRef(true);
+
+  useMotionValueEvent(progress, "change", (p) => {
+    const now = p > from && p < to;
+    if (now === was.current) return;
+    was.current = now;
+    setLive(now);
+  });
+
+  return live;
 }
 
 /* ──────────────────────── the question itself ──────────────────────── */

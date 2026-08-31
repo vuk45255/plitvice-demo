@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { EASE } from "@/components/reveal";
 import { MixTimeline } from "@/components/mix/mix-timeline";
-import { MIX_TITLE, timecode, useMix } from "@/components/providers/mix";
+import { MIX_TITLE, timecode, useMix, useMixTime } from "@/components/providers/mix";
 import { useLang } from "@/components/providers/language";
 
 /* A record left behind the right-hand edge of the site.
@@ -54,7 +54,6 @@ export function VinylPlayer() {
   const { t } = useLang();
   const {
     isPlaying,
-    currentTime,
     duration,
     isOpen,
     started,
@@ -113,7 +112,7 @@ export function VinylPlayer() {
               </div>
 
               <div className="mt-1 flex items-center justify-between text-[0.625rem] tabular-nums tracking-[0.14em] text-night-ink/45">
-                <span>{timecode(currentTime)}</span>
+                <Elapsed />
                 {/* Nothing is invented here: until the file has said how long
                     it is, the readout says nothing at all. */}
                 <span>{duration > 0 ? timecode(duration) : "—"}</span>
@@ -162,6 +161,17 @@ export function VinylPlayer() {
       </div>
     </div>
   );
+}
+
+/* THE READOUT, AND NOTHING ELSE, IS SUBSCRIBED TO THE PLAYHEAD.
+ *
+ * The elapsed figure is the one thing in the player that changes four times a
+ * second. Held in the player itself, it dragged the whole component — the
+ * record, its six drawn layers and the panel around it — through a render on
+ * every tick, forever. As its own leaf it takes the ticks alone, and only
+ * while the panel that holds it is open. See components/providers/mix.tsx. */
+function Elapsed() {
+  return <span>{timecode(useMixTime())}</span>;
 }
 
 /* The object itself. Every layer is radially symmetric except the reflection,

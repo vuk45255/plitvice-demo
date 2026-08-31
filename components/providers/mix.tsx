@@ -41,7 +41,6 @@ const GESTURES = ["pointerdown", "touchstart", "keydown", "click"] as const;
 type MixState = {
   isPlaying: boolean;
   /* Seconds. `duration` is 0 until the metadata has landed. */
-  currentTime: number;
   duration: number;
   isOpen: boolean;
   /* True once the record has been started at least once — the spin should not
@@ -58,10 +57,33 @@ type MixState = {
 
 const MixContext = createContext<MixState | null>(null);
 
+/* THE ONE VALUE THAT MOVES, KEPT AWAY FROM THE ONES THAT DO NOT.
+ *
+ * `timeupdate` fires about four times a second for as long as the record is
+ * playing, which is most of a visit. Carried in the context above, it made a
+ * new context value four times a second — and the only thing permanently
+ * mounted that reads that context, the record on the right-hand edge, re-ran
+ * its entire render four times a second for the whole visit, on the same
+ * thread the page is scrolling on. Nothing about the record depends on the
+ * playhead: it turns on a CSS animation and it slides on a transform.
+ *
+ * So the playhead is a context of its own. It has exactly one reader — the
+ * timeline inside the panel — which is not in the document at all until the
+ * controls are opened, so while they are closed the four ticks a second now
+ * reach nothing. MixContext carries everything else, and changes only when
+ * somebody presses something. */
+const MixClockContext = createContext(0);
+
 export function useMix() {
   const value = useContext(MixContext);
   if (!value) throw new Error("useMix must be used inside MixProvider");
   return value;
+}
+
+/* Seconds into the set. Reading this re-renders on every tick, so ask for it
+   only where the number is actually drawn. */
+export function useMixTime() {
+  return useContext(MixClockContext);
 }
 
 export function MixProvider({ children }: { children: React.ReactNode }) {
@@ -211,7 +233,6 @@ export function MixProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<MixState>(
     () => ({
       isPlaying,
-      currentTime,
       duration,
       isOpen,
       started,
@@ -225,7 +246,6 @@ export function MixProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       isPlaying,
-      currentTime,
       duration,
       isOpen,
       started,
@@ -241,8 +261,10 @@ export function MixProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <MixContext.Provider value={value}>
-      <audio ref={audioRef} src={MIX_SRC} preload="metadata" />
-      {children}
+      <MixClockContext.Provider value={currentTime}>
+        <audio ref={audioRef} src={MIX_SRC} preload="metadata" />
+        {children}
+      </MixClockContext.Provider>
     </MixContext.Provider>
   );
 }

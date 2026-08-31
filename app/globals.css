@@ -389,6 +389,26 @@ body::after {
   will-change: transform;
   animation: marquee var(--marquee-duration, 24s) linear infinite;
 }
+
+/* A LOOP NOBODY IS LOOKING AT IS PAUSED, NOT STOPPED.
+
+   Both of the infinite animations on this site — the bar sliding past behind
+   the back bar, and the lamp crossing it — used to run for the whole visit,
+   including the greater part of it where the band is several screens away.
+   A composited transform is cheap per frame but it is not free: it keeps a
+   promoted layer alive, it keeps the compositor doing work on the thread the
+   scroll is on, and `will-change` keeps the texture behind it in memory.
+
+   `animation-play-state` is the right instrument for it because it holds the
+   position rather than losing it: the run stops exactly where it stands and
+   starts again from there, so a band scrolled back to is the band that was
+   left, mid-slide, with no jump and nothing to restart. The attribute is set
+   by an observer with room to spare either side, so it is always already
+   running by the time any of it is on screen. */
+[data-idle="true"].marquee-track,
+[data-idle="true"].drink-sweep {
+  animation-play-state: paused;
+}
 @media (prefers-reduced-motion: reduce) {
   .marquee-track {
     animation: none;
