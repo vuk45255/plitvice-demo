@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useLenis } from "lenis/react";
 import { EASE } from "@/components/reveal";
 import { BookingPanel } from "@/components/floor-plan/booking-panel";
 import { FloorPlan } from "@/components/floor-plan/floor-plan";
@@ -11,6 +10,7 @@ import { FloorPlanTooltip } from "@/components/floor-plan/floor-plan-tooltip";
 import { INK } from "@/components/floor-plan/plan-ink";
 import { useLang } from "@/components/providers/language";
 import { SEAT_KINDS, type SeatType } from "@/lib/floor-plan";
+import { useScrollLock } from "@/lib/scroll-lock";
 import {
   applySnapshot,
   seatsForEvent,
@@ -92,7 +92,6 @@ export function FloorPlanOverlay({
 }) {
   const { t } = useLang();
   const reduced = useReducedMotion();
-  const lenis = useLenis();
   const closeRef = useRef<HTMLButtonElement>(null);
 
   const [tooltip, setTooltip] = useState<{ seat: Seat; x: number; y: number }>();
@@ -194,15 +193,8 @@ export function FloorPlanOverlay({
   const { seat, step } = booking;
 
   /* The page underneath is held still while the map has the screen — the same
-     hold the header's menu uses. */
-  useEffect(() => {
-    lenis?.stop();
-    document.documentElement.style.overflow = "hidden";
-    return () => {
-      document.documentElement.style.overflow = "";
-      lenis?.start();
-    };
-  }, [lenis]);
+     hold the header's menu uses. See lib/scroll-lock.ts. */
+  useScrollLock(true);
 
   useEffect(() => {
     closeRef.current?.focus();

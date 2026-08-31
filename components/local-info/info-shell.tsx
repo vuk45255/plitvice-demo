@@ -51,7 +51,7 @@ export function InfoShell({
   return (
     <main
       id="main"
-      className="relative isolate min-h-[100svh] overflow-clip bg-night pb-32 text-night-ink md:pb-48"
+      className="section-word-host relative isolate min-h-[100svh] overflow-clip bg-night pb-32 text-night-ink md:pb-48"
     >
       {/* The house's ghost word, held back a little further than a section
           holds it. A section carries this behind photography; here it drifts

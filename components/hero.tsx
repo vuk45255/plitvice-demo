@@ -8,7 +8,6 @@ import {
   useScroll,
   useTransform,
 } from "framer-motion";
-import { useLenis } from "lenis/react";
 import { EASE } from "@/components/reveal";
 import { useEntrance } from "@/components/providers/entrance";
 import { useLang } from "@/components/providers/language";
@@ -18,6 +17,7 @@ import {
   SIGNATURE_INK,
 } from "@/components/grand-club";
 import { useFilmInView } from "@/lib/use-film";
+import { useScrollLock } from "@/lib/scroll-lock";
 import { useCoarsePointer } from "@/lib/use-media";
 import { site } from "@/lib/site";
 
@@ -49,29 +49,21 @@ export default function Hero() {
   /* The room only breathes while somebody is in it. Left to itself the haze
      kept its loop for the whole visit, six sections below the fold. */
   const onScreen = useInView(sectionRef);
-  const lenis = useLenis();
   const { enter } = useEntrance();
   const { t } = useLang();
 
   /* Reduced motion skips the ceremony entirely — derived, never set. */
   const effectivePhase: Phase = reduced ? "done" : phase;
 
-  /* The page is held still — and the site's chrome stays away — until the
-     mark has finished revealing. */
+  /* The page is held still until the mark has finished revealing — by
+     lib/scroll-lock.ts, which holds it the same way whether or not a smooth
+     scroller is mounted. */
+  useScrollLock(effectivePhase !== "done");
+
+  /* And the site's chrome stays away until then too. */
   useEffect(() => {
-    if (effectivePhase === "done") {
-      enter();
-      lenis?.start();
-      document.documentElement.style.overflow = "";
-      return;
-    }
-    lenis?.stop();
-    document.documentElement.style.overflow = "hidden";
-    return () => {
-      document.documentElement.style.overflow = "";
-      lenis?.start();
-    };
-  }, [lenis, effectivePhase, enter]);
+    if (effectivePhase === "done") enter();
+  }, [effectivePhase, enter]);
 
   /* The first scroll intent freezes the room and lights the mark. */
   useEffect(() => {

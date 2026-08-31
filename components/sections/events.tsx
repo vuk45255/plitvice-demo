@@ -43,7 +43,7 @@ export function Events({
     <section
       id="events"
       aria-labelledby="events-title"
-      className="relative isolate scroll-mt-20 overflow-hidden bg-surface-2 py-28 md:py-44"
+      className="section-word-host relative isolate scroll-mt-20 overflow-hidden bg-surface-2 py-28 md:py-44"
     >
       {/* LAYER 2 — far enough back that it travels at a fraction of the page's
           own rate. Any faster and it starts to read as something on the page

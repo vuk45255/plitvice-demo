@@ -9,9 +9,9 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useLenis } from "lenis/react";
 import { EASE } from "@/components/reveal";
 import { useLang } from "@/components/providers/language";
+import { useScrollLock } from "@/lib/scroll-lock";
 
 /* THE ADMISSION NOTICE.
  *
@@ -83,8 +83,6 @@ const FOCUSABLE =
 export function ReservationGate() {
   const { t } = useLang();
   const reduced = useReducedMotion();
-  const lenis = useLenis();
-
   const done = useSyncExternalStore(watch, acknowledged, () => true);
   const [agreed, setAgreed] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -92,16 +90,9 @@ export function ReservationGate() {
   const open = !done;
 
   /* The page underneath is held still while the notice has the screen — the
-     same hold the floor plan and the phone's menu use. */
-  useEffect(() => {
-    if (!open) return;
-    lenis?.stop();
-    document.documentElement.style.overflow = "hidden";
-    return () => {
-      document.documentElement.style.overflow = "";
-      lenis?.start();
-    };
-  }, [open, lenis]);
+     same hold the floor plan and the phone's menu use, and the same one on
+     both kinds of device. See lib/scroll-lock.ts. */
+  useScrollLock(open);
 
   /* Focus goes to the panel itself, so what a screen reader announces on
      arrival is the notice. */

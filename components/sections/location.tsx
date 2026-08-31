@@ -15,7 +15,7 @@ export function Location() {
     <section
       id="location"
       aria-labelledby="location-title"
-      className="relative isolate scroll-mt-28 overflow-hidden py-28 md:scroll-mt-20 md:py-44"
+      className="section-word-host relative isolate scroll-mt-28 overflow-hidden py-28 md:scroll-mt-20 md:py-44"
     >
       <SectionWord word="Location" />
 

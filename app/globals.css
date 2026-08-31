@@ -68,7 +68,13 @@ html.lenis body {
 .lenis.lenis-smooth {
   scroll-behavior: auto !important;
 }
-.lenis.lenis-smooth [data-lenis-prevent] {
+/* A PANEL THAT SCROLLS INSIDE A HELD PAGE KEEPS ITS SCROLL TO ITSELF, and it
+   has to do so whether or not Lenis is the scroller. Lenis is mounted on a
+   desk and is not mounted on a phone — see components/providers/smooth-scroll
+   — so this can no longer hang off Lenis's own class. It never had anything to
+   do with Lenis in the first place: it is the browser's own rule for a scroll
+   container that must not chain into the page behind it. */
+[data-lenis-prevent] {
   overscroll-behavior: contain;
 }
 .lenis.lenis-stopped {
@@ -197,6 +203,85 @@ body::after {
 .section-word {
   color: rgba(255, 255, 255, 0.075);
   letter-spacing: 0.05em;
+}
+/* ── THE BACKGROUND WORDS, MOVED ONTO THE COMPOSITOR ───────────────────────
+ *
+ * EVENTS, GALERIJA, RESERVE, LOCATION, BAR and the archive words — see
+ * components/section-word.tsx, which decides which of the two paths a device
+ * gets and hands this one the same number the other one would have used.
+ *
+ * WHY THIS EXISTS. The drift is a pure function of how far the page has
+ * scrolled. On a desk it is computed in JavaScript and written to the element
+ * on every frame, and that is exact there, because Lenis moves the page from a
+ * frame callback on the same thread: the scroll position and the transform are
+ * decided in the same frame and committed in the same frame.
+ *
+ * A PHONE DOES NOT WORK LIKE THAT. Touch scrolling is run by the compositor,
+ * at the display's own rate, and the main thread hears about it afterwards
+ * through `scroll` events that arrive late, unevenly, and in clumps whenever
+ * the thread is busy. So the page moved smoothly and the word — drawn three
+ * hundred pixels tall, and the most legible thing on the screen — moved in
+ * steps behind it. It was never slow. It was out of step, and out of step at
+ * that size reads far worse than slow.
+ *
+ * A scroll-driven animation is the fix and it is the only real one: the
+ * timeline IS the scroll position, the interpolation happens where the
+ * scrolling happens, and the word cannot fall behind the page because the same
+ * clock advances both. No JavaScript runs while it moves.
+ *
+ * THE TIMELINE IS NAMED ON THE SECTION AND NOT ON THE WORD'S OWN BOX, and that
+ * is not a style preference — it is the only arrangement that works here.
+ * `view()` measures a subject inside its nearest ancestor SCROLL CONTAINER,
+ * and `overflow: hidden` makes an element one. Every section on this site
+ * clips — that clipping is the whole "passing behind a wall" illusion — so a
+ * timeline declared on the word's track, which fills its section exactly,
+ * resolves against the section itself and sits at a constant fifty per cent
+ * for the entire page. Measured: constant 50%, the word frozen dead centre.
+ * The section's OWN position, on the other hand, is measured inside the
+ * document's scroller, which is what we want. So the section names the
+ * timeline and the word, two levels down, consumes it by name.
+ *
+ * THE RANGE IS THE MAPPING THE JAVASCRIPT ALWAYS USED. `cover 0%` to
+ * `cover 100%` is exactly Motion's ["start end", "end start"] — from the box
+ * entering the bottom of the screen to it leaving the top — and `--sw-reach`
+ * is the same half-travel the measurement always produced. Checked side by
+ * side at the same scroll position: -214.677px against -214.7px. */
+@keyframes section-word-drift {
+  from {
+    transform: translate3d(0, calc(var(--sw-reach, 0px) * -1), 0);
+  }
+  to {
+    transform: translate3d(0, var(--sw-reach, 0px), 0);
+  }
+}
+
+/* Declared for the devices that use it and nowhere else: a desk never names a
+   timeline it has no reader for, and its word is still drawn the way it always
+   was. The query is the same one lib/use-media.ts asks in JavaScript, so the
+   two halves of this can never disagree about which path a device is on. */
+@supports (animation-timeline: view()) {
+  @media (pointer: coarse), (hover: none) {
+    .section-word-host {
+      view-timeline-name: --section-word;
+      view-timeline-axis: block;
+    }
+
+    .section-word-drift {
+      animation-name: section-word-drift;
+      /* the timeline's range is the duration — there is no clock in this */
+      animation-duration: auto;
+      animation-timing-function: linear;
+      animation-fill-mode: both;
+      animation-timeline: --section-word;
+      animation-range: cover 0% cover 100%;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section-word-drift {
+    animation: none;
+  }
 }
 :root:not(.dark) .section-word {
   color: rgba(23, 16, 25, 0.08);

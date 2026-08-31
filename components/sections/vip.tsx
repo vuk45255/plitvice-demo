@@ -27,7 +27,7 @@ export function Vip({ next }: { next?: PartyEvent }) {
     <section
       id="vip"
       aria-labelledby="vip-title"
-      className="relative isolate scroll-mt-20 overflow-hidden bg-night-2 py-32 text-night-ink md:py-56"
+      className="section-word-host relative isolate scroll-mt-20 overflow-hidden bg-night-2 py-32 text-night-ink md:py-56"
     >
       <SectionWord word="Reserve" />
       <Ambient variant="soft" />

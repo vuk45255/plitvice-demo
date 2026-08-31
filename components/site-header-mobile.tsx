@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -11,6 +11,9 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { SocialLinks } from "@/components/social-links";
 import { EASE } from "@/components/reveal";
 import { useLang } from "@/components/providers/language";
+import { useScrollLock } from "@/lib/scroll-lock";
+import { travelTo, travelToHash } from "@/lib/scroll";
+import { useScrolledPast } from "@/lib/use-scrolled";
 import { navigation, site } from "@/lib/site";
 
 /* The door, as it is held on a phone.
@@ -75,52 +78,33 @@ export function MobileHeader() {
   const night = usePathname() !== "/";
   const reduced = useReducedMotion();
   const [open, setOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const menuRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const wasOpen = useRef(false);
 
-  /* THE BAR ASKS REACT A QUESTION ONCE, NOT SIXTY TIMES A SECOND.
-   *
-   * Lenis calls this on every frame it moves the page, and it used to hand
-   * `l.scroll > 32` straight to a setter — a state dispatch per frame for the
-   * whole of every scroll, to answer the same boolean all but twice a visit.
-   * React discards the repeats, but it has to be entered to do it, and both
-   * this bar and the phone card were doing it at once. The last answer is kept
-   * here instead and React is only touched when it actually changes.
-   *
-   * The callback is also stable. `useLenis` lists it in its own effect
-   * dependencies, so a fresh closure on every render meant unsubscribing and
-   * resubscribing the scroll callback on every render as well. */
-  const was = useRef(false);
-  const onScroll = useCallback((l: { scroll: number }) => {
-    const now = l.scroll > 32;
-    if (now === was.current) return;
-    was.current = now;
-    setScrolled(now);
-  }, []);
-
-  const lenis = useLenis(onScroll);
+  /* WHERE THE BAR'S SURFACE COMES FROM. Asked of the page's own scroll
+     position rather than of Lenis, because Lenis is only mounted on a desk —
+     see components/providers/smooth-scroll.tsx — and because the page's scroll
+     event says the same thing on both. Passive, coalesced onto a frame, and
+     compared before React is entered. See lib/use-scrolled.ts. */
+  const scrolled = useScrolledPast(32);
+  /* Still wanted for the travelling: on a desk Lenis does the journey, and
+     where it is absent the browser's own smooth scrolling does. */
+  const lenis = useLenis();
 
   /* Nothing behind the panel moves while it is open, and Escape always closes
      it. The lock is `overflow: hidden` on the document rather than a fixed
      body, so the page is exactly where it was left when the panel goes. */
+  useScrollLock(open);
+
   useEffect(() => {
     if (!open) return;
-    lenis?.stop();
-    document.documentElement.style.overflow = "hidden";
-
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
     window.addEventListener("keydown", onKey);
-
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.documentElement.style.overflow = "";
-      lenis?.start();
-    };
-  }, [open, lenis]);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
   /* Focus goes in with the panel and comes back out with it, so a keyboard
      never ends up somewhere behind a screen it cannot see. */
@@ -137,13 +121,13 @@ export function MobileHeader() {
   /* Close first, then travel — the scroll runs against an unlocked page. */
   const goTo = (hash: string) => {
     setOpen(false);
-    window.setTimeout(() => lenis?.scrollTo(hash, { duration: 1.4 }), 140);
+    window.setTimeout(() => travelToHash(hash, lenis), 140);
   };
 
   const toTop = (e: React.MouseEvent) => {
     e.preventDefault();
     setOpen(false);
-    window.setTimeout(() => lenis?.scrollTo(0, { duration: 1.4 }), 140);
+    window.setTimeout(() => travelTo(0, lenis, false, 1.4), 140);
   };
 
   const markLabel = `${site.tagline} ${site.name}, ${site.town} — ${t("common.toTop")}`;

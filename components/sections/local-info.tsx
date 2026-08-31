@@ -297,7 +297,7 @@ function Backdrop({
 
   return (
     <motion.div style={{ opacity }} className="absolute inset-0">
-      <SectionWord word="Inđija" speed={0.72} />
+      <SectionWord word="Inđija" speed={0.72} pinned />
       <LightLeaks intensity="soft" fadeOut />
     </motion.div>
   );

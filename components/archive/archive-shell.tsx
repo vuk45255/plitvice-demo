@@ -41,7 +41,7 @@ export function ArchiveShell({
   return (
     <main
       id="main"
-      className="relative isolate min-h-[100svh] overflow-hidden bg-night pb-32 text-night-ink md:pb-48"
+      className="section-word-host relative isolate min-h-[100svh] overflow-hidden bg-night pb-32 text-night-ink md:pb-48"
     >
       <SectionWord word={word} />
       <Ambient variant="soft" />

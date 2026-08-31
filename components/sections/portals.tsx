@@ -40,7 +40,7 @@ export function Portals({ posters }: { posters: Poster[] }) {
     <section
       id="gallery"
       aria-labelledby="portals-title"
-      className="relative isolate scroll-mt-20 overflow-hidden py-24 md:py-28"
+      className="section-word-host relative isolate scroll-mt-20 overflow-hidden py-24 md:py-28"
     >
       <SectionWord word="Galerija" />
       <LightLeaks intensity="strong" fadeOut />

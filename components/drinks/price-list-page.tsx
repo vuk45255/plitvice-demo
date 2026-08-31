@@ -33,7 +33,7 @@ export function PriceListPage() {
   return (
     <main
       id="main"
-      className="relative isolate min-h-[100svh] overflow-clip bg-night pb-32 text-night-ink md:pb-48"
+      className="section-word-host relative isolate min-h-[100svh] overflow-clip bg-night pb-32 text-night-ink md:pb-48"
     >
       {/* The house's ghost word, held back the way it is on the information
           pages — this is body copy and a table of numbers, not photography. */}
