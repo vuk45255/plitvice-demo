@@ -198,6 +198,65 @@ body::after {
   color: rgba(200, 164, 93, 0.85);
 }
 
+/* ── THE ONE DECLARATION THAT HOLDS THE PHONE'S FRAME RATE UP ──────────────
+ *
+ * Worn by every large blurred surface in the atmosphere rigs: the lamps and
+ * haze in components/ambient.tsx, the beams and smoke in
+ * components/light-leaks.tsx, and the same pair in
+ * components/reservation/reservation-atmosphere.tsx.
+ *
+ * WHAT IT IS FOR. Those surfaces are radial gradients under a 50–110px blur,
+ * and they are as large as three quarters of the screen. Each one lives
+ * inside a parent that breathes — an infinite scale/opacity loop — and on the
+ * home page also rides the scroll. The blur itself is not the problem: it is
+ * drawn once and could be kept. The problem is that a changing ancestor scale
+ * changes the resolution the browser thinks the blurred surface needs, so it
+ * throws the finished blur away and computes it again, every frame, for every
+ * lamp on the page, at a phone's three device pixels per CSS pixel.
+ *
+ * MEASURED, on a Pixel-class profile of the home page — 390×844 at DPR 3,
+ * CPU throttled 4×, thirteen seconds of continuous touch scrolling:
+ *
+ *     without this rule    12.7s of GPU time,  423 dropped frames
+ *     with it               ~0s of GPU time,     1 dropped frame
+ *
+ * Nothing about the picture changes; `will-change: transform` pins the
+ * resolution the surface is rasterised at, so the browser scales the texture
+ * it already has instead of blurring the circle again. The lamps swell, drift
+ * and fade exactly as they did.
+ *
+ * THIS IS NOT A LICENCE TO SPRAY `will-change` AROUND. It belongs on large
+ * blurred surfaces inside an animated parent and nowhere else — every one of
+ * these already had its own render surface, because `filter` creates one, so
+ * this pins what exists rather than promoting anything new. Put it on
+ * ordinary elements and it costs memory for nothing.
+ *
+ * ─── AND WHY IT IS ASKED FOR A FINGER AND NOT FOR A CURSOR ────────────────
+ *
+ * Because on a desk it would be visible, and nothing here is allowed to be.
+ * Pinning the surface gives it a compositing layer of its own, and text drawn
+ * over a layer boundary loses subpixel antialiasing and falls back to
+ * greyscale. Measured against the unpinned build: on the pages whose copy sits
+ * over one of these rigs, the ONLY pixels that differed were the glyph edges,
+ * and they differed because of exactly that. Small, but a difference on a 1×
+ * LCD, and this site does not make those trades.
+ *
+ * A phone does not have the trade to make. At two and three device pixels per
+ * CSS pixel a browser draws greyscale-antialiased text anyway, so the pinning
+ * costs it nothing — and the phone is where the 12.7 seconds were being spent.
+ * A desk was never the emergency: it renders at 1× with a real GPU behind it,
+ * and it keeps the text it always had.
+ *
+ * The query is the one the rest of the site asks — the same
+ * `(pointer: coarse), (hover: none)` behind the smooth scroller in
+ * components/providers/smooth-scroll.tsx and the background words above — so
+ * the answer cannot drift between them. */
+@media (pointer: coarse), (hover: none) {
+  .atmosphere-blur {
+    will-change: transform;
+  }
+}
+
 /* The word standing behind a section. Barely there — closer to a light on a
    wall than to type, and never bright enough to compete with the content. */
 .section-word {

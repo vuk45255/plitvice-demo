@@ -2,11 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import Link from "next/link";
 import {
   motion,
   useMotionValue,
+  useMotionValueEvent,
   useReducedMotion,
   useTransform,
+  type MotionValue,
 } from "framer-motion";
 import { useLenis } from "lenis/react";
 import { useScrollTrack } from "@/components/story/use-scroll-track";
@@ -21,6 +24,7 @@ import {
 } from "@/components/local-info/info-intro";
 import { InfoGrid } from "@/components/local-info/info-grid";
 import { useLang } from "@/components/providers/language";
+import { INFO, infoHref } from "@/lib/local-info";
 
 /* The concierge — the last room on the home page, and the only one that is
    about the town rather than the club.
@@ -62,6 +66,26 @@ const HANDOVER_VH = 64;
 /* Where the questions end and the handover begins, as a share of the track. */
 const WORDS_END = WORDS_VH / (WORDS_VH + HANDOVER_VH);
 
+/* WHERE THE SCENE STOPS BEING A QUESTION AND STARTS BEING A GRID, as a share
+   of the handover — and therefore which of the two takes a click.
+
+   Read off what is actually on the screen at that point rather than picked: at
+   0.7 of the handover the question is down to a tenth of its opacity (it
+   leaves across 0.2 → 0.78, see IntroAsking) and the first two rows of cards
+   are fully in. Before it, the question is what the visitor is looking at and
+   the whole scene is a door onto that category; after it, the cards are what
+   they are looking at and each card is its own door, exactly as it always was.
+   There is never a moment when both are live, and never one when neither is. */
+const HANDED_OVER = 0.7;
+
+/* And what separates a tap from a scroll. A press that moves less than this
+   many pixels, lasts less than this many milliseconds, and does not take the
+   page with it, is somebody pointing at the screen; anything else is somebody
+   moving the page and must never navigate. */
+const TAP_SLOP = 10;
+const TAP_MS = 700;
+const TAP_SCROLL = 12;
+
 export function LocalInfo() {
   const { t } = useLang();
   const reduced = useReducedMotion();
@@ -82,6 +106,45 @@ export function LocalInfo() {
   const handover = useTransform(progress, [WORDS_END, 1], [0, 1]);
 
   const lenis = useLenis();
+
+  /* ───────────── WHICH QUESTION IS ON THE SCREEN, ASKED ONCE ─────────────
+   *
+   * THERE IS EXACTLY ONE ANSWER TO THIS AND EVERYTHING READS IT.
+   *
+   * The six words are drawn straight off `asked` — see `stops` in
+   * info-intro.tsx — and a word owns the slot between i/n and (i+1)/n, handing
+   * over in a short window centred on the boundary. So the word on screen is
+   * the floor of the progress times six, and that same number is what the door
+   * below navigates to. There is no second index anywhere, nothing counting
+   * slides, and nothing that can be one behind: the thing that decides what is
+   * painted is the thing that decides where a click goes.
+   *
+   * It is kept out of React until it changes. The progress value moves on
+   * every frame the story is being read; this enters React five times across
+   * the whole pass. */
+  const [active, setActive] = useState(0);
+  const activeRef = useRef(0);
+
+  useMotionValueEvent(asked, "change", (p) => {
+    const at = Math.min(INFO.length - 1, Math.max(0, Math.floor(p * INFO.length)));
+    if (at === activeRef.current) return;
+    activeRef.current = at;
+    setActive(at);
+  });
+
+  /* And whether the grid has taken the screen over from the question — the one
+     switch that decides which of the two is the door. Watched on `handover`
+     rather than on `enter` below, because `enter` is swapped for a constant
+     once the story is told and a constant never emits. */
+  const [handed, setHanded] = useState(false);
+  const handedRef = useRef(false);
+
+  useMotionValueEvent(handover, "change", (e) => {
+    const now = e >= HANDED_OVER;
+    if (now === handedRef.current) return;
+    handedRef.current = now;
+    setHanded(now);
+  });
 
   /* ─────────────── THE STORY IS TOLD ONCE, AND THEN IT IS OVER ───────────────
    *
@@ -166,6 +229,12 @@ export function LocalInfo() {
   const settled = useMotionValue(1);
   const enter = over ? settled : handover;
 
+  /* The tiles' own pointer switch, off the same value everything else in the
+     grid is drawn from. See where it is applied, below. */
+  const cards = useTransform(enter, (e) =>
+    e >= HANDED_OVER ? "auto" : "none",
+  );
+
   /* Back to the first question, on the page's own smooth scrolling rather than
      on a jump — the whole point is that nothing teleports. Lenis is the root
      scroller here, so it has to be the one asked; `window.scrollTo` would be
@@ -247,17 +316,34 @@ export function LocalInfo() {
             <>
               <IntroRooms progress={asked} dim={handover} />
               <IntroAsking progress={asked} exit={handover} />
+
+              {/* THE SCENE IS A DOOR ONTO THE QUESTION STANDING IN IT.
+                  Above the rooms and the type, below the grid — and it exists
+                  only while the question is the thing on the screen. */}
+              {!handed && <SceneDoor index={active} />}
+
+              {/* And the one line that says so. It takes no pointer of its
+                  own, ever: it is a sign, not a control. */}
+              <SceneCue exit={handover} />
             </>
           )}
 
           {/* THE GRID IS THE SECOND HALF OF THE SAME SCREEN. Laid over the
               rooms rather than under them, and centred, so that when the
-              question has gone the six pictures are what the screen is. */}
+              question has gone the six pictures are what the screen is.
+           *
+           * THE COLUMN ITSELF TAKES NOTHING. It is a screen-high box laid over
+           * the whole scene, so with a pointer of its own it is a lid: the
+           * question underneath cannot be clicked and the click lands on
+           * nothing at all. What is inside it says for itself when it is a
+           * control — the rail when it can be seen, the tiles when they have
+           * arrived — and a child may always take a pointer its parent has
+           * refused. */}
           <div
             className={
               reduced
-                ? "relative z-20 mt-16"
-                : "absolute inset-0 z-20 flex flex-col justify-center"
+                ? "pointer-events-none relative z-20 mt-16"
+                : "pointer-events-none absolute inset-0 z-20 flex flex-col justify-center"
             }
           >
             {/* The room the grid stands in, and it arrives with the grid.
@@ -272,18 +358,193 @@ export function LocalInfo() {
               onBack={told ? undefined : toStart}
             />
 
-            <div className="relative z-10 mt-8 md:mt-10">
+            {/* THE CARDS ARE ONLY A DOOR ONCE THEY ARE A CARD.
+             *
+             * This is where clicking the guide used to go wrong. The six tiles
+             * are laid over the whole pinned scene for the entire story, and
+             * for almost all of it they are at nought opacity — which is
+             * invisible and still perfectly clickable. So a click anywhere on
+             * the scene, while SMEŠTAJ or RESTORANI was on the screen, was
+             * taken by whichever tile the pointer happened to be over, and the
+             * visitor was sent to a category they had never seen.
+             *
+             * The tiles now take a pointer only from the moment they are what
+             * the screen is. It is a motion value rather than state so the
+             * switch costs no render at all, and `enter` is a constant 1 once
+             * the story is told, which leaves the settled grid exactly as
+             * interactive as it has always been. */}
+            <motion.div
+              style={{ pointerEvents: cards }}
+              className="relative z-10 mt-8 md:mt-10"
+            >
               <InfoGrid
                 enter={enter}
                 scene={scene}
                 still={reduced}
                 settled={over}
               />
-            </div>
+            </motion.div>
           </div>
         </div>
       </div>
     </section>
+  );
+}
+
+/* ─────────────────── THE SCENE, AS SOMETHING TO OPEN ───────────────────
+ *
+ * A real link to a real address, so it opens in a new tab with the middle
+ * button, shows the visitor where it goes in the status bar, is a stop on the
+ * Tab key, and works from the keyboard with no handler at all. Where it goes
+ * is `active`, which is the same number the word on screen is drawn from —
+ * there is no chance of the two disagreeing because there is only one of them.
+ *
+ * ─── AND A SWIPE IS NOT A TAP ─────────────────────────────────────────────
+ *
+ * This covers the screen, on a page whose whole point is that it is scrolled
+ * through. So the one thing it must never do is turn a finger dragging the
+ * page into a navigation.
+ *
+ * Nothing here touches the scroll. There is no `preventDefault` on a touchmove
+ * or a wheel anywhere in this file, no `touch-action` that would take the
+ * gesture off the compositor, and no listener bound to the page: a finger
+ * scrolls this exactly as it scrolls the rest of the site, and the browser
+ * never has to ask the main thread for permission. What is measured is the
+ * press itself, at the two ends of it —
+ *
+ *   how far the pointer moved     a drag, however slow, is not a tap
+ *   how long it was held          a press is not a click
+ *   how far the PAGE moved        momentum under a stationary finger is the
+ *                                 case a movement threshold cannot catch, and
+ *                                 it is the one that sends people to the wrong
+ *                                 page on a phone
+ *
+ * — and if any of the three says the visitor was scrolling, the click is
+ * simply not honoured. A wheel or a trackpad never produces a click in the
+ * first place.
+ *
+ * A click with no press behind it is the keyboard, and it goes through
+ * untouched. */
+function SceneDoor({ index }: { index: number }) {
+  const { t } = useLang();
+  const category = INFO[index];
+  const from = useRef<{
+    x: number;
+    y: number;
+    at: number;
+    scroll: number;
+  } | null>(null);
+
+  const press = (event: React.PointerEvent) => {
+    from.current = {
+      x: event.clientX,
+      y: event.clientY,
+      at: event.timeStamp,
+      scroll: window.scrollY,
+    };
+  };
+
+  const abandon = () => {
+    from.current = null;
+  };
+
+  const open = (event: React.MouseEvent) => {
+    const start = from.current;
+    from.current = null;
+
+    /* Enter on the focused link: no pointer, nothing to second-guess. */
+    if (!start) return;
+
+    const moved = Math.hypot(event.clientX - start.x, event.clientY - start.y);
+    const held = event.timeStamp - start.at;
+    const travelled = Math.abs(window.scrollY - start.scroll);
+
+    if (moved > TAP_SLOP || held > TAP_MS || travelled > TAP_SCROLL) {
+      event.preventDefault();
+    }
+  };
+
+  return (
+    <Link
+      href={infoHref(category)}
+      aria-label={`${t("info.open")} ${t(category.name)}`}
+      onPointerDown={press}
+      onPointerCancel={abandon}
+      onDragStart={abandon}
+      onClick={open}
+      /* The ring is the only thing this element ever draws, and only for a
+         keyboard. `touch-action` is deliberately left alone; the callout and
+         the tap flash are not, because a full-screen link would otherwise
+         grey the whole scene under every scrolling finger. */
+      className="absolute inset-0 z-[15] outline-none ring-inset ring-gold/0 focus-visible:ring-1 focus-visible:ring-gold/45 [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none]"
+    />
+  );
+}
+
+/* ───────────────────────── the sign in the corner ─────────────────────────
+ *
+ * What the scene cannot say for itself: that it goes on downward, and that the
+ * question standing in it can be opened. One rail, one hairline, one chevron,
+ * set low on the left where there is nothing else — clear of the word in the
+ * middle of the screen, clear of the bar at the top, and clear of the bottom
+ * of a phone, its own inset included.
+ *
+ * IT TAKES NO POINTER. It is over the door, so anything else would be a strip
+ * of the scene that does not open, and a strip of a phone that does not
+ * scroll.
+ *
+ * The movement is six pixels down and back over five seconds, which is barely
+ * a movement — it is there to say the direction, not to attract attention. It
+ * goes out with the question, and it never runs at all when the visitor has
+ * asked for less of it. */
+function SceneCue({ exit }: { exit: MotionValue<number> }) {
+  const { t } = useLang();
+  const reduced = useReducedMotion();
+  const opacity = useTransform(exit, [0, 0.22], [1, 0]);
+
+  return (
+    <motion.div
+      style={{ opacity }}
+      className="pointer-events-none absolute bottom-0 left-0 z-30 select-none pb-[max(1.75rem,env(safe-area-inset-bottom))] pl-6 md:pb-12 md:pl-12 xl:pl-20"
+      aria-hidden="true"
+    >
+      <div className="flex flex-col items-start gap-3 md:gap-4">
+        <span className="text-[0.5rem] uppercase leading-none tracking-[0.36em] text-gold/55 md:text-[0.5625rem] md:tracking-[0.42em]">
+          {t("info.cueScroll")}
+        </span>
+
+        <motion.span
+          className="flex flex-col items-center gap-1.5"
+          animate={
+            reduced
+              ? undefined
+              : { y: [0, 6, 0], opacity: [0.55, 1, 0.55] }
+          }
+          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <span className="block h-8 w-px bg-gradient-to-b from-gold/55 to-transparent md:h-12" />
+          <svg
+            viewBox="0 0 12 8"
+            fill="none"
+            className="h-1.5 w-2.5 text-gold/55 md:h-2 md:w-3"
+          >
+            <path
+              d="M1 1.5 6 6.5 11 1.5"
+              stroke="currentColor"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </motion.span>
+
+        {/* The second half of it, and only where there is room for a second
+            half — a phone gets the direction and nothing else. */}
+        <span className="hidden text-[0.5rem] uppercase leading-none tracking-[0.3em] text-gold/35 md:block">
+          {t("info.cueOpen")}
+        </span>
+      </div>
+    </motion.div>
   );
 }
 
@@ -296,7 +557,10 @@ function Backdrop({
   const opacity = useTransform(enter, [0.14, 0.5], [0, 1]);
 
   return (
-    <motion.div style={{ opacity }} className="absolute inset-0">
+    <motion.div
+      style={{ opacity }}
+      className="pointer-events-none absolute inset-0"
+    >
       <SectionWord word="Inđija" speed={0.72} pinned />
       <LightLeaks intensity="soft" fadeOut />
     </motion.div>
@@ -324,11 +588,19 @@ function Rail({
 }) {
   const opacity = useTransform(enter, [0.2, 0.46], [0, 1]);
   const y = useTransform(enter, [0.2, 0.46], [18, 0]);
+  /* And it is a control only once it is a control the visitor can see. It sits
+     over the pinned scene for the whole of the story; at nought opacity it was
+     still a live button, and a click that landed in its corner did something
+     the visitor had no way to have meant. */
+  const live = useTransform(opacity, (o) => (o >= 1 ? "auto" : "none"));
 
   if (!onBack) return null;
 
   return (
-    <motion.div style={{ opacity, y }} className="relative z-10 container-x">
+    <motion.div
+      style={{ opacity, y, pointerEvents: live }}
+      className="relative z-10 container-x"
+    >
       <div className="mx-auto flex max-w-[1240px] items-baseline justify-end gap-6">
         {/* The way back to the first question, for anyone who would rather not
             climb. A real button, because it does something rather than going

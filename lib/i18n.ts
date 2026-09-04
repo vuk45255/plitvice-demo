@@ -108,6 +108,15 @@ const sr = {
   /* The way back out of the guide, set beside the rail over the grid. */
   "info.restart": "Na početak",
 
+  /* The pinned scene is a door as well as a story: the question on screen can
+     be opened. `info.open` is only ever read aloud — it is the verb in front
+     of the category's own name, so a screen reader hears "Otvori Restorani" —
+     and the two cues are what the eye gets instead, in the corner of the
+     scene. See components/sections/local-info.tsx. */
+  "info.open": "Otvori",
+  "info.cueScroll": "Skroluj",
+  "info.cueOpen": "Klikni da otvoriš",
+
   /* ─────────── THE SIX PAGES BEHIND THE CARDS — /info/<slug> ───────────
      The rail over every one of them, the way back to the six, and the two
      things a row can offer. What each place IS lives under info.d.* below;
@@ -193,7 +202,7 @@ const sr = {
 
   "zurke.title": "Naše *žurke*.",
   "zurke.lead":
-    "Svaka subota ima svoje ime. Ovde stoje sva — ona koja dolazi i sve one iza nje.",
+    "Svaka subota ima svoje ime. Ovde su sve na jednom mestu — ona koja tek dolazi i sve one koje su ostale iza nas.",
   "zurke.upcoming": "Naredna žurka",
   "zurke.past": "Prošle noći",
   "zurke.archive": "Arhiva",
@@ -278,7 +287,7 @@ const sr = {
   "footer.location": "Lokacija",
   "footer.rights": "© 2026 Plitvice. Sva prava zadržana.",
   /* A studio credit — the name stays as written in both languages. */
-  "footer.credit": "Powered by VAntage",
+  "footer.credit": "Powered by Vantage",
 
   "feed.title": "Zapratite nas!",
   "feed.watch": "Pogledaj snimak",
@@ -540,6 +549,10 @@ const en: Record<MessageKey, string> = {
   "info.discover": "Look",
   "info.restart": "Back to the start",
 
+  "info.open": "Open",
+  "info.cueScroll": "Scroll",
+  "info.cueOpen": "Click to open",
+
   "info.page.eyebrow": "Info",
   "info.page.back": "Info",
   "info.action.call": "Call",
@@ -617,7 +630,7 @@ const en: Record<MessageKey, string> = {
 
   "zurke.title": "Our *parties*.",
   "zurke.lead":
-    "Every Saturday has a name. All of them are here — the one ahead, and every one behind it.",
+    "Every Saturday has a name. They are all in one place here — the one still to come and every one we have left behind.",
   "zurke.upcoming": "Next party",
   "zurke.past": "Past nights",
   "zurke.archive": "Archive",
@@ -687,7 +700,7 @@ const en: Record<MessageKey, string> = {
   "footer.hours": "Opening hours",
   "footer.location": "Location",
   "footer.rights": "© 2026 Plitvice. All rights reserved.",
-  "footer.credit": "Powered by VAntage",
+  "footer.credit": "Powered by Vantage",
 
   "feed.title": "Follow us!",
   "feed.watch": "Watch the clip",

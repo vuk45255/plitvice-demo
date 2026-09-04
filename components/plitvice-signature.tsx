@@ -119,7 +119,15 @@ const RULE_WIDTH = 7;
 export const SIGNATURE_SECONDS = RULE_AT + RULE_DUR;
 const GLOW_SECONDS = 0.7;
 
-const VIEWPORT = { amount: 0.5 } as const;
+/* WRITTEN ONCE, AND THEN IT IS WRITTEN.
+ *
+ * `once` is the whole of it. Without it Motion treats `whileInView` as a state
+ * that is true while the element is on screen and false the moment it is not —
+ * so the signature un-wrote itself on the way past and signed again on the way
+ * back, indefinitely, which is the one thing a signature must never do. With
+ * it the variant latches the first time the band is half on screen and the ink
+ * stays down for the life of the page. */
+const VIEWPORT = { amount: 0.5, once: true } as const;
 
 /* A <mask> is never rendered, so its children have no box and an
    IntersectionObserver on them can never fire. Driving the mask paths with

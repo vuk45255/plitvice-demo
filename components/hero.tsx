@@ -38,7 +38,24 @@ const REVEAL_MS = 3300;
 const FALLBACK_MS = 4600;
 
 export default function Hero() {
-  const [phase, setPhase] = useState<Phase>("atmosphere");
+  const { entered, enter, ceremonyPlayed, ceremonyOver } = useEntrance();
+
+  /* THE CEREMONY IS PLAYED ON THE WAY IN, NOT EVERY TIME THE VISITOR COMES
+     BACK TO THE FRONT ROOM.
+   *
+   * Read once, in the initialiser, and never again: the provider that holds it
+   * is mounted above the router (see components/providers/entrance.tsx), so
+   * coming back from /rezervacija or /info/restorani lands on a home page that
+   * knows the doors were already opened. There is no reveal to sit through, no
+   * scroll lock to wait out, and the page is scrollable on the frame it
+   * arrives. A reload is a new visit and gets the ceremony. */
+  const [phase, setPhase] = useState<Phase>(() =>
+    ceremonyPlayed ? "done" : "atmosphere",
+  );
+  /* The same fact, kept as it was at mount, because `phase` moves and this
+     must not: it is the difference between "the mark is finished" and "the
+     mark was already finished before this page was even built". */
+  const [returning] = useState(() => ceremonyPlayed);
   const reduced = useReducedMotion();
   const sectionRef = useRef<HTMLElement>(null);
   /* The hero film is the one video on this page that is worth having ready
@@ -49,7 +66,6 @@ export default function Hero() {
   /* The room only breathes while somebody is in it. Left to itself the haze
      kept its loop for the whole visit, six sections below the fold. */
   const onScreen = useInView(sectionRef);
-  const { enter } = useEntrance();
   const { t } = useLang();
 
   /* Reduced motion skips the ceremony entirely — derived, never set. */
@@ -60,10 +76,13 @@ export default function Hero() {
      scroller is mounted. */
   useScrollLock(effectivePhase !== "done");
 
-  /* And the site's chrome stays away until then too. */
+  /* And the site's chrome stays away until then too — and the house remembers,
+     for the rest of the visit, that the ceremony has been through. */
   useEffect(() => {
-    if (effectivePhase === "done") enter();
-  }, [effectivePhase, enter]);
+    if (effectivePhase !== "done") return;
+    if (!entered) enter();
+    if (!ceremonyPlayed) ceremonyOver();
+  }, [effectivePhase, entered, enter, ceremonyPlayed, ceremonyOver]);
 
   /* The first scroll intent freezes the room and lights the mark. */
   useEffect(() => {
@@ -100,8 +119,30 @@ export default function Hero() {
   const parallaxY = useTransform(scrollYProgress, [0, 1], ["0%", "10%"]);
 
   const revealed = effectivePhase !== "atmosphere";
-  const slow = { duration: reduced ? 0 : 2.6, ease: EASE };
-  const d = (seconds: number) => (reduced ? 0 : seconds);
+
+  /* ─── WHETHER THE CEREMONY IS BEING PERFORMED AT ALL ──────────────────────
+   *
+   * Two quite different things ask for the same answer, and neither of them is
+   * "less motion in general":
+   *
+   *   reduced    the visitor has asked not to be shown a three-second reveal
+   *   returning  they have already been shown it, and are walking back into
+   *              the front room from somewhere else on the site
+   *
+   * In both cases the mark is simply THERE, at the end of its own choreography,
+   * on the first frame. Every stop is the one it always was — the same push-in,
+   * the same fall of the room, the same letters, the same rails, in the same
+   * places — the clock is what is set to nothing, so nothing is skipped and
+   * nothing looks different. A visitor coming back gets a home page that is
+   * finished rather than one that starts over.
+   *
+   * The room's own life is NOT part of this. The haze still drifts, the film
+   * still runs, the parallax still answers the scroll: those belong to the
+   * page, not to the entrance, and they are still gated on `reduced` alone. */
+  const still = reduced || returning;
+
+  const slow = { duration: still ? 0 : 2.6, ease: EASE };
+  const d = (seconds: number) => (still ? 0 : seconds);
 
   /* Mask reveal: the rail rises out of a hard-clipped frame. */
   const rail = {
@@ -109,7 +150,7 @@ export default function Hero() {
     show: (delay: number) => ({
       y: "0%",
       opacity: 1,
-      transition: { duration: reduced ? 0 : 1.1, delay, ease: EASE },
+      transition: { duration: still ? 0 : 1.1, delay, ease: EASE },
     }),
   };
 
@@ -147,7 +188,7 @@ export default function Hero() {
           animate={revealed ? { scale: 1.14 } : { scale: [1, 1.045, 1] }}
           transition={
             revealed
-              ? { duration: reduced ? 0 : 4.6, ease: EASE }
+              ? { duration: still ? 0 : 4.6, ease: EASE }
               : { duration: 18, repeat: Infinity, ease: "easeInOut" }
           }
         >
@@ -283,7 +324,7 @@ export default function Hero() {
             <div className={`overflow-hidden ${SIGNATURE_INK}`}>
               <motion.p
                 variants={rail}
-                initial="hidden"
+                initial={still ? false : "hidden"}
                 animate={revealed ? "show" : "hidden"}
                 custom={d(T_TAGLINE)}
                 className={`${SIGNATURE_FACE} ${SIGNATURE_BOX} text-[clamp(1.5rem,3.2vw,2.5rem)] text-gold-light/85`}
@@ -306,7 +347,7 @@ export default function Hero() {
           <div className="overflow-hidden py-[0.06em]" aria-hidden="true">
             <motion.div
               className="flex"
-              initial="hidden"
+              initial={still ? false : "hidden"}
               animate={revealed ? "show" : "hidden"}
               variants={{
                 hidden: {},
@@ -326,7 +367,7 @@ export default function Hero() {
                     hidden: { y: "115%" },
                     show: {
                       y: "0%",
-                      transition: { duration: reduced ? 0 : 1.15, ease: EASE },
+                      transition: { duration: still ? 0 : 1.15, ease: EASE },
                     },
                   }}
                 >
@@ -348,7 +389,7 @@ export default function Hero() {
             <div className="overflow-hidden pb-[0.2em]" aria-hidden="true">
               <motion.p
                 variants={rail}
-                initial="hidden"
+                initial={still ? false : "hidden"}
                 animate={revealed ? "show" : "hidden"}
                 custom={d(T_TOWN)}
                 className="text-[0.625rem] uppercase tracking-[0.62em] text-gold-light/85 indent-[0.62em] sm:text-[0.75rem]"
@@ -385,7 +426,7 @@ export default function Hero() {
         <motion.span
           initial={false}
           animate={{ opacity: effectivePhase === "done" ? 1 : 0 }}
-          transition={{ duration: 1, delay: 0.4 }}
+          transition={{ duration: d(1), delay: d(0.4) }}
           className="block h-10 w-px bg-gradient-to-b from-gold/70 to-transparent"
           aria-hidden="true"
         />

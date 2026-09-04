@@ -133,15 +133,14 @@ export function LightLeaks({
     >
       <div className={`absolute inset-0 ${strength}`}>
         {leaks.map((leak, i) => (
+          /* THE BEAM TRAVELS. THE BLUR INSIDE IT DOES NOT — see the note on
+             the child below, and the long version in components/ambient.tsx. */
           <motion.div
             key={`leak-${i}`}
-            className={`absolute rounded-full [filter:blur(60px)] md:[filter:blur(90px)] ${leak.place} ${
+            className={`absolute ${leak.place} ${
               leak.desktopOnly ? "hidden md:block" : ""
             }`}
-            style={{
-              background: `radial-gradient(closest-side, ${leak.color}, transparent 78%)`,
-              rotate: leak.tilt,
-            }}
+            style={{ rotate: leak.tilt }}
             /* Stopped by being replaced rather than by being taken away —
                see the same note in components/ambient.tsx. */
             animate={
@@ -164,17 +163,29 @@ export function LightLeaks({
                     transition: { duration: 0 },
                   }
             }
-          />
+          >
+            {/* A blurred box whose transform changes is re-blurred on every
+                frame of that change, and these beams cross the whole room for
+                the entire time their section is on screen. So the travel is
+                the parent's and the blur is this child's, which never moves
+                and is therefore rasterised once. The picture is the same to
+                the pixel: the kernel is circular and applies in local space,
+                so blurring inside a rotated, travelling box and rotating and
+                travelling a blurred box are the same operation. */}
+            <div
+              className="atmosphere-blur absolute inset-0 rounded-full [filter:blur(60px)] md:[filter:blur(90px)]"
+              style={{
+                background: `radial-gradient(closest-side, ${leak.color}, transparent 78%)`,
+              }}
+            />
+          </motion.div>
         ))}
 
         {/* smoke over the beams, so the light reads as passing through it */}
         {SMOKE.map((bank, i) => (
           <motion.div
             key={`smoke-${i}`}
-            className={`absolute rounded-full [filter:blur(80px)] md:[filter:blur(110px)] ${bank.place}`}
-            style={{
-              background: `radial-gradient(closest-side, ${bank.color}, transparent 80%)`,
-            }}
+            className={`absolute ${bank.place}`}
             animate={
               live
                 ? {
@@ -195,7 +206,15 @@ export function LightLeaks({
                     transition: { duration: 0 },
                   }
             }
-          />
+          >
+            {/* held still and blurred once, for the reason above */}
+            <div
+              className="atmosphere-blur absolute inset-0 rounded-full [filter:blur(80px)] md:[filter:blur(110px)]"
+              style={{
+                background: `radial-gradient(closest-side, ${bank.color}, transparent 80%)`,
+              }}
+            />
+          </motion.div>
         ))}
       </div>
 

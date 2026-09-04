@@ -82,28 +82,22 @@ export function ReservationAtmosphere() {
 
       <div className="absolute inset-0 opacity-75 md:opacity-100">
         {LAMPS.map((lamp, i) => (
+          /* The lamp breathes on the outside and is blurred on the inside —
+             the same split, and the same reason, as components/ambient.tsx.
+             This rig sits under a form people are typing into, which is the
+             worst place on the site to be re-blurring an eighty-viewport
+             circle on every frame. */
           <motion.div
             key={`lamp-${i}`}
-            className={`absolute rounded-full ${lamp.place} ${
+            className={`absolute ${lamp.place} ${
               lamp.desktopOnly ? "hidden md:block" : ""
             }`}
-            style={{
-              background: `radial-gradient(circle, ${lamp.color}, transparent 70%)`,
-              filter: lamp.blur[0],
-            }}
-            /* The radius holds still on a phone — see the note on the same
-               animation in components/ambient.tsx. This rig sits under a form
-               people are typing into, which is the worst place on the site to
-               be re-blurring an eighty-viewport circle every frame. */
             animate={
               reduced
                 ? undefined
                 : {
                     opacity: [0.4, 1, 0.4],
                     scale: [0.94, 1.14, 0.94],
-                    ...(phone
-                      ? null
-                      : { filter: [lamp.blur[0], lamp.blur[1], lamp.blur[0]] }),
                   }
             }
             transition={{
@@ -112,17 +106,35 @@ export function ReservationAtmosphere() {
               repeat: Infinity,
               ease: "easeInOut",
             }}
-          />
+          >
+            <motion.div
+              className="atmosphere-blur absolute inset-0 rounded-full"
+              style={{
+                background: `radial-gradient(circle, ${lamp.color}, transparent 70%)`,
+                filter: lamp.blur[0],
+              }}
+              /* The radius holds still on a phone — see the note on the same
+                 animation in components/ambient.tsx. */
+              animate={
+                reduced || phone
+                  ? undefined
+                  : { filter: [lamp.blur[0], lamp.blur[1], lamp.blur[0]] }
+              }
+              transition={{
+                duration: lamp.duration,
+                delay: lamp.delay,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+            />
+          </motion.div>
         ))}
 
         {/* smoke over the beams, never under them */}
         {HAZE.map((bank, i) => (
           <motion.div
             key={`haze-${i}`}
-            className={`absolute rounded-full ${bank.place} [filter:blur(80px)] md:[filter:blur(110px)]`}
-            style={{
-              background: `radial-gradient(circle, ${bank.color}, transparent 72%)`,
-            }}
+            className={`absolute ${bank.place}`}
             animate={
               reduced
                 ? undefined
@@ -139,7 +151,15 @@ export function ReservationAtmosphere() {
               repeat: Infinity,
               ease: "easeInOut",
             }}
-          />
+          >
+            {/* drifts with the parent, blurred once here */}
+            <div
+              className="atmosphere-blur absolute inset-0 rounded-full [filter:blur(80px)] md:[filter:blur(110px)]"
+              style={{
+                background: `radial-gradient(circle, ${bank.color}, transparent 72%)`,
+              }}
+            />
+          </motion.div>
         ))}
       </div>
 

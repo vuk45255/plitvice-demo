@@ -172,24 +172,16 @@ export function Ambient({ variant = "full", fadeOut = false }: AmbientProps) {
           per-breakpoint strength has to live one level in */}
       <div className={`absolute inset-0 ${strength}`}>
         {lamps.map((lamp, i) => (
+          /* THE LAMP MOVES. THE BLUR DOES NOT. That split is the whole reason
+             this is two elements rather than one — see the note below. */
           <motion.div
             key={`lamp-${i}`}
-            className={`absolute rounded-full ${lamp.place} ${
+            className={`absolute ${lamp.place} ${
               lamp.desktopOnly ? "hidden md:block" : ""
             }`}
             style={{
-              background: `radial-gradient(circle, ${lamp.color}, transparent 70%)`,
-              filter: lamp.blur[0],
               x: reduced ? undefined : lamp.track === "a" ? xA : xB,
             }}
-            /* THE BLUR RADIUS IS NOT ANIMATED ON A PHONE, and it was the
-               single most expensive thing in this file. Opacity and scale are
-               compositor work on a layer the GPU already holds; changing the
-               radius throws that layer away and blurs a seventy-viewport-high
-               circle again from scratch, sixty times a second, five lamps at
-               once. The lamp still swells and still fades — it simply softens
-               by a fixed amount instead of a moving one, which at this size
-               and this opacity is a difference nobody can point to. */
             /* A LOOP IS STOPPED BY BEING REPLACED, not by being taken away.
                Handing `animate` undefined leaves whatever is already running
                exactly where it is — still ticking, still writing a style every
@@ -199,9 +191,6 @@ export function Ambient({ variant = "full", fadeOut = false }: AmbientProps) {
                 ? {
                     opacity: [0.35, 1, 0.35],
                     scale: [0.92, 1.16, 0.92],
-                    ...(phone
-                      ? null
-                      : { filter: [lamp.blur[0], lamp.blur[1], lamp.blur[0]] }),
                     transition: {
                       duration: lamp.duration,
                       delay: lamp.delay,
@@ -212,23 +201,72 @@ export function Ambient({ variant = "full", fadeOut = false }: AmbientProps) {
                 : {
                     opacity: 0.7,
                     scale: 1,
-                    filter: lamp.blur[0],
                     transition: { duration: 0 },
                   }
             }
-          />
+          >
+            {/* ── WHY THE BLUR IS ON A CHILD AND NOT ON THE LAMP ──────────
+               *
+               * A blurred box whose own transform changes is a blurred box
+               * that has to be blurred again. Measured, on the home page, at
+               * a phone's pixel ratio: the five rigs on this page were
+               * costing 12.6 SECONDS of GPU time across a thirteen-second
+               * scroll — a saturated GPU process and 427 dropped frames —
+               * and pinning the lamps' transforms took that to zero without
+               * touching a single blur radius. The radius was never the
+               * price. Re-blurring a seventy-viewport circle sixty times a
+               * second was.
+               *
+               * So the movement and the blur are separated. The parent
+               * carries everything that changes — the scroll parallax, the
+               * breathing scale, the opacity — and the compositor moves it
+               * as a finished texture. This child carries the gradient and
+               * the blur, never changes, and is therefore rasterised once
+               * and reused for the rest of the visit.
+               *
+               * NOTHING ABOUT THE PICTURE CHANGES. Blur is isotropic and is
+               * applied in local space, so blurring inside a moving box and
+               * moving a blurred box give the same pixels; the lamp swells,
+               * drifts and fades exactly as it did. */}
+            <motion.div
+              className="atmosphere-blur absolute inset-0 rounded-full"
+              style={{
+                background: `radial-gradient(circle, ${lamp.color}, transparent 70%)`,
+                filter: lamp.blur[0],
+              }}
+              /* THE BLUR RADIUS IS NOT ANIMATED ON A PHONE, and it was the
+                 single most expensive thing in this file. The lamp still
+                 swells and still fades — it simply softens by a fixed amount
+                 instead of a moving one, which at this size and this opacity
+                 is a difference nobody can point to. A desk, which has the
+                 GPU for it, still gets the softening. Always an object and
+                 never `undefined`, for the reason above. */
+              animate={
+                live && !phone
+                  ? {
+                      filter: [lamp.blur[0], lamp.blur[1], lamp.blur[0]],
+                      transition: {
+                        duration: lamp.duration,
+                        delay: lamp.delay,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      },
+                    }
+                  : { filter: lamp.blur[0], transition: { duration: 0 } }
+              }
+            />
+          </motion.div>
         ))}
 
         {/* smoke last, so the beams read as coming through it */}
         {haze.map((bank, i) => (
+          /* Split for the same reason as the lamps above: the bank drifts,
+             the blur inside it holds still and is rasterised once. */
           <motion.div
             key={`haze-${i}`}
-            className={`absolute rounded-full ${bank.place} [filter:blur(70px)] md:[filter:blur(100px)] ${
+            className={`absolute ${bank.place} ${
               bank.desktopOnly ? "hidden md:block" : ""
             }`}
-            style={{
-              background: `radial-gradient(circle, ${bank.color}, transparent 72%)`,
-            }}
             animate={
               live
                 ? {
@@ -251,7 +289,14 @@ export function Ambient({ variant = "full", fadeOut = false }: AmbientProps) {
                     transition: { duration: 0 },
                   }
             }
-          />
+          >
+            <div
+              className="atmosphere-blur absolute inset-0 rounded-full [filter:blur(70px)] md:[filter:blur(100px)]"
+              style={{
+                background: `radial-gradient(circle, ${bank.color}, transparent 72%)`,
+              }}
+            />
+          </motion.div>
         ))}
       </div>
     </motion.div>

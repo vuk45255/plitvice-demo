@@ -47,6 +47,55 @@ function hold(event: TouchEvent) {
   if (event.cancelable) event.preventDefault();
 }
 
+/* ─── AND WHAT A HELD PAGE DOES TO EVERY PICTURE MOUNTED BEHIND IT ─────────
+ *
+ * A page that cannot scroll is a page the browser's own lazy loading gives up
+ * on. `loading="lazy"` — which is what next/image sets on everything that is
+ * not `priority` — is decided by the browser when the element is laid out: an
+ * image inside a document whose root carries `overflow: hidden` is deferred,
+ * and the decision is NOT revisited when the hold is released. Nothing
+ * revisits it. There is no scroll to revisit it on, no resize, and dispatching
+ * either by hand changes nothing, because the browser is not waiting for an
+ * event — it has already made up its mind.
+ *
+ * WHAT THAT LOOKED LIKE, and it was the reservation room's own bug: the
+ * admission notice holds the page (see components/reservation/reservation-gate)
+ * for as long as a guest is reading it, on the first visit of a session and
+ * only then. The room behind it renders with the notice up, so every poster on
+ * it is laid out under the hold and deferred — and stays deferred after the
+ * guest agrees, because the room is one screen tall and there is nothing to
+ * scroll. The guest was looking at empty frames, and a refresh "fixed" it for
+ * exactly one reason: the second visit does not show the notice, so nothing
+ * holds the page and the pictures load the ordinary way.
+ *
+ * So the release does the one thing that can undo the decision: it takes the
+ * hint off the pictures that are actually on screen. `loading = "eager"` on an
+ * image the browser has already deferred starts the fetch immediately.
+ *
+ * ONLY WHAT IS ON SCREEN, plus one screen either side. This is a repair, not a
+ * preload — anything further down the page is still lazy, still the browser's
+ * business, and will be asked for when the visitor scrolls to it, which they
+ * can now do. React never rewrites the attribute either: the prop it renders
+ * is unchanged, so its own diff sees nothing to do.
+ *
+ * `complete` is the test for "the browser never fetched this", and it is the
+ * right one — an image that has loaded, failed, or has no src at all is
+ * complete, so none of them is touched. */
+function wakeDeferredImages() {
+  const reach = window.innerHeight;
+
+  document
+    .querySelectorAll<HTMLImageElement>('img[loading="lazy"]')
+    .forEach((image) => {
+      if (image.complete) return;
+
+      const box = image.getBoundingClientRect();
+      if (box.bottom < -reach || box.top > window.innerHeight + reach) return;
+
+      image.loading = "eager";
+    });
+}
+
 export function lockScroll(lenis?: { stop: () => void; start: () => void } | null) {
   depth += 1;
 
@@ -68,6 +117,18 @@ export function lockScroll(lenis?: { stop: () => void; start: () => void } | nul
     document.documentElement.style.overflow = restore;
     document.removeEventListener("touchmove", hold);
     lenis?.start();
+
+    /* HERE, AND NOT ON THE NEXT FRAME. It was written as a
+       `requestAnimationFrame` to keep a layout read off the release path, and
+       that was wrong: a frame callback does not run in a tab that is not being
+       painted, so a panel closed in a backgrounded tab — or in any of the
+       several situations a browser throttles the frameloop — left the pictures
+       exactly as broken as before, and left it broken unpredictably, which is
+       worse than either.
+       `getBoundingClientRect` below forces the layout the line above has just
+       invalidated, so the boxes read are the ones the released page has. It is
+       a handful of measurements, once, at the moment a panel closes. */
+    wakeDeferredImages();
   };
 }
 
