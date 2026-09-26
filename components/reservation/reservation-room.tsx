@@ -303,7 +303,18 @@ export function ReservationRoom({
                 />
 
                 <h2 className="font-serif text-[clamp(2rem,4.6vw,3.5rem)] uppercase leading-[1.02] tracking-[0.03em] text-night-ink">
-                  {selected.artist}
+                  {/* The serif's ampersand is a flourish; the posters set a
+                      plain one. Only the character changes face — its size,
+                      weight, colour and spacing are the heading's. */}
+                  {selected.artist.split(/(&)/).map((part, i) =>
+                    part === "&" ? (
+                      <span key={i} className="font-sans">
+                        &amp;
+                      </span>
+                    ) : (
+                      part
+                    ),
+                  )}
                 </h2>
                 <p className="mt-6 text-[0.8125rem] uppercase tracking-[0.36em] text-gold-light">
                   {t(selected.date)}
