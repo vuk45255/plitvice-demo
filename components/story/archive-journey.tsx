@@ -291,18 +291,25 @@ const WIDE: Layout = {
  * wide wall gives, at a width where showing everything at once would mean
  * showing everything small. Nothing is centred and nothing is stacked.
  *
- * AND IT IS GIVEN THE SCROLL TO DO IT IN. A thousand svh against the wide
- * wall's eight hundred and fifty: a phone has the smaller window and the
- * slower gesture, so the same sequence is worth more page here, not less. */
+ * AND A THUMB IS NOT A WHEEL. This score used to be a thousand svh — longer
+ * than the wide wall's — on the reasoning that a phone has the smaller window.
+ * In the hand it read the other way: ten screens of swiping to pass one
+ * section, the holds most of all, and the page felt as if it were holding on.
+ * A flick covers a screen or more at once, so a phone is given half the travel
+ * of before: the same nine beats, the same compositions, the same order, each
+ * advancing roughly twice as far per swipe. The holds are cut a little harder
+ * than the pans, because a hold is where the waiting was; the film's opening
+ * keeps the largest share, so it still grows rather than snaps. */
 const NARROW: Layout = {
   canvas: 490,
-  /* 900 svh of track. Same nine beats and the same shape as the wide score —
-     hold, pan, hold — a third longer throughout. */
+  /* 450 svh of travel (was 900). The same nine beats and the same shape as the
+     wide score — hold, pan, hold. Every position is a share of the total, so
+     nothing on the wall moves; only the finger travels less to see it. */
   journey: score([
-    { to: 18, cost: 52 }, //   01 · held
-    { to: 112, cost: 110 }, //    pan on
-    { to: 138, cost: 60 }, //  02 · held
-    { to: 237, cost: 116 }, //    pan on
+    { to: 18, cost: 22 }, //   01 · held
+    { to: 112, cost: 60 }, //    pan on
+    { to: 138, cost: 26 }, //  02 · held
+    { to: 237, cost: 62 }, //    pan on
     /* 03 · held — and on a phone this one is very nearly still.
 
        EVERY OTHER "HOLD" ON THIS WALL IS A SLOW DRIFT, and it should be: the
@@ -312,11 +319,11 @@ const NARROW: Layout = {
        margins — thirteen vw either side of the rest point put the first line
        hard against one edge and clipped it. Eight vw is the most this
        composition takes without going lopsided, and it is still movement. */
-    { to: 245, cost: 92 }, //  03 · held
-    { to: 344, cost: 124 }, //    pan on
-    { to: 366, cost: 116 }, // 04 · held — the film, as a film
-    { to: 372, cost: 138 }, //    and the film opens out
-    { to: 372, cost: 92 }, //  05 · the statement
+    { to: 245, cost: 44 }, //  03 · held
+    { to: 344, cost: 66 }, //    pan on
+    { to: 366, cost: 56 }, // 04 · held — the film, as a film
+    { to: 372, cost: 70 }, //    and the film opens out
+    { to: 372, cost: 44 }, //  05 · the statement
   ]),
   stops: [0, 124, 241, 356],
   /* 01 · headline high on the left, the film large and low beneath its right
@@ -696,7 +703,7 @@ function FilmGrade() {
  * on a wide screen would lay the page out seventy screens short for a frame
  * and then grow it under whatever the reader was looking at. Change a cost in
  * either score and this has to be changed with it. */
-const TRACK = "h-[1000svh] md:h-[850svh]";
+const TRACK = "h-[550svh] md:h-[850svh]";
 
 /* THE WEIGHT.
  *

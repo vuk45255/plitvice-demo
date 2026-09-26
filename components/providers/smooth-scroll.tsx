@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { ReactLenis } from "lenis/react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+import { ReactLenis, useLenis } from "lenis/react";
 import { COARSE_QUERY } from "@/lib/use-media";
 
 /* SMOOTH SCROLLING IS FOR A WHEEL. A FINGER ALREADY HAS SOME.
@@ -60,14 +61,68 @@ export function SmoothScroll({ children }: { children: React.ReactNode }) {
       window.matchMedia(COARSE_QUERY).matches,
   );
 
-  if (coarse) return <>{children}</>;
+  if (coarse)
+    return (
+      <>
+        <RouteTop />
+        {children}
+      </>
+    );
 
   return (
     <ReactLenis
       root
       options={{ duration: 1.15, smoothWheel: true, touchMultiplier: 1.4 }}
     >
+      <RouteTop />
       {children}
     </ReactLenis>
   );
+}
+
+/* A NEW PAGE OPENS AT ITS TOP.
+ *
+ * The router puts the document back at the top when the path changes, and on
+ * a phone that is the end of it. On a desk Lenis is the scroller, and it keeps
+ * a position of its own — where it was, and where it was still easing to. The
+ * router's reset was a native scroll underneath it; the next frame Lenis wrote
+ * its own number back, and a page shorter than that number was clamped to its
+ * bottom. So the gallery and the price list opened at their ends.
+ *
+ * On an actual change of path — in the commit that shows the new page, before
+ * it is painted — both are put at the top: Lenis immediately, which also drops
+ * whatever momentum the last page's wheel left behind, and the document with
+ * it. Deliberately NOT for:
+ *   - the first page of a visit, which the browser opens where it opens;
+ *   - a link to a #fragment, which is asking for somewhere other than the top;
+ *   - back and forward, which are the browser's to restore. */
+function RouteTop() {
+  const pathname = usePathname();
+  const lenis = useLenis();
+  const shown = useRef(pathname);
+  const traversed = useRef(false);
+
+  useEffect(() => {
+    const onPop = () => {
+      traversed.current = true;
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (shown.current === pathname) return;
+    shown.current = pathname;
+
+    if (traversed.current) {
+      traversed.current = false;
+      return;
+    }
+    if (window.location.hash) return;
+
+    lenis?.scrollTo(0, { immediate: true, force: true });
+    window.scrollTo(0, 0);
+  }, [pathname, lenis]);
+
+  return null;
 }

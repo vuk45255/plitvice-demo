@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { Ambient } from "@/components/ambient";
-import { LightLeaks } from "@/components/light-leaks";
 import { SectionWord } from "@/components/section-word";
 import { LightSweep } from "@/components/light-sweep";
 import { Lockup } from "@/components/lockup";
@@ -74,10 +73,12 @@ export function ArchiveShell({
           </Link>
         </motion.div>
 
-        {/* the title block. Rail, serif, rail — the house hierarchy. */}
+        {/* the title block. Rail, serif, rail — the house hierarchy.
+            No light rig of its own: a rig is a section's room, and set inside
+            this box it was clipped to the box — its smoke and grain stood
+            behind the title as a grey rectangle. The page's Ambient lights
+            the whole room already. */}
         <header className="relative pt-24 md:pt-36">
-          <LightLeaks intensity="soft" />
-
           <motion.div
             initial={reduced ? false : { opacity: 0, y: 26 }}
             animate={{ opacity: 1, y: 0 }}
