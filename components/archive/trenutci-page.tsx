@@ -26,7 +26,7 @@ const layout = [
 export function TrenutciPage() {
   return (
     <ArchiveShell
-      word="Trenutci"
+      word="Trenuci"
       caption="trenutci.caption"
       title="trenutci.title"
       lead="trenutci.lead"

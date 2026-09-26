@@ -70,7 +70,7 @@ const sr = {
   "portals.heading": "Tri prozora u svet Plitvica",
   "portals.atmosfera": "Atmosfera",
   "portals.zurke": "Žurke",
-  "portals.trenutci": "Trenutci",
+  "portals.trenutci": "Trenuci",
 
   /* THE CONCIERGE — the six things a visitor coming into Inđija for the night
      actually has to solve. The order is lib/local-info.ts; these are only the
@@ -207,7 +207,7 @@ const sr = {
   "zurke.past": "Prošle noći",
   "zurke.archive": "Arhiva",
 
-  "trenutci.title": "*Trenutci*.",
+  "trenutci.title": "*Trenuci*.",
   "trenutci.lead": "Sve ono što se ne može prepričati.",
   "trenutci.caption": "Od 1965.",
 
