@@ -41,6 +41,7 @@ import { PROGRAMME } from "@/lib/club/programme-seed";
    is named here exactly once, in a test, because the test is about that night;
    nothing in lib/ names it. */
 const MADNESS = "saturday-madness";
+const THCF_KATARINA = "thcf-katarina-zivkovic-03-10";
 
 /* What a guest would be shown, right now, asked the way a page asks it. */
 async function publicProgramme() {
@@ -77,6 +78,13 @@ beforeEach(async () => {
     `UPDATE events SET starts_at = $1, doors_at = $1 WHERE slug = 'saturday-madness'`,
     [`${new Date().getUTCFullYear() + 5}-08-29T22:00:00+02:00`],
   );
+  /* The same for THCF & Katarina Živković — 3 October at 22:00, the year moved
+     and nothing else. It falls after Madness in any year, which is the order
+     the wall shows them in. Its doors are left as the row has them: empty. */
+  await query(`UPDATE events SET starts_at = $1 WHERE slug = $2`, [
+    `${new Date().getUTCFullYear() + 5}-10-03T22:00:00+02:00`,
+    THCF_KATARINA,
+  ]);
 });
 
 /* ═══ 1 — WHAT A GUEST MAY BE SHOWN ══════════════════════════════════════ */
@@ -306,8 +314,10 @@ describe("what the office changes, the guest reads", () => {
 describe("za koju žurku", () => {
   it("offers exactly the published nights that are still ahead", async () => {
     const { upcoming } = await publicProgramme();
-    assert.deepEqual(upcoming.map((event) => event.slug), [MADNESS]);
+    assert.deepEqual(upcoming.map((event) => event.slug), [MADNESS, THCF_KATARINA]);
     assert.equal(upcoming[0].date.sr, "29. avgust");
+    /* 03.10. — the third of October, never the tenth of March. */
+    assert.equal(upcoming[1].date.sr, "3. oktobar");
   });
 
   it("grows when the office publishes another night, with nothing else touched", async () => {
@@ -340,11 +350,12 @@ describe("za koju žurku", () => {
     const { upcoming } = await publicProgramme();
     assert.deepEqual(
       upcoming.map((event) => event.slug),
-      [MADNESS, "halloween"],
+      [MADNESS, THCF_KATARINA, "halloween"],
       "soonest first, and the new night simply appears",
     );
 
-    /* And the office's own list of bookable nights is the same list. */
+    /* And the office's own list of bookable nights is the same list — less
+       THCF & Katarina Živković, whose tables are taken by telephone. */
     const nights = await bookableNights();
     assert.deepEqual(nights.map((n) => n.slug), [MADNESS, "halloween"]);
 

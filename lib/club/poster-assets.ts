@@ -9,6 +9,7 @@ import posterInas from "@/public/party/inas.jpg";
 import posterSemafor from "@/public/party/semafor.jpg";
 import posterNumber from "@/public/party/53.jpg";
 import posterInvivo from "@/public/party/Invivo.jpg";
+import posterThcfKatarina from "@/public/party/thcf-katarina.png";
 import posterSajfer from "@/public/images/sajfer.jpg";
 import posterKaca from "@/public/dogadjaji/kaca.jpg";
 import posterVodka from "@/public/dogadjaji/vodka.jpg";
@@ -73,6 +74,9 @@ export const POSTER_ASSETS: Record<string, PosterAsset> = {
   "/party/inas.jpg": { image: posterInas },
   "/party/53.jpg": { image: posterNumber },
   "/party/Invivo.jpg": { image: posterInvivo },
+  /* The magenta the whole print is washed in — sampled off the saturated
+     pixels (#8f2b51) and lifted to the brightness of the other glows. */
+  "/party/thcf-katarina.png": { image: posterThcfKatarina, ambient: "#d4407a" },
   "/images/sajfer.jpg": { image: posterSajfer },
 };
 

@@ -113,6 +113,35 @@ export function legacyArchiveIds(): string[] {
 
 export const PROGRAMME: ProgrammeNight[] = [
   {
+    id: "evt_thcf_katarina_zivkovic",
+    /* Dated in the slug on purpose. The office slugs a title as it is typed —
+       `thcf-katarina-zivkovic` — and this insert only yields on the id, so a
+       slug the office could also have made would be a unique-key failure on
+       the next deploy. This one it cannot make. */
+    slug: "thcf-katarina-zivkovic-03-10",
+    title: "THCF & Katarina Živković",
+    /* Saturday 3 October 2026 — 03.10.2026. on the poster. 22:00 is the
+       club's own Saturday opening (see `hours` in lib/site.ts); the poster
+       gives no time and no door time, so none is written. Belgrade is still
+       on summer time that night, hence +02:00. */
+    startsAt: "2026-10-03T22:00:00+02:00",
+    image: "/party/thcf-katarina.png",
+    /* The club's sentence, then the two floors and the support — which the
+       wall shows only where they are written into the description. */
+    description:
+      "Jedna noć. Dva nivoa. THCF & Katarina Živković, uz Johnny Deala i WOLFA — 03.10. u Plitvicama. " +
+      "THCF — Nivo 1 · Katarina Živković — Nivo 2 · Supported by Johnny Deal & WOLF.",
+    /* ANNOUNCED, NOTHING SOLD OR BOOKED THROUGH THE SITE. Tables are taken by
+       telephone, on the number the poster prints and the site already shows. */
+    status: "on_sale",
+    ticketingEnabled: false,
+    tablesEnabled: false,
+    ticketPrice: 0,
+    capacity: 500,
+    maxPerOrder: 10,
+    lineup: "THCF (Nivo 1) · Katarina Živković (Nivo 2) · Johnny Deal & WOLF",
+  },
+  {
     id: "evt_saturday_madness",
     slug: "saturday-madness",
     title: "Saturday Madness",
