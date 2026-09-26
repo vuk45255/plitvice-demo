@@ -93,6 +93,8 @@ export function MixProvider({ children }: { children: React.ReactNode }) {
   const [duration, setDuration] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [started, setStarted] = useState(false);
+  /* Whether anything is showing the clock. See onTime below. */
+  const showing = useRef(false);
 
   /* Everything is read back off the element. A play() that the browser turns
      down never reaches `isPlaying`, and a seek only moves the readout once the
@@ -106,7 +108,16 @@ export function MixProvider({ children }: { children: React.ReactNode }) {
       setStarted(true);
     };
     const onPause = () => setIsPlaying(false);
-    const onTime = () => setCurrentTime(audio.currentTime);
+    /* THE CLOCK ONLY TICKS WHILE SOMEBODY IS READING IT. `timeupdate` fires
+       about four times a second for as long as the mix plays — which, once a
+       visitor has touched the page, is the whole visit — and every one of
+       them re-rendered this provider. The only things that read the time live
+       in the open panel, and opening it reads the element afresh (below), so
+       while it is closed the ticks are simply not taken. A seek still is. */
+    const onTime = () => {
+      if (showing.current) setCurrentTime(audio.currentTime);
+    };
+    const onSeeked = () => setCurrentTime(audio.currentTime);
     const onMeta = () => {
       setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
       setCurrentTime(audio.currentTime);
@@ -119,7 +130,7 @@ export function MixProvider({ children }: { children: React.ReactNode }) {
     audio.addEventListener("play", onPlay);
     audio.addEventListener("pause", onPause);
     audio.addEventListener("timeupdate", onTime);
-    audio.addEventListener("seeked", onTime);
+    audio.addEventListener("seeked", onSeeked);
     audio.addEventListener("loadedmetadata", onMeta);
     audio.addEventListener("durationchange", onMeta);
     audio.addEventListener("ended", onEnded);
@@ -131,7 +142,7 @@ export function MixProvider({ children }: { children: React.ReactNode }) {
       audio.removeEventListener("play", onPlay);
       audio.removeEventListener("pause", onPause);
       audio.removeEventListener("timeupdate", onTime);
-      audio.removeEventListener("seeked", onTime);
+      audio.removeEventListener("seeked", onSeeked);
       audio.removeEventListener("loadedmetadata", onMeta);
       audio.removeEventListener("durationchange", onMeta);
       audio.removeEventListener("ended", onEnded);
@@ -145,6 +156,7 @@ export function MixProvider({ children }: { children: React.ReactNode }) {
    * background tab and stop sending them, and the panel must never open on a
    * stale number. This costs one read and settles the question. */
   useEffect(() => {
+    showing.current = isOpen;
     if (!isOpen) return;
     const audio = audioRef.current;
     if (!audio) return;

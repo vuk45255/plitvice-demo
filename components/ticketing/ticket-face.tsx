@@ -58,7 +58,7 @@ export function TicketFace({
     <article className="relative mx-auto w-full max-w-[25rem] border border-line bg-night-2/40">
       {/* ── the stub ────────────────────────────────────────────────── */}
       <header className="px-6 pb-8 pt-9 text-center">
-        <Lockup size="xs" tone="light" />
+        <Lockup size="xs" tone="light" className="mx-auto" />
 
         <h1 className="mt-8 font-serif text-[clamp(1.75rem,7.5vw,2.25rem)] leading-[1.05] text-night-ink">
           {eventTitle}

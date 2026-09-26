@@ -10,7 +10,7 @@ export const LANG_STORAGE_KEY = "plitvice-lang";
    out of the dictionary and lets a translator move the emphasis to wherever it
    falls naturally in their language.
 
-   The house mark itself (GRAND CLUB / PLITVICE / INĐIJA) is a name, not copy,
+   The house mark itself (PLITVICE / HYPERCLUB) is a name, not copy,
    and is never translated. */
 const sr = {
   "nav.events": "Događaji",
@@ -43,7 +43,7 @@ const sr = {
   "common.scrollOn": "Nastavi dole",
 
   "hero.scroll": "Skroluj da uđeš",
-  "hero.heading": "Plitvice — Grand Club, Inđija",
+  "hero.heading": "Plitvice Hyperclub, Inđija",
 
   "events.title": "Naši *događaji*.",
   "events.next": "Naredna žurka",
@@ -286,8 +286,6 @@ const sr = {
   "footer.hours": "Radno vreme",
   "footer.location": "Lokacija",
   "footer.rights": "© 2026 Plitvice. Sva prava zadržana.",
-  /* A studio credit — the name stays as written in both languages. */
-  "footer.credit": "Powered by Vantage",
 
   "feed.title": "Zapratite nas!",
   "feed.watch": "Pogledaj snimak",
@@ -392,6 +390,14 @@ const sr = {
   "floor.zone3": "Zona 3",
   "floor.zone4": "Galerija",
   "floor.stage": "Bina",
+
+  /* THE CLUB HAS TWO FLOORS AND BOTH NUMBER THEIR HALLS 1, 2, 3 — because the
+     club does. So a hall is never named on its own anywhere a guest reads it:
+     the level comes first and the hall after it. See use-seat-copy.ts. */
+  "floor.level": "Nivo",
+  "floor.level1": "Nivo 1",
+  "floor.level2": "Nivo 2",
+  "floor.levelPick": "Izaberi nivo",
 
   /* The booking that happens on the map itself: the table's own card, then the
      same card turned into the reservation. Nobody leaves the room. */
@@ -499,7 +505,7 @@ const en: Record<MessageKey, string> = {
   "common.scrollOn": "Continue down",
 
   "hero.scroll": "Scroll to enter",
-  "hero.heading": "Plitvice — Grand Club, Inđija",
+  "hero.heading": "Plitvice Hyperclub, Inđija",
 
   "events.title": "Our *nights*.",
   "events.next": "Next party",
@@ -700,7 +706,6 @@ const en: Record<MessageKey, string> = {
   "footer.hours": "Opening hours",
   "footer.location": "Location",
   "footer.rights": "© 2026 Plitvice. All rights reserved.",
-  "footer.credit": "Powered by Vantage",
 
   "feed.title": "Follow us!",
   "feed.watch": "Watch the clip",
@@ -793,6 +798,11 @@ const en: Record<MessageKey, string> = {
   "floor.zone3": "Zone 3",
   "floor.zone4": "Gallery",
   "floor.stage": "Stage",
+
+  "floor.level": "Level",
+  "floor.level1": "Level 1",
+  "floor.level2": "Level 2",
+  "floor.levelPick": "Choose a level",
 
   "floor.booking": "Reservation",
   "floor.min": "Minimum",

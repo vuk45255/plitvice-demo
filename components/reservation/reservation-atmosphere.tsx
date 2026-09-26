@@ -1,7 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
-import { useCoarsePointer } from "@/lib/use-media";
+import { breath } from "@/lib/atmosphere";
 
 /* The room the reservation is taken in.
 
@@ -63,9 +62,6 @@ const HAZE: { place: string; color: string; duration: number; delay: number; dri
 ];
 
 export function ReservationAtmosphere() {
-  const reduced = useReducedMotion();
-  const phone = useCoarsePointer();
-
   return (
     <div
       className="pointer-events-none absolute inset-0 overflow-hidden"
@@ -86,71 +82,54 @@ export function ReservationAtmosphere() {
              the same split, and the same reason, as components/ambient.tsx.
              This rig sits under a form people are typing into, which is the
              worst place on the site to be re-blurring an eighty-viewport
-             circle on every frame. */
-          <motion.div
+             circle on every frame. The breathing is CSS on the compositor
+             (`.atmo-loop` in app/globals.css): a form being typed into is
+             also the worst place to be writing thirty styles a second from
+             JavaScript. */
+          <div
             key={`lamp-${i}`}
-            className={`absolute ${lamp.place} ${
+            className={`atmo-loop absolute ${lamp.place} ${
               lamp.desktopOnly ? "hidden md:block" : ""
             }`}
-            animate={
-              reduced
-                ? undefined
-                : {
-                    opacity: [0.4, 1, 0.4],
-                    scale: [0.94, 1.14, 0.94],
-                  }
-            }
-            transition={{
+            style={breath({
               duration: lamp.duration,
               delay: lamp.delay,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
+              opacity: [0.4, 1],
+              scale: [0.94, 1.14],
+              rest: 1,
+            })}
           >
-            <motion.div
-              className="atmosphere-blur absolute inset-0 rounded-full"
+            {/* The radius only moves behind a fine pointer — `.atmo-soften`
+                does not exist on a phone. */}
+            <div
+              className="atmosphere-blur atmo-soften absolute inset-0 rounded-full"
               style={{
                 background: `radial-gradient(circle, ${lamp.color}, transparent 70%)`,
                 filter: lamp.blur[0],
-              }}
-              /* The radius holds still on a phone — see the note on the same
-                 animation in components/ambient.tsx. */
-              animate={
-                reduced || phone
-                  ? undefined
-                  : { filter: [lamp.blur[0], lamp.blur[1], lamp.blur[0]] }
-              }
-              transition={{
-                duration: lamp.duration,
-                delay: lamp.delay,
-                repeat: Infinity,
-                ease: "easeInOut",
+                ...breath({
+                  duration: lamp.duration,
+                  delay: lamp.delay,
+                  blur: lamp.blur,
+                }),
               }}
             />
-          </motion.div>
+          </div>
         ))}
 
         {/* smoke over the beams, never under them */}
         {HAZE.map((bank, i) => (
-          <motion.div
+          <div
             key={`haze-${i}`}
-            className={`absolute ${bank.place}`}
-            animate={
-              reduced
-                ? undefined
-                : {
-                    opacity: [0.5, 1, 0.5],
-                    scale: [1, 1.14, 1],
-                    x: bank.drift.x,
-                    y: bank.drift.y,
-                  }
-            }
-            transition={{
+            className={`atmo-loop absolute ${bank.place}`}
+            style={breath({
               duration: bank.duration,
               delay: bank.delay,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
+              opacity: [0.5, 1],
+              scale: [1, 1.14],
+              x: [bank.drift.x[0], bank.drift.x[1]],
+              y: [bank.drift.y[0], bank.drift.y[1]],
+              rest: 1,
+            })}
           >
             {/* drifts with the parent, blurred once here */}
             <div
@@ -159,7 +138,7 @@ export function ReservationAtmosphere() {
                 background: `radial-gradient(circle, ${bank.color}, transparent 72%)`,
               }}
             />
-          </motion.div>
+          </div>
         ))}
       </div>
 

@@ -45,7 +45,7 @@ export default async function DevPaymentPage({
   return (
     <main className="mx-auto w-full max-w-[26rem] px-5 pb-20 pt-8">
       <header className="text-center">
-        <Lockup size="xs" tone="light" />
+        <Lockup size="xs" tone="light" className="mx-auto" />
         <p className="rail rail-night rail-center mt-8 text-[0.5625rem]">
           Simulirano plaćanje
         </p>

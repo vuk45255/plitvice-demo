@@ -5,19 +5,25 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Minus, Plus, Scan } from "lucide-react";
 import {
   PLAN,
-  SEATS,
   seatBox,
   seatNumber,
   seatTurn,
   type FloorSeat,
 } from "@/lib/floor-plan";
 import {
+  architectureFor,
+  availableFloors,
+  seatsOnFloor,
+  type FloorId,
+} from "@/lib/floors";
+import { FloorSelector } from "@/components/floor-plan/floor-selector";
+import {
   PlanArchitecture,
   SeatOutline,
   type PlanInk,
 } from "@/components/floor-plan/plan-shapes";
 import { Badge } from "@/components/admin/badge";
-import type { FloorState, AdminSeat } from "@/lib/reservations/admin";
+import type { FloorState, AdminSeat, SeatState } from "@/lib/reservations/admin";
 
 /* THE FLOOR, DRAWN FOR THE OFFICE.
  *
@@ -155,6 +161,23 @@ export function FloorMap({
   const [floor, setFloor] = useState(initial);
   const [chosen, setChosen] = useState<string | null>(null);
 
+  /* ── WHICH LEVEL THE OFFICE IS LOOKING AT ──────────────────────────────
+   *
+   * ONE MAP, TWO LEVELS — not two screens. `floorState` on the server answers
+   * for the whole building on every poll, so this decides which half of that
+   * answer is drawn and nothing else: no second fetch, no second route, and no
+   * chance of the two levels being read from two different moments in time.
+   *
+   * The tables drawn and the tally above them are the SAME level, always. A
+   * count that describes a floor nobody is looking at is a count that gets
+   * read out down a telephone by mistake. */
+  /* The levels the club has drawn. One level means no switch — see
+     `availableFloors` in lib/floors.ts. */
+  const levels = availableFloors();
+  const [level, setLevel] = useState<FloorId>(() => levels[0] ?? 1);
+  const plan = useMemo(() => seatsOnFloor(level), [level]);
+
+
   /* WHAT TIME THE COMPONENT THINKS IT IS, and it is the SERVER's time: the
      offset between this browser's clock and the server's is measured from
      every answer. Re-measured on each poll, ticked once a second so the
@@ -203,9 +226,35 @@ export function FloorMap({
   );
   const selected = chosen ? byId.get(chosen) : undefined;
 
+  /* The tally over the map is the level under it. Counted from the very seats
+     being drawn rather than from `floor.counts`, which is the whole building
+     and would disagree with what anybody can see. */
+  const counts = useMemo(() => {
+    const states = plan
+      .map((seat) => byId.get(seat.id)?.state)
+      .filter(Boolean) as SeatState[];
+    return {
+      available: states.filter((s) => s === "available").length,
+      held: states.filter((s) => s === "held").length,
+      reserved: states.filter((s) => s === "reserved").length,
+    };
+  }, [plan, byId]);
+
   /* ── the viewport ─────────────────────────────────────────────────────── */
 
   const [view, setView] = useState<View>(FITTED);
+
+  /* A LEVEL CHANGE IS A NEW ROOM, so the viewport goes back to the whole of it
+     and whatever table was open closes. Carrying a zoom and a pan across would
+     leave somebody looking at empty floor on a level they have not seen, and a
+     table chosen downstairs is not on this map any more. Done here rather than
+     in an effect on `level`: it is one thing happening because somebody
+     pressed a button, not two pieces of state being kept in step. */
+  const pickLevel = useCallback((next: FloorId) => {
+    setLevel(next);
+    setView(FITTED);
+    setChosen(null);
+  }, []);
   const frame = useRef<HTMLDivElement>(null);
   /* ═══ THE DRAWING'S OWN BOX, NOT THE PADDED ONE ════════════════════════
    *
@@ -360,9 +409,20 @@ export function FloorMap({
     <div>
       <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3 border-b border-[var(--adm-line-soft)] px-[1.125rem] py-3">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          <Key tone="available" label="Slobodno" count={floor.counts.available} />
-          <Key tone="held" label="Zadržano" count={floor.counts.held} />
-          <Key tone="reserved" label="Rezervisano" count={floor.counts.reserved} />
+          {/* NIVO 1 / NIVO 2 — the same control the guest's map carries, in the
+              office's ink. Switching is a view change: nothing is fetched and
+              nothing about the night moves. */}
+          <FloorSelector
+            floor={level}
+            onChange={pickLevel}
+            floors={levels}
+            labels={LEVEL_NAME}
+            title="Nivo kluba"
+            tone="office"
+          />
+          <Key tone="available" label="Slobodno" count={counts.available} />
+          <Key tone="held" label="Zadržano" count={counts.held} />
+          <Key tone="reserved" label="Rezervisano" count={counts.reserved} />
         </div>
 
         {/* − 100% + and a way back. Four small controls at the head of the map
@@ -449,9 +509,10 @@ export function FloorMap({
             <PlanArchitecture
               ink={OFFICE_INK}
               labelText={(label) => label.text ?? ""}
+              architecture={architectureFor(level)}
             />
 
-            {SEATS.map((seat) => {
+            {plan.map((seat) => {
               const state = byId.get(seat.id);
               if (!state) return null;
               return (
@@ -582,7 +643,10 @@ function Detail({
     <aside className="border-t border-[var(--adm-line-soft)] px-[1.125rem] py-5 lg:border-l lg:border-t-0">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="adm-eyebrow">Sto</p>
+          {/* WHICH LEVEL, ALWAYS. Both floors number their halls 1, 2, 3 and
+              the club reads table numbers out down a telephone; "S212" without
+              "Nivo 2" in front of it is somebody sent to the wrong staircase. */}
+          <p className="adm-eyebrow">Sto · {LEVEL_NAME[seat.floor]}</p>
           {/* THE NUMBER IS NOT SET IN THE DISPLAY FACE. Playfair draws
               old-style figures — its zero sits low and reads as an "o" — and a
               table number misread across a busy room is somebody sent to the
@@ -600,14 +664,21 @@ function Detail({
         </button>
       </div>
 
-      <div className="mt-3">
+      <div className="mt-3 flex items-center gap-2">
         <Badge kind="seat" value={seat.state} />
+        <span className="text-[0.625rem] uppercase tracking-[0.18em] text-[var(--adm-ink-3)]">
+          Zona {seat.zone}
+        </span>
       </div>
 
       {seat.state === "available" ? (
         <div className="mt-5">
           <p className="text-[0.8125rem] leading-relaxed text-[var(--adm-ink-3)]">
-            Slobodan sto za {seat.capacity.min}–{seat.capacity.max} osoba.
+            Slobodan sto za{" "}
+            {seat.capacity.min === seat.capacity.max
+              ? seat.capacity.min
+              : `${seat.capacity.min}–${seat.capacity.max}`}{" "}
+            osoba.
           </p>
           <Link
             href={`/admin/rezervacije?event=${encodeURIComponent(eventSlug)}&seat=${encodeURIComponent(seat.id)}#nova`}
@@ -720,6 +791,11 @@ function Key({
     </span>
   );
 }
+
+/* The office screen does not carry the site's dictionary — see the note over
+   PlanArchitecture above — so the two level names are stated here, in the one
+   language the office works in. */
+const LEVEL_NAME: Record<FloorId, string> = { 1: "Nivo 1", 2: "Nivo 2" };
 
 const label = (state: AdminSeat["state"]) =>
   state === "available" ? "slobodno" : state === "held" ? "zadržano" : "rezervisano";

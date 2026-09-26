@@ -9,6 +9,8 @@ import { LightSweep } from "@/components/light-sweep";
 import { TiltCard } from "@/components/tilt-card";
 import { useLang } from "@/components/providers/language";
 import { site } from "@/lib/site";
+import { breath } from "@/lib/atmosphere";
+import { useNearViewport } from "@/lib/use-near";
 import type { MessageKey } from "@/lib/i18n";
 import shot1 from "@/public/instagram/469059425_18476195971044345_4235207755024478138_n.jpg";
 import shot2 from "@/public/instagram/469127602_18476195941044345_2574816115416059072_n.jpg";
@@ -128,9 +130,15 @@ function Clip({ src, ratio }: { src: string; ratio: string }) {
 export function SocialWall() {
   const { t } = useLang();
   const reduced = useReducedMotion();
+  /* The tiles' drift sleeps when the wall is out of reach — it sits in the
+     footer of every page, which is to say off screen for nearly all of a
+     visit. See `.atmo-loop` in app/globals.css. */
+  const [wall, near] = useNearViewport<HTMLElement>();
 
   return (
     <section
+      ref={wall}
+      data-idle={near ? undefined : "true"}
       aria-labelledby="wall-title"
       className="relative isolate mt-20 overflow-hidden md:mt-28"
     >
@@ -170,15 +178,15 @@ export function SocialWall() {
             }}
           >
             {/* each tile drifts on its own clock, so no two sit at the same
-                depth for long */}
-            <motion.div
-              animate={reduced ? undefined : { y: [0, -7, 0] }}
-              transition={{
+                depth for long — on the compositor, not in JavaScript */}
+            <div
+              className="atmo-loop"
+              style={breath({
                 duration: 9 + i * 1.7,
                 delay: i * 0.8,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
+                y: [0, -7],
+                rest: 1,
+              })}
             >
               <TiltCard>
                 <a
@@ -239,7 +247,7 @@ export function SocialWall() {
                   </span>
                 </a>
               </TiltCard>
-            </motion.div>
+            </div>
           </motion.li>
         ))}
       </ul>

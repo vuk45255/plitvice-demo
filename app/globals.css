@@ -57,7 +57,6 @@
   --color-night-ink: var(--night-ink);
   --font-serif: var(--font-playfair), Georgia, serif;
   --font-sans: var(--font-inter), system-ui, sans-serif;
-  --font-script: var(--font-great-vibes), "Apple Chancery", cursive;
 }
 
 /* Lenis */
@@ -605,6 +604,505 @@ body::after {
   .vinyl-spin {
     animation: none;
     will-change: auto;
+  }
+}
+
+/* ── THE ROOM'S BREATHING, MOVED OFF THE MAIN THREAD ───────────────────────
+ *
+ * Every lamp, haze bank, beam and smoke bank on the site — components/ambient,
+ * components/light-leaks, components/reservation/reservation-atmosphere — and
+ * the hero's haze, the scroll cues and the floating wall tiles.
+ *
+ * WHAT IT REPLACES AND WHY. Each of those was a Motion loop with
+ * `repeat: Infinity`. Motion only hands opacity (and whole `transform`
+ * strings) to the browser; `x`, `y` and `scale` it computes in JavaScript and
+ * writes to the element's style every frame. Measured on the home page of a
+ * production build, a phone profile sitting perfectly still: thirty-odd
+ * elements rewritten 60–165 times a second, and the main thread kept 85% busy
+ * doing nothing a visitor could see. The worst offender was the cue in the
+ * concierge's pinned scene, which ran for the whole visit from the moment the
+ * page loaded.
+ *
+ * A CSS animation of `translate`, `scale` and `opacity` runs on the
+ * compositor: no JavaScript, no style recalculation, no commit — and it keeps
+ * running smoothly while the main thread is busy with something else. Checked
+ * in Chrome's own animation trace: every variant below composites, including
+ * the ones whose keyframes read custom properties.
+ *
+ * THE CURVE IS THE SAME CURVE. Motion's `[a, b, a]` over `duration` with
+ * `easeInOut` is two half-duration segments, each eased with
+ * cubic-bezier(0.42, 0, 0.58, 1). That is exactly `ease-in-out` applied per
+ * keyframe interval, which is how CSS applies a timing function. Individual
+ * transform properties compose in the order Motion wrote them — translate,
+ * then rotate, then scale.
+ *
+ * PAUSED, NOT STOPPED. `data-idle="true"` on the element or an ancestor holds
+ * the loop exactly where it is. Motion's version snapped to a resting pose and
+ * restarted from the first keyframe on the way back; this resumes mid-breath,
+ * so a section scrolled back to is the room that was left. */
+@keyframes atmo-loop {
+  0%,
+  100% {
+    opacity: var(--atmo-o0, 1);
+    translate: var(--atmo-x0, 0px) var(--atmo-y0, 0px);
+    scale: var(--atmo-s0, 1);
+  }
+  50% {
+    opacity: var(--atmo-o1, 1);
+    translate: var(--atmo-x1, 0px) var(--atmo-y1, 0px);
+    scale: var(--atmo-s1, 1);
+  }
+}
+.atmo-loop {
+  opacity: var(--atmo-rest, var(--atmo-o0, 1));
+  translate: var(--atmo-x0, 0px) var(--atmo-y0, 0px);
+  animation: atmo-loop var(--atmo-duration, 10s) ease-in-out
+    var(--atmo-delay, 0s) infinite both;
+}
+
+/* The lamp softening as it swells. A blur radius cannot be composited — it
+   changes which pixels exist — so this one is a desk's alone, exactly as it
+   was: a phone gets the fixed radius, see `.atmosphere-blur` above. */
+@keyframes atmo-soften {
+  0%,
+  100% {
+    filter: var(--atmo-b0);
+  }
+  50% {
+    filter: var(--atmo-b1);
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  .atmo-soften {
+    animation: atmo-soften var(--atmo-duration, 10s) ease-in-out
+      var(--atmo-delay, 0s) infinite both;
+  }
+}
+
+[data-idle="true"] .atmo-loop,
+.atmo-loop[data-idle="true"],
+[data-idle="true"] .atmo-soften {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atmo-loop,
+  .atmo-soften {
+    animation: none !important;
+  }
+}
+
+/* ── AND THE RIGS' SCROLL TRAVEL, ON A PHONE ───────────────────────────────
+ *
+ * The atmosphere rigs also ride the scroll: the whole rig drifts ±10% and
+ * fades in (or in and out), and the lamps pull sideways on two tracks. That is
+ * the same kind of work as the background word's drift, it lagged the finger
+ * for the same reason, and it moves to the same timeline — `--section-word`,
+ * which the section already names. See lib/scroll-timeline.ts for when a rig
+ * is allowed to read it.
+ *
+ * `cover 0%` → `cover 100%` is Motion's ["start end", "end start"], and the
+ * keyframe stops are the input ranges the JavaScript used, so each value is the
+ * one `useTransform` produced at the same scroll position. */
+@keyframes atmo-rig-drift {
+  from {
+    translate: 0 10%;
+  }
+  to {
+    translate: 0 -10%;
+  }
+}
+@keyframes atmo-rig-fade {
+  0% {
+    opacity: 0;
+  }
+  12%,
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes atmo-rig-fade-out {
+  0% {
+    opacity: 0;
+  }
+  12%,
+  55% {
+    opacity: 1;
+  }
+  90%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes atmo-track-a {
+  from {
+    translate: -4% 0;
+  }
+  to {
+    translate: 5% 0;
+  }
+}
+@keyframes atmo-track-b {
+  from {
+    translate: 4% 0;
+  }
+  to {
+    translate: -6% 0;
+  }
+}
+@keyframes leaks-rig-fade {
+  0% {
+    opacity: 0;
+  }
+  15%,
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes leaks-rig-fade-out {
+  0% {
+    opacity: 0;
+  }
+  15%,
+  60% {
+    opacity: 1;
+  }
+  95%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@supports (animation-timeline: view()) {
+  @media (pointer: coarse), (hover: none) {
+    [data-rig],
+    [data-track] {
+      animation-duration: auto;
+      animation-timing-function: linear;
+      animation-fill-mode: both;
+      animation-timeline: --section-word;
+      animation-range: cover 0% cover 100%;
+    }
+    [data-rig="ambient"] {
+      animation-name: atmo-rig-drift, atmo-rig-fade;
+    }
+    [data-rig="ambient-out"] {
+      animation-name: atmo-rig-drift, atmo-rig-fade-out;
+    }
+    [data-rig="ambient-still"] {
+      animation-name: atmo-rig-fade;
+    }
+    [data-rig="ambient-still-out"] {
+      animation-name: atmo-rig-fade-out;
+    }
+    [data-rig="leaks"] {
+      animation-name: leaks-rig-fade;
+    }
+    [data-rig="leaks-out"] {
+      animation-name: leaks-rig-fade-out;
+    }
+    [data-track="a"] {
+      animation-name: atmo-track-a;
+    }
+    [data-track="b"] {
+      animation-name: atmo-track-b;
+    }
+  }
+}
+
+/* ── THE GALLERY WINDOWS AND THE NIGHT AHEAD, ON A PHONE ───────────────────
+ *
+ * components/portal.tsx and components/events/upcoming-event.tsx. Each reads
+ * its own view timeline, so each needs the page — not its section — to be the
+ * scroll container it is measured in. That is why #gallery and #events clip
+ * with `overflow: clip` rather than `overflow: hidden`: the picture is the same
+ * (both clip, on both axes), but only `hidden` turns the section into a scroll
+ * container, which would pin every timeline inside it at a constant 50%. See
+ * `.section-word-host` above for the measurement that found that out.
+ *
+ * The windows: `cover 0%` → `cover 100%` is Motion's ["start end",
+ * "end start"]; the drift runs from +drift to −drift pixels, and the name falls
+ * between 8% and 70% of the pass — CARRY in portal.tsx. `transform` rather
+ * than `translate` for the name, because its hover nudge already owns
+ * `translate`.
+ *
+ * The night ahead: ["start end", "start center"] is from the stage's top edge
+ * at the foot of the screen to its top edge at the middle — the start of the
+ * cover range plus half the dynamic viewport. The curve is the house EASE, and
+ * the glow comes up over the last 85% of it. */
+@keyframes portal-drift {
+  from {
+    transform: translateY(var(--portal-drift, 0px));
+  }
+  to {
+    transform: translateY(calc(var(--portal-drift, 0px) * -1));
+  }
+}
+@keyframes portal-fall {
+  0%,
+  8% {
+    transform: translateY(0%);
+  }
+  70%,
+  100% {
+    transform: translateY(100%);
+  }
+}
+@keyframes portal-rise {
+  0%,
+  8% {
+    transform: translateY(0%);
+  }
+  70%,
+  100% {
+    transform: translateY(-100%);
+  }
+}
+@keyframes upcoming-rise {
+  from {
+    transform: translateY(28px) scale(0.945);
+    opacity: 0.45;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+@keyframes upcoming-lift {
+  from {
+    transform: translateY(28px);
+    opacity: 0.45;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes upcoming-fade {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes upcoming-glow {
+  0%,
+  15% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@supports (animation-timeline: view()) {
+  @media (pointer: coarse), (hover: none) {
+    .portal-pass {
+      view-timeline-name: --portal;
+      view-timeline-axis: block;
+      animation-name: portal-drift;
+    }
+    .portal-fall {
+      animation-name: portal-fall;
+    }
+    .portal-rise {
+      animation-name: portal-rise;
+    }
+    .portal-pass,
+    .portal-fall,
+    .portal-rise {
+      animation-duration: auto;
+      animation-timing-function: linear;
+      animation-fill-mode: both;
+      animation-timeline: --portal;
+      animation-range: cover 0% cover 100%;
+    }
+
+    .upcoming-scope {
+      timeline-scope: --stage;
+    }
+    .upcoming-stage {
+      view-timeline-name: --stage;
+      view-timeline-axis: block;
+    }
+    .upcoming-rise {
+      animation-name: upcoming-rise;
+    }
+    .upcoming-lift {
+      animation-name: upcoming-lift;
+    }
+    .upcoming-fade {
+      animation-name: upcoming-fade;
+    }
+    .upcoming-glow {
+      animation-name: upcoming-glow;
+    }
+    .upcoming-rise,
+    .upcoming-lift,
+    .upcoming-fade,
+    .upcoming-glow {
+      animation-duration: auto;
+      animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      animation-fill-mode: both;
+      animation-timeline: --stage;
+      animation-range: cover 0% cover 50dvh;
+    }
+  }
+}
+
+/* The hero's own sink as the page leaves it — see Parallax in
+   components/hero.tsx. `exit 0%` → `exit 100%` is Motion's
+   ["start start", "end start"], and 10% is the same 10%. */
+@keyframes hero-parallax {
+  from {
+    translate: 0 0;
+  }
+  to {
+    translate: 0 10%;
+  }
+}
+@supports (animation-timeline: view()) {
+  @media (pointer: coarse), (hover: none) {
+    .hero-host {
+      view-timeline-name: --hero;
+      view-timeline-axis: block;
+    }
+    .hero-parallax {
+      animation-name: hero-parallax;
+      animation-duration: auto;
+      animation-timing-function: linear;
+      animation-fill-mode: both;
+      animation-timeline: --hero;
+      animation-range: exit 0% exit 100%;
+    }
+  }
+}
+
+/* ── THE FIRST ARRIVAL ─────────────────────────────────────────────────────
+ *
+ * See components/site-loader.tsx for what it waits for and when it lets go.
+ * Everything here is opacity and transform; there is no blur, no shadow and
+ * no second animated layer behind the mark.
+ *
+ * `data-arrived` is set on <html> by the loader's own inline script, before
+ * the loader is parsed, when this browser session has already been through
+ * the door once — so a reload never paints the curtain even for a frame. */
+html[data-arrived] .site-loader {
+  display: none;
+}
+
+.site-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--night);
+  color: var(--night-ink);
+  touch-action: none;
+  overscroll-behavior: contain;
+  transition:
+    opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0s linear 0.9s;
+  /* THE CURTAIN CANNOT TRAP ANYBODY. If the page's JavaScript never runs —
+     a failed chunk, a blocked script — this lifts it on its own. When the
+     script does run it takes over (`data-live`) and keeps its own, shorter,
+     failsafe. */
+  animation: site-loader-failsafe 0.6s ease 9s forwards;
+}
+.site-loader[data-live] {
+  animation: none;
+}
+.site-loader[data-state="leaving"] {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+@keyframes site-loader-failsafe {
+  to {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
+
+/* The mark waits for its own type, so the house name is never set in one
+   face and then another. The inline script flags `data-type-ready` when the
+   three families have loaded; if they never report, the mark comes up anyway
+   at 1.6s in whatever the browser has. */
+.site-loader__mark {
+  opacity: 0;
+  animation: site-loader-mark 1.1s cubic-bezier(0.16, 1, 0.3, 1) 1.6s forwards;
+}
+html[data-type-ready] .site-loader__mark {
+  animation-delay: 0s;
+}
+@keyframes site-loader-mark {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* The line. A hairline track, the part of it that is genuinely done (a coarse
+   count of the first screen's resources, set from script), and before the
+   script has anything to count, one short glint crossing it. */
+.site-loader__line {
+  position: relative;
+  width: min(42vw, 11rem);
+  height: 1px;
+  overflow: hidden;
+  background: rgba(200, 164, 93, 0.14);
+}
+.site-loader__fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transform: scaleX(var(--loader-done, 0));
+  background: linear-gradient(
+    to right,
+    rgba(200, 164, 93, 0.25),
+    rgba(232, 216, 168, 0.75)
+  );
+  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.site-loader__glint {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 40%;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(232, 216, 168, 0.55),
+    transparent
+  );
+  animation: site-loader-glint 2.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+@keyframes site-loader-glint {
+  from {
+    transform: translate3d(-100%, 0, 0);
+  }
+  to {
+    transform: translate3d(250%, 0, 0);
+  }
+}
+.site-loader[data-state="leaving"] .site-loader__glint {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-loader__glint {
+    display: none;
+  }
+  .site-loader__mark {
+    animation-duration: 0.01ms;
   }
 }
 

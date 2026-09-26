@@ -764,9 +764,13 @@ export const SEAT_PREFIX: Record<SeatType, string> = {
 
 /* What this table is called on the map: its own number where it has been
    given one, its id otherwise. Everything a guest reads goes through here, so
-   a renumbering never has to touch the key the booking holds. */
+   a renumbering never has to touch the key the booking holds.
+   The upstairs' `L2-` is the key's namespace, not part of the number — see
+   lib/floors.ts — so it is never printed. The same number can therefore stand
+   on both levels, and anywhere off the map a second-floor table is named with
+   its level: `seatLabel` in lib/floors.ts. */
 export function seatNumber(seat: { id: string; display?: string }) {
-  return seat.display?.trim() || seat.id;
+  return seat.display?.trim() || seat.id.replace(/^L2-/, "");
 }
 
 /* ── how a table is placed on the page ─────────────────────────────────────

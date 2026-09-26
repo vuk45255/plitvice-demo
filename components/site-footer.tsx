@@ -1,6 +1,6 @@
 "use client";
 
-import { PlitviceSignature } from "@/components/plitvice-signature";
+import { RisingLockup } from "@/components/brand/rising-lockup";
 import { SocialLinks } from "@/components/social-links";
 import { SocialWall } from "@/components/social-wall";
 import { useLang } from "@/components/providers/language";
@@ -16,11 +16,26 @@ export function SiteFooter({ wall = true }: { wall?: boolean }) {
   return (
     <footer className="relative border-t border-line pb-12 pt-24 md:pt-36">
       <div className="container-x relative z-10">
-        {/* The house signs the page off. Deliberately not wrapped in a
-            reveal: the writing is the entrance, and a fade over the top of it
-            would be the one thing this is not supposed to look like. */}
-        <div className="flex justify-center py-6 md:py-12">
-          <PlitviceSignature className="w-[92vw] md:w-[85%] md:max-w-[1130px]" />
+        {/* The house signs the page off with the gesture it opened it with:
+            the lockup rising letter by letter, once, the first time it is
+            half on screen. Not wrapped in a reveal — the rise is the entrance.
+            At night a low champagne light sits behind it, as it does behind
+            the hero's; by day the ink stands on the paper as drawn. */}
+        <div className="relative flex justify-center py-8 md:py-14">
+          <div
+            className="pointer-events-none absolute inset-0 hidden dark:block"
+            style={{
+              background:
+                "radial-gradient(46% 60% at 50% 55%, rgba(232,216,168,0.10), rgba(200,164,93,0.04) 45%, transparent 72%)",
+            }}
+            aria-hidden="true"
+          />
+          <RisingLockup
+            id="footer-mark"
+            delay={0.1}
+            lineAt={1.05}
+            className="relative w-[min(84vw,44rem)] text-ink"
+          />
         </div>
 
         {/* and then the room itself, one last time */}
@@ -51,11 +66,6 @@ export function SiteFooter({ wall = true }: { wall?: boolean }) {
 
         <div className="mt-16 flex flex-col items-center gap-3 border-t border-line pt-6 text-center text-xs text-ink-faint sm:flex-row sm:items-baseline sm:justify-between sm:gap-6 sm:text-left">
           <p>{t("footer.rights")}</p>
-          {/* a shade brighter and a touch heavier than the copyright — read
-              before it, never louder than it */}
-          <p className="text-[0.8125rem] font-medium tracking-[0.02em] text-ink-muted transition-colors duration-500 hover:text-accent">
-            {t("footer.credit")}
-          </p>
         </div>
       </div>
     </footer>

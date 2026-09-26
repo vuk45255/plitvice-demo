@@ -715,8 +715,11 @@ async function ReservationsTab({
                     <td data-label="Telefon" className="adm-figure whitespace-nowrap">
                       {row.phone}
                     </td>
-                    <td data-label="Sto" className="font-mono text-[0.75rem]">
+                    <td data-label="Sto" className="whitespace-nowrap font-mono text-[0.75rem]">
                       {row.number}
+                      <span className="ml-1.5 font-sans text-[0.5625rem] uppercase tracking-[0.16em] text-[var(--adm-ink-4)]">
+                        N{row.floor}
+                      </span>
                     </td>
                     <td data-label="Osoba" className="adm-figure md:text-right">
                       {row.guests}

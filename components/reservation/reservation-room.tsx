@@ -196,7 +196,7 @@ export function ReservationRoom({
               aria-label={`${t("common.back")} — Plitvice`}
               className="text-night-ink transition-colors duration-500 hover:text-gold"
             >
-              <Lockup size="xs" tone="light" />
+              <Lockup size="xs" decorative />
             </Link>
           </motion.div>
 
@@ -313,7 +313,7 @@ export function ReservationRoom({
 
                 <p className="mt-6 text-[0.625rem] uppercase tracking-[0.4em] text-night-ink/35">
                   {selected.location ??
-                    `${site.tagline} · ${site.name} · ${site.town}`}
+                    `${site.name} ${site.tagline} · ${site.town}`}
                 </p>
 
                 <div className="mt-16 md:mt-20">

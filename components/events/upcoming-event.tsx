@@ -1,19 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { PosterImage } from "@/components/events/poster-image";
 import Link from "next/link";
 import {
   cubicBezier,
   motion,
+  useMotionValue,
+  useMotionValueEvent,
   useReducedMotion,
   useScroll,
   useTransform,
+  type MotionValue,
 } from "framer-motion";
 import { Arrow } from "@/components/arrow";
 import { EASE } from "@/components/reveal";
 import { useLang } from "@/components/providers/language";
 import { useCoarsePointer } from "@/lib/use-media";
+import { supportsViewTimeline } from "@/lib/scroll-timeline";
 import { reserveHref, ticketAvailability, type PartyEvent } from "@/lib/events";
 
 /* The night ahead, arriving in the room.
@@ -86,15 +90,26 @@ export function UpcomingEvent({
      visitor's own speed down the page: begins as the poster's top edge clears
      the bottom of the screen, finished by the time that edge reaches the
      middle. */
-  const { scrollYProgress } = useScroll({
-    target: stage,
-    offset: ["start end", "start center"],
-  });
-  const scale = useTransform(scrollYProgress, [0, 1], [0.945, 1], { ease });
-  const lift = useTransform(scrollYProgress, [0, 1], [28, 0], { ease });
-  const fade = useTransform(scrollYProgress, [0, 1], [0.45, 1], { ease });
+  /*
+   * On a desk Motion reads that pass (`LandingDriver`, below). On a phone that
+   * can run scroll-driven animations the browser does, off the stage's own view
+   * timeline — `.upcoming-*` in app/globals.css carries the same four
+   * mappings with the same curve. On a phone the poster has no layer hint, so
+   * the JavaScript scale was repainting the artwork, its grade and its
+   * hundred-pixel shadow on every frame of the landing; a scroll-driven
+   * transform is composited instead, and it lands in step with the finger. */
+  const timeline = useSyncExternalStore(
+    noSubscription,
+    supportsViewTimeline,
+    () => false,
+  );
+  const compositor = coarse && timeline && !reduced;
+  const landing = useMotionValue(0);
+  const scale = useTransform(landing, [0, 1], [0.945, 1], { ease });
+  const lift = useTransform(landing, [0, 1], [28, 0], { ease });
+  const fade = useTransform(landing, [0, 1], [0.45, 1], { ease });
   /* The light comes up later than the artwork does. */
-  const glow = useTransform(scrollYProgress, [0.15, 1], [0, 1], { ease });
+  const glow = useTransform(landing, [0.15, 1], [0, 1], { ease });
 
   /* The tilt has three elements of its own, each nested inside whatever the
      landing is animating, so the two never write the same property on the same
@@ -182,10 +197,13 @@ export function UpcomingEvent({
   );
 
   return (
-    <div>
+    <div className={compositor ? "upcoming-scope" : undefined}>
+      {reduced || compositor ? null : (
+        <LandingDriver target={stage} landing={landing} />
+      )}
       <div
         ref={stage}
-        className="relative"
+        className={compositor ? "upcoming-stage relative" : "relative"}
         onPointerMove={still ? undefined : track}
         onPointerLeave={still ? undefined : release}
       >
@@ -196,8 +214,8 @@ export function UpcomingEvent({
             would tint the whole page. */}
         {event.ambient ? (
           <motion.div
-            className="pointer-events-none absolute -inset-x-[22%] -inset-y-[24%] -z-10"
-            style={{ opacity: reduced ? 0.75 : glow }}
+            className={`pointer-events-none absolute -inset-x-[22%] -inset-y-[24%] -z-10 ${compositor ? "upcoming-glow" : ""}`}
+            style={compositor ? undefined : { opacity: reduced ? 0.75 : glow }}
             aria-hidden="true"
           >
             <div ref={halo} className="h-full w-full">
@@ -219,8 +237,8 @@ export function UpcomingEvent({
 
         {/* the weight on the floor under the paper */}
         <motion.div
-          className="pointer-events-none absolute inset-x-[6%] bottom-[-4%] -z-[5] h-[18%]"
-          style={{ opacity: reduced ? 0.7 : fade }}
+          className={`pointer-events-none absolute inset-x-[6%] bottom-[-4%] -z-[5] h-[18%] ${compositor ? "upcoming-fade" : ""}`}
+          style={compositor ? undefined : { opacity: reduced ? 0.7 : fade }}
           aria-hidden="true"
         >
           <div
@@ -230,7 +248,10 @@ export function UpcomingEvent({
         </motion.div>
 
         <motion.div
-          style={reduced ? undefined : { scale, y: lift, opacity: fade }}
+          className={compositor ? "upcoming-rise" : undefined}
+          style={
+            reduced || compositor ? undefined : { scale, y: lift, opacity: fade }
+          }
         >
           {/* Promoted for the tilt, and the tilt is a mouse — so a phone,
               where nothing ever writes this node's transform, is not asked to
@@ -310,8 +331,8 @@ export function UpcomingEvent({
           is a footer rather than a caption. Everything is on one left edge now:
           the poster's, the name's and the call's. */}
       <motion.div
-        style={reduced ? undefined : { opacity: fade, y: lift }}
-        className="mt-9 md:mt-11"
+        style={reduced || compositor ? undefined : { opacity: fade, y: lift }}
+        className={compositor ? "upcoming-lift mt-9 md:mt-11" : "mt-9 md:mt-11"}
       >
         {/* Thirteen on a phone rather than fourteen, and the reason is one
             line. At 0.28em a date and a night's name run about 327px at 13 and
@@ -340,6 +361,27 @@ export function UpcomingEvent({
       </motion.div>
     </div>
   );
+}
+
+const noSubscription = () => () => {};
+
+/* The landing, read by Motion — the desk’s path. Renders nothing. */
+function LandingDriver({
+  target,
+  landing,
+}: {
+  target: React.RefObject<HTMLDivElement | null>;
+  landing: MotionValue<number>;
+}) {
+  const { scrollYProgress } = useScroll({
+    target,
+    offset: ["start end", "start center"],
+  });
+  useMotionValueEvent(scrollYProgress, "change", (p) => landing.set(p));
+  useEffect(() => {
+    landing.set(scrollYProgress.get());
+  }, [landing, scrollYProgress]);
+  return null;
 }
 
 /* A night's ambient colour is written as a plain hex in lib/events, because

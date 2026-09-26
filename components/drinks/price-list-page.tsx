@@ -59,7 +59,7 @@ export function PriceListPage() {
               aria-label={`Plitvice — ${t("common.toTop")}`}
               className="text-night-ink transition-colors duration-500 hover:text-gold"
             >
-              <Lockup size="xs" tone="light" />
+              <Lockup size="xs" decorative />
             </Link>
           </div>
         </motion.div>

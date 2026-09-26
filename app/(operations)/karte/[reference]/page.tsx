@@ -59,7 +59,7 @@ export default async function OrderTicketsPage({
   return (
     <main className="mx-auto w-full max-w-[27rem] px-5 pb-16 pt-8 sm:pt-12">
       <header className="text-center">
-        <Lockup size="xs" tone="light" />
+        <Lockup size="xs" tone="light" className="mx-auto" />
 
         <h1 className="mt-9 font-serif text-[clamp(1.75rem,7vw,2.25rem)] leading-[1.05] text-night-ink">
           {event.title}

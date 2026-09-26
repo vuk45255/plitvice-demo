@@ -1,15 +1,7 @@
 import {
-  ARROWS,
-  LABELS,
-  PASSAGES,
-  ROOMS,
-  SEATS,
   SEAT_KINDS,
   SEAT_PREFIX,
-  SPIRALS,
-  STRUCTURES,
   ZONE_MARK,
-  ZONE_MARKS,
   seatSize,
   type CornerSide,
   type FloorSeat,
@@ -18,6 +10,12 @@ import {
   type SeatType,
   type ZoneId,
 } from "@/lib/floor-plan";
+import {
+  architectureFor,
+  seatIdPrefix,
+  seatsOnFloor,
+  type FloorId,
+} from "@/lib/floors";
 
 /* The editor's working copy of the club.
  *
@@ -252,7 +250,23 @@ export function reseedUids(doc: EditorDoc) {
   return doc;
 }
 
-export function loadDoc(): EditorDoc {
+/* THE PLAN FOR ONE LEVEL, opened as a working copy.
+ *
+ * The level is the only argument because it is the only difference: the first
+ * floor's arrays live in lib/floor-plan.ts, the second's in
+ * lib/floor-plan-nivo2.ts, and lib/floors.ts hands over whichever was asked
+ * for. A level nobody has drawn yet opens as an EMPTY canvas, which is a real
+ * state and not an error — it is exactly how the first floor began. */
+export function loadDoc(floor: FloorId = 1): EditorDoc {
+  const plan = architectureFor(floor);
+  const ROOMS = plan.rooms;
+  const STRUCTURES = plan.structures;
+  const SPIRALS = plan.spirals;
+  const PASSAGES = plan.passages;
+  const LABELS = plan.labels;
+  const ARROWS = plan.arrows;
+  const SEATS = seatsOnFloor(floor);
+
   counter = 0;
   const objects: EditorObject[] = [];
   const nodes: NodeMap = {};
@@ -324,7 +338,7 @@ export function loadDoc(): EditorDoc {
       tracking: l.tracking, opacity: l.opacity, align: l.align,
     });
   }
-  for (const m of ZONE_MARKS) {
+  for (const m of plan.zoneMarks) {
     objects.push({
       uid: newUid(), kind: "zonemark", id: m.id, zone: m.zone, x: m.x, y: m.y,
       fontSize: m.fontSize ?? ZONE_MARK.fontSize,
@@ -356,14 +370,18 @@ export function loadDoc(): EditorDoc {
 }
 
 /* A document made before the zone numerals existed has none, and there is no
-   way to draw one that is not there. So a restored draft is given the four
-   defaults — and only if it has none at all, because a draft that has been
+   way to draw one that is not there. So a restored draft is given that level's
+   own defaults — and only if it has none at all, because a draft that has been
    arranged already must come back exactly as it was left.
 
+   PER LEVEL, which for an undrawn floor means no marks at all: inventing four
+   numerals on an empty canvas would put furniture in somebody's way before
+   they had drawn a single wall.
+
    Additive and nothing else: no existing object is read, moved or replaced. */
-export function withZoneMarks(doc: EditorDoc): EditorDoc {
+export function withZoneMarks(doc: EditorDoc, floor: FloorId = 1): EditorDoc {
   if (doc.objects.some((o) => o.kind === "zonemark")) return doc;
-  const marks: EditorZoneMark[] = ZONE_MARKS.map((m) => ({
+  const marks: EditorZoneMark[] = architectureFor(floor).zoneMarks.map((m) => ({
     uid: newUid(),
     kind: "zonemark",
     id: m.id,
@@ -404,9 +422,15 @@ export function nodeDegree(doc: EditorDoc, nodeId: string) {
 
 /* Both an id and a shown number are counted here: once a floor has been
    renumbered the two diverge, and handing a new table an id that is already
-   somebody else's number would put two B14s on the map. */
-export function nextSeatId(doc: EditorDoc, type: SeatType) {
-  const prefix = SEAT_PREFIX[type];
+   somebody else's number would put two B14s on the map.
+
+   AND THE LEVEL IS PART OF THE ID. A table drawn on the second floor is given
+   `L2-B01` rather than `B01`, because the id is the key a booking is held
+   against and it has to name one table in the building — see `seatIdPrefix` in
+   lib/floors.ts. The guest is never shown it; `display` is what they are told,
+   and the club may renumber that freely. */
+export function nextSeatId(doc: EditorDoc, type: SeatType, floor: FloorId = 1) {
+  const prefix = `${seatIdPrefix(floor)}${SEAT_PREFIX[type]}`;
   const used = new Set<number>();
   for (const s of seatsOf(doc)) {
     for (const name of [s.id, numberOf(s)]) {
@@ -836,7 +860,16 @@ function seatLine(s: EditorSeat) {
   return `  { ${parts.join(", ")} },`;
 }
 
-export function serializeDoc(doc: EditorDoc) {
+/* THE EXPORT, AND WHICH FILE IT IS FOR.
+ *
+ * One level's arrays, printed as the TypeScript that goes back into the repo.
+ * The first floor's names are bare — `ROOMS`, `SEATS` — and belong in
+ * lib/floor-plan.ts; the second floor's carry `_L2` and belong in
+ * lib/floor-plan-nivo2.ts. The suffix is not decoration: the two files are
+ * imported side by side in lib/floors.ts and would collide without it, and a
+ * paste into the wrong file is then a compile error rather than a floor
+ * quietly overwriting the other. */
+export function serializeDoc(doc: EditorDoc, floor: FloorId = 1) {
   const of = <T extends EditorObject["kind"]>(k: T) =>
     doc.objects.filter((o) => o.kind === k) as Extract<EditorObject, { kind: T }>[];
 
@@ -954,40 +987,44 @@ export function serializeDoc(doc: EditorDoc) {
 
   const seats = of("seat").map(seatLine).join("\n");
 
-  return `/* Laid out by hand at /floor-plan-editor, over the club's own drawing.
-   Paste each array over its namesake in lib/floor-plan.ts.
+  /* The second floor's arrays are suffixed and live in their own module. */
+  const sfx = floor === 2 ? "_L2" : "";
+  const file = floor === 2 ? "lib/floor-plan-nivo2.ts" : "lib/floor-plan.ts";
+
+  return `/* NIVO ${floor} — laid out by hand at /floor-plan-editor.
+   Paste each array over its namesake in ${file}.
    Curved wall segments are written out as sampled points — PlanRoom carries
    points and nothing else, and eight a segment holds the shape. */
 
-export const ROOMS: PlanRoom[] = [
+export const ROOMS${sfx}: PlanRoom[] = [
 ${rooms}
 ];
 
-export const STRUCTURES: PlanStructure[] = [
+export const STRUCTURES${sfx}: PlanStructure[] = [
 ${structures}
 ];
 
-export const SPIRALS: PlanSpiral[] = [
+export const SPIRALS${sfx}: PlanSpiral[] = [
 ${spirals}
 ];
 
-export const ARROWS: PlanArrow[] = [
+export const ARROWS${sfx}: PlanArrow[] = [
 ${arrows}
 ];
 
-export const PASSAGES: PlanPassage[] = [
+export const PASSAGES${sfx}: PlanPassage[] = [
 ${passages}
 ];
 
-export const LABELS: PlanLabel[] = [
+export const LABELS${sfx}: PlanLabel[] = [
 ${labels}
 ];
 
-export const ZONE_MARKS: PlanZoneMark[] = [
+export const ZONE_MARKS${sfx}: PlanZoneMark[] = [
 ${zoneMarks}
 ];
 
-export const SEATS: FloorSeat[] = [
+export const SEATS${sfx}: FloorSeat[] = [
 ${seats}
 ];
 `;

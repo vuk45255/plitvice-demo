@@ -140,7 +140,7 @@ export function SiteHeader() {
                   className="relative"
                   aria-hidden="true"
                 >
-                  <Lockup size="xs" tone="light" />
+                  <Lockup size="xs" tone="light" decorative />
                 </motion.div>
 
                 <nav aria-label="Plitvice" className="relative py-12">
@@ -265,12 +265,12 @@ export function SiteHeader() {
                   setOpen(false);
                   travelTo(0, lenis, false, 1.4);
                 }}
-                aria-label={`${site.tagline} ${site.name}, ${site.town} — ${t("common.toTop")}`}
+                aria-label={`${site.name} ${site.tagline}, ${site.town} — ${t("common.toTop")}`}
                 className={`absolute left-1/2 -translate-x-1/2 transition-colors duration-500 ${
                   open || night ? "text-night-ink" : "text-ink"
                 }`}
               >
-                <Lockup size="xs" />
+                <Lockup size="xs" decorative />
               </a>
 
               {/* On a phone the bar is three things only — menu, mark, language.

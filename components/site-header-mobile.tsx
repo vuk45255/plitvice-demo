@@ -130,7 +130,7 @@ export function MobileHeader() {
     window.setTimeout(() => travelTo(0, lenis, false, 1.4), 140);
   };
 
-  const markLabel = `${site.tagline} ${site.name}, ${site.town} — ${t("common.toTop")}`;
+  const markLabel = `${site.name} ${site.tagline}, ${site.town} — ${t("common.toTop")}`;
 
   return (
     <header className="md:hidden">
@@ -165,7 +165,7 @@ export function MobileHeader() {
               aria-label={markLabel}
               className="shrink-0 transition-colors duration-500 active:text-gold"
             >
-              <Lockup size="xs" tone="light" />
+              <Lockup size="xs" decorative />
             </a>
 
             <button
@@ -227,7 +227,7 @@ export function MobileHeader() {
                 aria-label={markLabel}
                 className="shrink-0 transition-colors duration-500 active:text-gold"
               >
-                <Lockup size="xs" tone="light" />
+                <Lockup size="xs" decorative />
               </a>
 
               <button

@@ -18,6 +18,7 @@ import {
   REFERENCE_OPACITY,
   SHOW_REFERENCE_OVERLAY,
 } from "@/lib/floor-plan";
+import { FLOOR_PHONE_OPEN } from "@/lib/floors";
 import type { Seat } from "@/lib/floor-availability";
 
 /* The map itself: the room, the tables on it, and the ability to get closer.
@@ -40,9 +41,9 @@ const MAX_SCALE = 6;
 const STEP = 1.55;
 
 /* A phone cannot show the whole club and still show a table worth tapping, so
-   it opens part-way in, over the first two halls, where the stage is and where
-   the room reads from. The frame control gets the guest back out to all of it. */
-const PHONE_OPEN = { scale: 2.1, at: { x: 600, y: 340 } };
+   it opens part-way in, over the part of the level the room reads from. Stated
+   per floor in lib/floors.ts, because the two levels do not read from the same
+   corner. The frame control gets the guest back out to all of it. */
 
 /* Where the camera settles when a table is touched.
  *
@@ -104,6 +105,7 @@ export function FloorPlan({
   onSelect,
   onHoverChange,
   architecture,
+  phoneOpen = FLOOR_PHONE_OPEN[1],
 }: {
   seats: Seat[];
   selectedId?: string;
@@ -112,9 +114,14 @@ export function FloorPlan({
     seat: Seat | null,
     at?: { clientX: number; clientY: number },
   ) => void;
-  /* Only the editor passes this, so its PREVIEW shows the walls being edited
-     rather than the ones on disk. */
+  /* The room this level is drawn in. The map itself holds no opinion about
+     which floor it is showing — it is handed the walls and the tables and
+     draws them. The editor passes its own working copy here as well, so its
+     PREVIEW shows the walls being edited rather than the ones on disk. */
   architecture?: Architecture;
+  /* Where a phone opens on this level. Read once, as the first view rather
+     than as a correction to it. */
+  phoneOpen?: { scale: number; at: { x: number; y: number } };
 }) {
   const { t } = useLang();
   const reduced = useReducedMotion();
@@ -125,7 +132,7 @@ export function FloorPlan({
   const [view, setView] = useState<View>(() => {
     if (typeof window === "undefined") return AT_FIT;
     if (window.matchMedia("(min-width: 768px)").matches) return AT_FIT;
-    const { scale, at } = PHONE_OPEN;
+    const { scale, at } = phoneOpen;
     return clampView({
       scale,
       x: PLAN.width / 2 - at.x * scale,

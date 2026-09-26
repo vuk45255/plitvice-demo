@@ -2,6 +2,7 @@
 
 import { useLang } from "@/components/providers/language";
 import { SEAT_KINDS, ZONE_LABELS } from "@/lib/floor-plan";
+import { FLOOR_LABELS } from "@/lib/floors";
 import type { Seat } from "@/lib/floor-availability";
 
 /* Everything a table is called, in one place.
@@ -17,9 +18,24 @@ export function useSeatCopy() {
   /* B29, V13, S12 — the club's own number for this table. */
   const number = (seat: Seat) => seat.display;
   const typeLabel = (seat: Seat) => t(SEAT_KINDS[seat.type].label);
-  const zoneLabel = (seat: Seat) => t(ZONE_LABELS[seat.zone]);
-  const capacity = (seat: Seat) =>
-    `${seat.capacity.min}–${seat.capacity.max} ${t("floor.persons")}`;
+
+  /* NIVO 1 / NIVO 2. The one thing a guest must never have to work out for
+     themselves, because both levels number their halls 1, 2, 3. */
+  const floorLabel = (seat: Seat) => t(FLOOR_LABELS[seat.floor]);
+
+  /* WHICH HALL, ON WHICH LEVEL — never one without the other. "Zona 2" on its
+     own names two different rooms in this building; "Nivo 2 · Zona 2" names
+     one. Everything a guest reads about where a table is goes through here, so
+     the pair can never come apart. */
+  const zoneLabel = (seat: Seat) =>
+    `${floorLabel(seat)} · ${t(ZONE_LABELS[seat.zone])}`;
+
+  /* A range where the club has given one, a single figure where it has settled
+     on a number. "6–6 osoba" is not a thing anybody says. */
+  const capacity = (seat: Seat) => {
+    const { min, max } = seat.capacity;
+    return `${min === max ? min : `${min}–${max}`} ${t("floor.persons")}`;
+  };
   const guestCount = (n: number) => `${n} ${t("floor.persons")}`;
   /* Three states, three words — and the middle one is deliberately vague. A
      guest is told the table cannot be had at this moment and nothing at all
@@ -55,6 +71,7 @@ export function useSeatCopy() {
     number,
     heading,
     typeLabel,
+    floorLabel,
     zoneLabel,
     capacity,
     guestCount,

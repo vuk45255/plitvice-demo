@@ -200,8 +200,15 @@ export default async function AdminReservationsPage({
                               </p>
                             ) : null}
                           </td>
-                          <td className="font-mono text-[0.875rem] text-[var(--adm-ink)]">
+                          {/* The number AND the level. Both floors number
+                              their halls 1, 2, 3 and staff read these out down
+                              a telephone; a number on its own is a guest sent
+                              up the wrong staircase. */}
+                          <td className="whitespace-nowrap font-mono text-[0.875rem] text-[var(--adm-ink)]">
                             {row.number}
+                            <span className="ml-1.5 font-sans text-[0.5625rem] uppercase tracking-[0.16em] text-[var(--adm-ink-4)]">
+                              N{row.floor}
+                            </span>
                           </td>
                           <td className="adm-figure text-right text-[0.875rem]">
                             {row.guests}
@@ -274,7 +281,9 @@ function Card({ row, night }: { row: ReservationLine; night: string }) {
       </div>
 
       <p className="mt-3 text-[0.8125rem] text-[var(--adm-ink-2)]">
-        <span className="font-mono text-[var(--adm-ink)]">Sto {row.number}</span>
+        <span className="font-mono text-[var(--adm-ink)]">
+          Nivo {row.floor} · sto {row.number}
+        </span>
         <span className="text-[var(--adm-ink-4)]"> · </span>
         {row.guests} osoba
         <span className="text-[var(--adm-ink-4)]"> · </span>

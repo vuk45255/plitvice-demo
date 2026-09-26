@@ -7,6 +7,7 @@ import { EASE } from "@/components/reveal";
 import { MixTimeline } from "@/components/mix/mix-timeline";
 import { MIX_TITLE, timecode, useMix, useMixTime } from "@/components/providers/mix";
 import { useLang } from "@/components/providers/language";
+import { useEntrance } from "@/components/providers/entrance";
 
 /* A record left behind the right-hand edge of the site.
  *
@@ -64,12 +65,16 @@ export function VinylPlayer() {
 
   /* The record arrives rather than appearing: it is fully behind the edge on
      the first frame and slides out to its resting place a moment later, once
-     the page it belongs to has had its own opening. */
+     the page it belongs to has had its own opening. On a first arrival that
+     moment is counted from the curtain lifting, not from the mount: under the
+     loader nobody would see it come in. */
+  const { curtain } = useEntrance();
   const [arrived, setArrived] = useState(false);
   useEffect(() => {
+    if (curtain === "down") return;
     const timer = window.setTimeout(() => setArrived(true), 1400);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [curtain]);
 
   if (SILENT_ROUTES.some((route) => pathname.startsWith(route))) return null;
 

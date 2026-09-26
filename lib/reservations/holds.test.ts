@@ -49,6 +49,7 @@ import { mailDeliveryFor } from "@/lib/mail/send";
 import { requestReservation } from "@/lib/reservations/service";
 import { seatCapacity } from "@/lib/floor-capacity";
 import { SEATS } from "@/lib/floor-plan";
+import { floorOfSeatId, seatById } from "@/lib/floors";
 
 /* The one night the club is taking tables for. */
 const NIGHT = "saturday-madness";
@@ -913,5 +914,62 @@ describe("a booking made on the site confirms itself", () => {
 
     /* And the three minutes she spent on the refusal are handed back. */
     assert.ok(await getHoldStatus({ eventId: NIGHT, seatId: OTHER_FREE, token: ANA }));
+  });
+});
+
+/* ── the upstairs, through the very same doors ──────────────────────────────
+ *
+ * Nivo 2 has no hold logic, availability or booking path of its own, and this
+ * is the proof that it needs none: an `L2-` table is held, booked, confirmed
+ * and seen by the office through exactly the calls a ground-floor table is,
+ * and booking it touches nothing downstairs. */
+describe("a table on the second floor", () => {
+  const UP = "L2-S04";
+  const upstairsParty = () => {
+    const seat = seatById(UP);
+    assert.ok(seat, `${UP} should be on the second floor's plan`);
+    return seatCapacity(seat).min;
+  };
+
+  it("is held, booked, confirmed and shown to the office like any other", async () => {
+    const before = await seatAvailability({ eventId: NIGHT });
+
+    const hold = await acquireHold({ eventId: NIGHT, seatId: UP, token: ANA });
+    assert.ok(hold.ok, "a free upstairs table can be held");
+    assert.deepEqual((await seatAvailability({ eventId: NIGHT, token: BOJAN })).held, [UP]);
+    assert.deepEqual((await seatAvailability({ eventId: NIGHT, token: ANA })).mine, [UP]);
+
+    const booked = await requestReservation(
+      { eventId: NIGHT, seatId: UP, guests: upstairsParty(), ...guest() },
+      { ...freshSource(), holdToken: ANA },
+    );
+    assert.ok(booked.ok, "the hold is spent on the booking");
+    if (booked.reservation.status !== "confirmed") {
+      assert.ok((await setReservationStatus(booked.reservation.id, "confirmed")).ok);
+    }
+
+    const after = await seatAvailability({ eventId: NIGHT, token: BOJAN });
+    assert.ok(after.reserved.includes(UP), "reserved to everybody");
+    assert.deepEqual(after.held, [], "and no longer held");
+
+    /* Downstairs is exactly as it was. */
+    const ground = (ids: string[]) => ids.filter((id) => floorOfSeatId(id) === 1).sort();
+    assert.deepEqual(ground(after.reserved), ground(before.reserved));
+    assert.deepEqual(ground(after.held), ground(before.held));
+
+    /* The office sees it on the same table, on the right level, by its number. */
+    const office = await floorState(NIGHT);
+    const seat = office.seats.find((s) => s.id === UP);
+    assert.ok(seat);
+    assert.equal(seat.state, "reserved");
+    assert.equal(seat.floor, 2);
+    assert.equal(seat.number, "S04");
+    assert.equal(seat.reservation?.id, booked.reservation.id);
+  });
+
+  it("cannot be held twice, exactly as downstairs", async () => {
+    assert.ok((await acquireHold({ eventId: NIGHT, seatId: UP, token: ANA })).ok);
+    const second = await acquireHold({ eventId: NIGHT, seatId: UP, token: BOJAN });
+    assert.equal(second.ok === false && second.reason, "seat-held");
   });
 });

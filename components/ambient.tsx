@@ -7,8 +7,10 @@ import {
   useReducedMotion,
   useScroll,
   useTransform,
+  type MotionValue,
 } from "framer-motion";
-import { useCoarsePointer } from "@/lib/use-media";
+import { breath } from "@/lib/atmosphere";
+import { useHostedViewTimeline } from "@/lib/scroll-timeline";
 
 /* Purple lamps behind the page, and the haze that makes their beams visible.
 
@@ -22,7 +24,11 @@ import { useCoarsePointer } from "@/lib/use-media";
 
    Two of the five lamps and one haze bank are desktop-only: the effect holds
    on a phone with three, and the fewer large filtered layers there are, the
-   cheaper it composites. Lives inside its section (z-0, content at z-10). */
+   cheaper it composites. Lives inside its section (z-0, content at z-10).
+
+   The breathing is CSS on the compositor (`.atmo-loop` in app/globals.css);
+   the scroll travel is Motion on a desk and the section's scroll timeline on a
+   phone. Same curves, same stops, same picture. */
 
 type Lamp = {
   place: string;
@@ -86,32 +92,33 @@ type Haze = {
   color: string;
   duration: number;
   delay: number;
-  drift: { x: number[]; y: number[] };
+  drift: { x: [number, number]; y: [number, number] };
   desktopOnly?: boolean;
 };
 
-/* Slow enough that you never catch it moving. */
+/* Slow enough that you never catch it moving. Each drift goes out to the
+   second value and back. */
 const HAZE: Haze[] = [
   {
     place: "-left-[10%] top-[16%] h-[48vh] w-[90vw]",
     color: "rgba(172,152,202,0.08)",
     duration: 46,
     delay: 0,
-    drift: { x: [0, 80, 0], y: [0, -30, 0] },
+    drift: { x: [0, 80], y: [0, -30] },
   },
   {
     place: "left-[12%] top-[50%] h-[40vh] w-[75vw]",
     color: "rgba(210,192,230,0.06)",
     duration: 61,
     delay: 7,
-    drift: { x: [0, -100, 0], y: [0, 26, 0] },
+    drift: { x: [0, -100], y: [0, 26] },
   },
   {
     place: "-right-[15%] -bottom-[8%] h-[44vh] w-[80vw]",
     color: "rgba(152,128,188,0.07)",
     duration: 53,
     delay: 14,
-    drift: { x: [0, 70, 0], y: [0, -20, 0] },
+    drift: { x: [0, 70], y: [0, -20] },
     desktopOnly: true,
   },
 ];
@@ -124,86 +131,63 @@ type AmbientProps = {
   fadeOut?: boolean;
 };
 
+/* The two lamp tracks, however they are being driven: Motion values on a
+   desk, a scroll-driven animation on a phone, nothing under reduced motion. */
+type Tracks =
+  | { kind: "motion"; a: MotionValue<string>; b: MotionValue<string> }
+  | { kind: "css" }
+  | { kind: "still" };
+
 export function Ambient({ variant = "full", fadeOut = false }: AmbientProps) {
   const ref = useRef<HTMLDivElement>(null);
   const reduced = useReducedMotion();
-  const phone = useCoarsePointer();
 
   /* NOTHING BREATHES IN A ROOM NOBODY IS STANDING IN.
 
-     There are two of these rigs on the home page and two light-leak rigs
-     besides, and every lamp in all four used to run its loop for the whole
-     visit whether its section was on screen or five screens above. Twenty-odd
-     infinite animations, each writing a style every frame, on a phone that is
-     trying to scroll. They now run only while their own section is anywhere
-     near the viewport and hold their last frame otherwise — which nobody can
-     see, because the wrapper opacity has already taken the rig to nought by
-     then. */
+     The loops run on the compositor, but a running compositor animation still
+     keeps its layers ticking. They are paused whenever their section is not
+     anywhere near the viewport — and resume from the frame they stopped on,
+     rather than snapping to a resting pose and starting over. */
   const near = useInView(ref, { margin: "200px" });
-  const live = !reduced && near;
+  const idle = reduced || !near ? "true" : undefined;
+
+  /* A phone that can run scroll-driven animations hands the rig's travel to
+     its section's own timeline; everything else keeps Motion. */
+  const compositor = useHostedViewTimeline(ref) && !reduced;
 
   const lamps = variant === "full" ? LAMPS : LAMPS.slice(0, 3);
   const haze = variant === "full" ? HAZE : HAZE.slice(0, 2);
   const strength =
     variant === "full" ? "opacity-70 md:opacity-100" : "opacity-40 md:opacity-65";
 
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start end", "end start"],
-  });
-  const y = useTransform(scrollYProgress, [0, 1], ["10%", "-10%"]);
-  /* Two tracks pulling against each other — the lamps never move as one. */
-  const xA = useTransform(scrollYProgress, [0, 1], ["-4%", "5%"]);
-  const xB = useTransform(scrollYProgress, [0, 1], ["4%", "-6%"]);
-  const opacity = useTransform(
-    scrollYProgress,
-    fadeOut ? [0, 0.12, 0.55, 0.9] : [0, 0.12, 1, 1],
-    fadeOut ? [0, 1, 1, 0] : [0, 1, 1, 1],
-  );
-
-  return (
-    <motion.div
-      ref={ref}
-      className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
-      style={{ opacity, y: reduced ? undefined : y }}
-      aria-hidden="true"
-    >
-      {/* the scroll fade owns the wrapper's opacity, so the per-variant and
-          per-breakpoint strength has to live one level in */}
-      <div className={`absolute inset-0 ${strength}`}>
-        {lamps.map((lamp, i) => (
-          /* THE LAMP MOVES. THE BLUR DOES NOT. That split is the whole reason
-             this is two elements rather than one — see the note below. */
-          <motion.div
-            key={`lamp-${i}`}
-            className={`absolute ${lamp.place} ${
-              lamp.desktopOnly ? "hidden md:block" : ""
-            }`}
-            style={{
-              x: reduced ? undefined : lamp.track === "a" ? xA : xB,
-            }}
-            /* A LOOP IS STOPPED BY BEING REPLACED, not by being taken away.
-               Handing `animate` undefined leaves whatever is already running
-               exactly where it is — still ticking, still writing a style every
-               frame, off screen and forever. A resting pose supersedes it. */
-            animate={
-              live
-                ? {
-                    opacity: [0.35, 1, 0.35],
-                    scale: [0.92, 1.16, 0.92],
-                    transition: {
-                      duration: lamp.duration,
-                      delay: lamp.delay,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    },
-                  }
-                : {
-                    opacity: 0.7,
-                    scale: 1,
-                    transition: { duration: 0 },
-                  }
-            }
+  const room = (tracks: Tracks) => (
+    /* the scroll fade owns the rig's opacity, so the per-variant and
+       per-breakpoint strength has to live one level in */
+    <div className={`absolute inset-0 ${strength}`} data-idle={idle}>
+      {lamps.map((lamp, i) => (
+        /* THREE ELEMENTS, THREE JOBS: the outer one rides the scroll track,
+           the middle one breathes, the inner one carries the blur. */
+        <motion.div
+          key={`lamp-${i}`}
+          className={`absolute ${lamp.place} ${
+            lamp.desktopOnly ? "hidden md:block" : ""
+          }`}
+          style={
+            tracks.kind === "motion"
+              ? { x: lamp.track === "a" ? tracks.a : tracks.b }
+              : undefined
+          }
+          data-track={tracks.kind === "css" ? lamp.track : undefined}
+        >
+          <div
+            className="atmo-loop absolute inset-0"
+            style={breath({
+              duration: lamp.duration,
+              delay: lamp.delay,
+              opacity: [0.35, 1],
+              scale: [0.92, 1.16],
+              rest: 0.7,
+            })}
           >
             {/* ── WHY THE BLUR IS ON A CHILD AND NOT ON THE LAMP ──────────
                *
@@ -217,88 +201,126 @@ export function Ambient({ variant = "full", fadeOut = false }: AmbientProps) {
                * price. Re-blurring a seventy-viewport circle sixty times a
                * second was.
                *
-               * So the movement and the blur are separated. The parent
-               * carries everything that changes — the scroll parallax, the
-               * breathing scale, the opacity — and the compositor moves it
-               * as a finished texture. This child carries the gradient and
-               * the blur, never changes, and is therefore rasterised once
-               * and reused for the rest of the visit.
+               * So the movement and the blur are separated. The parents
+               * carry everything that changes — the scroll parallax, the
+               * breathing scale, the opacity — and the compositor moves them
+               * as finished textures. This child carries the gradient and
+               * the blur, never changes on a phone, and is therefore
+               * rasterised once and reused for the rest of the visit.
                *
-               * NOTHING ABOUT THE PICTURE CHANGES. Blur is isotropic and is
-               * applied in local space, so blurring inside a moving box and
-               * moving a blurred box give the same pixels; the lamp swells,
-               * drifts and fades exactly as it did. */}
-            <motion.div
-              className="atmosphere-blur absolute inset-0 rounded-full"
+               * THE BLUR RADIUS IS NOT ANIMATED ON A PHONE. The lamp still
+               * swells and still fades — it simply softens by a fixed amount
+               * instead of a moving one, which at this size and this opacity
+               * is a difference nobody can point to. A desk, which has the
+               * GPU for it, still gets the softening: `.atmo-soften` only
+               * exists behind a fine pointer. */}
+            <div
+              className="atmosphere-blur atmo-soften absolute inset-0 rounded-full"
               style={{
                 background: `radial-gradient(circle, ${lamp.color}, transparent 70%)`,
                 filter: lamp.blur[0],
+                ...breath({
+                  duration: lamp.duration,
+                  delay: lamp.delay,
+                  blur: lamp.blur,
+                }),
               }}
-              /* THE BLUR RADIUS IS NOT ANIMATED ON A PHONE, and it was the
-                 single most expensive thing in this file. The lamp still
-                 swells and still fades — it simply softens by a fixed amount
-                 instead of a moving one, which at this size and this opacity
-                 is a difference nobody can point to. A desk, which has the
-                 GPU for it, still gets the softening. Always an object and
-                 never `undefined`, for the reason above. */
-              animate={
-                live && !phone
-                  ? {
-                      filter: [lamp.blur[0], lamp.blur[1], lamp.blur[0]],
-                      transition: {
-                        duration: lamp.duration,
-                        delay: lamp.delay,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      },
-                    }
-                  : { filter: lamp.blur[0], transition: { duration: 0 } }
-              }
             />
-          </motion.div>
-        ))}
+          </div>
+        </motion.div>
+      ))}
 
-        {/* smoke last, so the beams read as coming through it */}
-        {haze.map((bank, i) => (
-          /* Split for the same reason as the lamps above: the bank drifts,
-             the blur inside it holds still and is rasterised once. */
-          <motion.div
-            key={`haze-${i}`}
-            className={`absolute ${bank.place} ${
-              bank.desktopOnly ? "hidden md:block" : ""
-            }`}
-            animate={
-              live
-                ? {
-                    opacity: [0.5, 1, 0.5],
-                    scale: [1, 1.12, 1],
-                    x: bank.drift.x,
-                    y: bank.drift.y,
-                    transition: {
-                      duration: bank.duration,
-                      delay: bank.delay,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    },
-                  }
-                : {
-                    opacity: 0.75,
-                    scale: 1,
-                    x: bank.drift.x[0],
-                    y: bank.drift.y[0],
-                    transition: { duration: 0 },
-                  }
-            }
-          >
-            <div
-              className="atmosphere-blur absolute inset-0 rounded-full [filter:blur(70px)] md:[filter:blur(100px)]"
-              style={{
-                background: `radial-gradient(circle, ${bank.color}, transparent 72%)`,
-              }}
-            />
-          </motion.div>
-        ))}
-      </div>
+      {/* smoke last, so the beams read as coming through it */}
+      {haze.map((bank, i) => (
+        /* Split for the same reason as the lamps above: the bank drifts,
+           the blur inside it holds still and is rasterised once. */
+        <div
+          key={`haze-${i}`}
+          className={`atmo-loop absolute ${bank.place} ${
+            bank.desktopOnly ? "hidden md:block" : ""
+          }`}
+          style={breath({
+            duration: bank.duration,
+            delay: bank.delay,
+            opacity: [0.5, 1],
+            scale: [1, 1.12],
+            x: bank.drift.x,
+            y: bank.drift.y,
+            rest: 0.75,
+          })}
+        >
+          <div
+            className="atmosphere-blur absolute inset-0 rounded-full [filter:blur(70px)] md:[filter:blur(100px)]"
+            style={{
+              background: `radial-gradient(circle, ${bank.color}, transparent 72%)`,
+            }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    /* The observed box. It neither clips nor moves, so the rig inside can
+       change driver without the observer losing its element — and its box is
+       the section's box, which is what the scroll is measured against either
+       way. The rig inside is the element that clips and travels, as the
+       single wrapper used to. */
+    <div
+      ref={ref}
+      className="pointer-events-none absolute inset-0 z-0"
+      aria-hidden="true"
+    >
+      {compositor ? (
+        <div
+          className="absolute inset-0 overflow-hidden"
+          data-rig={fadeOut ? "ambient-out" : "ambient"}
+        >
+          {room({ kind: "css" })}
+        </div>
+      ) : (
+        <MotionRig target={ref} fadeOut={fadeOut} reduced={!!reduced}>
+          {room}
+        </MotionRig>
+      )}
+    </div>
+  );
+}
+
+/* The desk's rig — and a phone's, where the browser cannot run scroll-driven
+   animations or the rig is not its section's direct child. A component of its
+   own so that a phone on the compositor path never subscribes to the scroll. */
+function MotionRig({
+  target,
+  fadeOut,
+  reduced,
+  children,
+}: {
+  target: React.RefObject<HTMLDivElement | null>;
+  fadeOut: boolean;
+  reduced: boolean;
+  children: (tracks: Tracks) => React.ReactNode;
+}) {
+  const { scrollYProgress } = useScroll({
+    target,
+    offset: ["start end", "end start"],
+  });
+  const y = useTransform(scrollYProgress, [0, 1], ["10%", "-10%"]);
+  /* Two tracks pulling against each other — the lamps never move as one. */
+  const a = useTransform(scrollYProgress, [0, 1], ["-4%", "5%"]);
+  const b = useTransform(scrollYProgress, [0, 1], ["4%", "-6%"]);
+  const opacity = useTransform(
+    scrollYProgress,
+    fadeOut ? [0, 0.12, 0.55, 0.9] : [0, 0.12, 1, 1],
+    fadeOut ? [0, 1, 1, 0] : [0, 1, 1, 1],
+  );
+
+  return (
+    <motion.div
+      className="absolute inset-0 overflow-hidden"
+      style={{ opacity, y: reduced ? undefined : y }}
+    >
+      {children(reduced ? { kind: "still" } : { kind: "motion", a, b })}
     </motion.div>
   );
 }

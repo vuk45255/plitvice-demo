@@ -70,7 +70,7 @@ export function ArchiveShell({
             aria-label={`${t("common.back")} — Plitvice`}
             className="text-night-ink transition-colors duration-500 hover:text-gold"
           >
-            <Lockup size="xs" tone="light" />
+            <Lockup size="xs" decorative />
           </Link>
         </motion.div>
 

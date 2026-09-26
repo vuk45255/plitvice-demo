@@ -8,6 +8,7 @@ import posterRasta from "@/public/party/rasta.jpg";
 import posterInas from "@/public/party/inas.jpg";
 import posterSemafor from "@/public/party/semafor.jpg";
 import posterNumber from "@/public/party/53.jpg";
+import posterInvivo from "@/public/party/Invivo.jpg";
 import posterSajfer from "@/public/images/sajfer.jpg";
 import posterKaca from "@/public/dogadjaji/kaca.jpg";
 import posterVodka from "@/public/dogadjaji/vodka.jpg";
@@ -71,6 +72,7 @@ export const POSTER_ASSETS: Record<string, PosterAsset> = {
   "/party/relja.jpg": { image: posterRelja },
   "/party/inas.jpg": { image: posterInas },
   "/party/53.jpg": { image: posterNumber },
+  "/party/Invivo.jpg": { image: posterInvivo },
   "/images/sajfer.jpg": { image: posterSajfer },
 };
 

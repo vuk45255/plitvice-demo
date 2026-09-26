@@ -15,7 +15,7 @@ import { t } from "@/lib/ticketing/copy";
 export default function TicketNotFound() {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-[25rem] flex-col items-center justify-center px-6 py-16 text-center">
-      <Lockup size="xs" tone="light" />
+      <Lockup size="xs" tone="light" className="mx-auto" />
 
       <h1 className="mt-10 font-serif text-[clamp(1.5rem,6vw,2rem)] leading-tight text-night-ink">
         {t.notFoundTitle}

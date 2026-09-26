@@ -13,6 +13,7 @@ import {
   Ticket,
   X,
 } from "lucide-react";
+import { PlitviceLogo } from "@/components/brand/plitvice-logo";
 
 /* WHERE YOU ARE, AND WHERE ELSE YOU CAN GO.
  *
@@ -82,16 +83,17 @@ function Links({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-/* The house mark, quietly. One line, letter-spaced, gold — the same lockup the
-   club uses everywhere, without the ceremony and without a subtitle: anybody
+/* The house mark, quietly: the club's lockup, small and in gold — the same
+   artwork the club uses everywhere, without the ceremony and without a town: anybody
    reading this sidebar is already signed in to the office and does not need to
    be told which building they are in. */
 function Wordmark() {
   return (
     <div>
-      <p className="text-[0.6875rem] uppercase tracking-[0.42em] text-[var(--adm-gold)]">
-        Plitvice
-      </p>
+      <PlitviceLogo
+        variant="primary"
+        className="h-7 w-auto text-[var(--adm-gold)]"
+      />
     </div>
   );
 }

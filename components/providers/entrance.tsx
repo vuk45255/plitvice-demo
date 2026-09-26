@@ -34,7 +34,29 @@ type Entrance = {
    * walking back in from the next room does not. */
   ceremonyPlayed: boolean;
   ceremonyOver: () => void;
+  /* THE CURTAIN — components/site-loader.tsx.
+   *
+   *   "down"     the branded loader is covering the page while the first
+   *              screen's own resources arrive. Nothing that is a moment —
+   *              the hero's reveal, the record sliding in — may start under
+   *              it, because nobody would see it happen.
+   *   "lifted"   the loader played and has just let go. The hero takes that
+   *              as its cue and opens straight into its reveal: the curtain
+   *              and the mark are one entrance, not a curtain followed by a
+   *              second wait for a scroll.
+   *   "none"     there was no curtain this time — the session has been
+   *              through the door already, or the site was entered from
+   *              somewhere inside the app. Everything behaves exactly as it
+   *              did before there was a loader.
+   *
+   * It starts "down" on the server and through hydration, because the loader
+   * is in the server's HTML; the loader settles it in its first layout
+   * effect. */
+  curtain: Curtain;
+  setCurtain: (curtain: Exclude<Curtain, "down">) => void;
 };
+
+export type Curtain = "down" | "lifted" | "none";
 
 /* Default is "entered" so anything rendered outside the provider still shows.
    `ceremonyPlayed` is false for the same reason the hero would want it: a
@@ -44,6 +66,8 @@ const EntranceContext = createContext<Entrance>({
   enter: () => {},
   ceremonyPlayed: false,
   ceremonyOver: () => {},
+  curtain: "none",
+  setCurtain: () => {},
 });
 
 export function useEntrance() {
@@ -53,13 +77,21 @@ export function useEntrance() {
 export function EntranceProvider({ children }: { children: React.ReactNode }) {
   const [entered, setEntered] = useState(false);
   const [ceremonyPlayed, setCeremonyPlayed] = useState(false);
+  const [curtain, setCurtainState] = useState<Curtain>("down");
 
   const enter = useCallback(() => setEntered(true), []);
   const ceremonyOver = useCallback(() => setCeremonyPlayed(true), []);
+  /* One way only: once up, the curtain never comes back down for the life of
+     the layout. */
+  const setCurtain = useCallback(
+    (next: Exclude<Curtain, "down">) =>
+      setCurtainState((current) => (current === "down" ? next : current)),
+    [],
+  );
 
   const value = useMemo(
-    () => ({ entered, enter, ceremonyPlayed, ceremonyOver }),
-    [entered, enter, ceremonyPlayed, ceremonyOver],
+    () => ({ entered, enter, ceremonyPlayed, ceremonyOver, curtain, setCurtain }),
+    [entered, enter, ceremonyPlayed, ceremonyOver, curtain, setCurtain],
   );
 
   return (

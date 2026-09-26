@@ -1,21 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   motion,
   useInView,
   useReducedMotion,
+  useMotionValue,
+  useMotionValueEvent,
   useScroll,
-  useTransform,
+  type MotionValue,
 } from "framer-motion";
+import { breath } from "@/lib/atmosphere";
+import { supportsViewTimeline } from "@/lib/scroll-timeline";
 import { EASE } from "@/components/reveal";
 import { useEntrance } from "@/components/providers/entrance";
 import { useLang } from "@/components/providers/language";
-import {
-  SIGNATURE_BOX,
-  SIGNATURE_FACE,
-  SIGNATURE_INK,
-} from "@/components/grand-club";
+import { RisingLockup } from "@/components/brand/rising-lockup";
 import { useFilmInView } from "@/lib/use-film";
 import { useScrollLock } from "@/lib/scroll-lock";
 import { useCoarsePointer } from "@/lib/use-media";
@@ -23,22 +23,28 @@ import { site } from "@/lib/site";
 
 type Phase = "atmosphere" | "revealing" | "done";
 
-const LETTERS = site.name.toUpperCase().split("");
-
-/* The three beats of the mark, in seconds after the first scroll intent. */
-const T_TAGLINE = 0.25;
-/* The signature's own hairlines draw while it is still landing, and are done
-   by the time the town's rules begin — one gesture, not two. */
-const T_TAGLINE_RULES = 0.6;
-const T_NAME = 0.85;
+/* The three beats of the mark, in seconds after the first scroll intent: the
+   word rises letter by letter, HYPERCLUB lands under it, and the town is
+   framed last. */
+const T_NAME = 0.35;
+const T_LINE = 1.35;
+/* A light crosses the word as it becomes readable — on the same `revealed`
+   flag and the same clock as the letters, never on mount. It leaves from well
+   clear of the P, so it meets each letter after that letter has landed: the P
+   at about 1.2s, the E at about 1.9s, where each is up by 0.8s into its own
+   rise. Clear of the E before the page lets go at REVEAL_MS. */
+const T_SWEEP = 0.75;
 const T_RULES = 2.0;
 const T_TOWN = 2.35;
 const REVEAL_MS = 3300;
+/* A screen narrower than the portrait film — see `filmSrc` below. */
+const PORTRAIT = "(max-aspect-ratio: 2/3)";
 /* If no one moves, the house opens the doors itself. */
 const FALLBACK_MS = 4600;
 
 export default function Hero() {
-  const { entered, enter, ceremonyPlayed, ceremonyOver } = useEntrance();
+  const { entered, enter, ceremonyPlayed, ceremonyOver, curtain } =
+    useEntrance();
 
   /* THE CEREMONY IS PLAYED ON THE WAY IN, NOT EVERY TIME THE VISITOR COMES
      BACK TO THE FRONT ROOM.
@@ -56,20 +62,63 @@ export default function Hero() {
      must not: it is the difference between "the mark is finished" and "the
      mark was already finished before this page was even built". */
   const [returning] = useState(() => ceremonyPlayed);
+  /* WHETHER THIS HERO WAS BUILT UNDER THE CURTAIN — components/site-loader.
+     Kept as it was at mount, like `returning`: a home page reached later in
+     the visit, after the curtain lifted on some other page, has its ordinary
+     ceremony and waits for a scroll as it always did. */
+  const [underCurtain] = useState(() => curtain === "down");
   const reduced = useReducedMotion();
   const sectionRef = useRef<HTMLElement>(null);
   /* The hero film is the one video on this page that is worth having ready
      before it is asked for — but it is still stopped once it has scrolled
      away, which on the home page is most of the visit. */
   const film = useFilmInView<HTMLVideoElement>(!reduced);
+  /* A PORTRAIT SCREEN IS GIVEN A PORTRAIT FILM.
+   *
+   * The film is 1284×1080, and on a phone held upright `object-cover` shows
+   * barely two fifths of its width — the decoder was producing, at fifty frames
+   * a second, well over twice the pixels that ever reached the screen.
+   * hero-mobile.mp4 is the centre 720×1080 of the same master at the same frame
+   * rate, which is everything a screen narrower than 2:3 can show. Measured
+   * against the master over that region it scores slightly higher than the
+   * wide file does (SSIM 0.991 against 0.990), at two thirds of the bytes and
+   * 44% of the pixels per frame.
+   *
+   * CHOSEN HERE, ONCE, AND NOT WITH <source media>. The media attribute is the
+   * declarative way to say this, and Chrome keeps a media-query listener alive
+   * for every <source> that carries one — including after the element has left
+   * the document. Measured across repeated visits to the home page, that
+   * listener held every unmounted home page in memory, all five hundred nodes
+   * and every animation on them, about two megabytes a round trip. So the
+   * question is asked of the window instead: nothing on the server (the poster
+   * is the first frame, and the loader waits for it), the answer on the first
+   * client render. One file is fetched, and nothing is left listening. */
+  const filmSrc = useSyncExternalStore(
+    noSubscription,
+    () =>
+      window.matchMedia(PORTRAIT).matches
+        ? site.heroVideoPortrait
+        : site.heroVideo,
+    () => undefined,
+  );
   const phone = useCoarsePointer();
   /* The room only breathes while somebody is in it. Left to itself the haze
      kept its loop for the whole visit, six sections below the fold. */
   const onScreen = useInView(sectionRef);
   const { t } = useLang();
 
-  /* Reduced motion skips the ceremony entirely — derived, never set. */
-  const effectivePhase: Phase = reduced ? "done" : phase;
+  /* Reduced motion skips the ceremony entirely — derived, never set.
+   *
+   * AND THE CURTAIN IS THE FIRST SCROLL. When the loader played, its lifting
+   * is the visitor's first sight of the room, and asking them to scroll before
+   * the mark appears would be a second wait straight after the first. So the
+   * mark begins drawing as the curtain fades — one entrance, not two. Derived
+   * rather than set, for the same reason as reduced motion. */
+  const effectivePhase: Phase = reduced
+    ? "done"
+    : phase === "atmosphere" && underCurtain && curtain === "lifted"
+      ? "revealing"
+      : phase;
 
   /* The page is held still until the mark has finished revealing — by
      lib/scroll-lock.ts, which holds it the same way whether or not a smooth
@@ -84,9 +133,11 @@ export default function Hero() {
     if (!ceremonyPlayed) ceremonyOver();
   }, [effectivePhase, entered, enter, ceremonyPlayed, ceremonyOver]);
 
-  /* The first scroll intent freezes the room and lights the mark. */
+  /* The first scroll intent freezes the room and lights the mark. Nothing is
+     listened for, and no fallback clock runs, while the curtain is down: a
+     touch on the loader is not a visitor asking for the doors to open. */
   useEffect(() => {
-    if (effectivePhase !== "atmosphere") return;
+    if (effectivePhase !== "atmosphere" || curtain === "down") return;
     const trigger = () => setPhase("revealing");
     const onWheel = (e: WheelEvent) => {
       if (e.deltaY > 2) trigger();
@@ -104,21 +155,17 @@ export default function Hero() {
       window.removeEventListener("keydown", onKey);
       window.clearTimeout(t);
     };
-  }, [effectivePhase]);
+  }, [effectivePhase, curtain]);
 
+  const revealing = effectivePhase === "revealing";
   useEffect(() => {
-    if (phase !== "revealing") return;
+    if (!revealing) return;
     const t = window.setTimeout(() => setPhase("done"), REVEAL_MS);
     return () => window.clearTimeout(t);
-  }, [phase]);
-
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ["start start", "end start"],
-  });
-  const parallaxY = useTransform(scrollYProgress, [0, 1], ["0%", "10%"]);
+  }, [revealing]);
 
   const revealed = effectivePhase !== "atmosphere";
+  const invite = effectivePhase === "atmosphere" && curtain !== "down";
 
   /* ─── WHETHER THE CEREMONY IS BEING PERFORMED AT ALL ──────────────────────
    *
@@ -157,8 +204,8 @@ export default function Hero() {
   return (
     <section
       ref={sectionRef}
-      className="relative h-[100svh] overflow-hidden bg-night"
-      aria-label={`${site.tagline} ${site.name} ${site.town}`}
+      className="hero-host relative h-[100svh] overflow-hidden bg-night"
+      aria-label={`${site.name} ${site.tagline} ${site.town}`}
     >
       {/* THE FIRST FRAME IS ASKED FOR WITH THE DOCUMENT, NOT AFTER IT.
        *
@@ -176,10 +223,7 @@ export default function Hero() {
         href="/images/hero.jpg"
         fetchPriority="high"
       />
-      <motion.div
-        className="absolute inset-0"
-        style={{ y: reduced ? undefined : parallaxY }}
-      >
+      <Parallax target={sectionRef} still={!!reduced}>
         {/* atmosphere: an almost imperceptible breath. On the first scroll the
             breathing stops — the room freezes — and one long push-in begins. */}
         <motion.div
@@ -197,7 +241,6 @@ export default function Hero() {
               room is never empty while the file arrives. */}
           <video
             ref={film}
-            src={site.heroVideo}
             poster="/images/hero.jpg"
             muted
             loop
@@ -211,9 +254,10 @@ export default function Hero() {
             preload={phone ? "metadata" : "auto"}
             aria-hidden="true"
             className="img-grade absolute inset-0 h-full w-full object-cover object-center"
+            src={filmSrc}
           />
         </motion.div>
-      </motion.div>
+      </Parallax>
 
       {/* the club's own lights: violet washing the upper corners, a warm pool
           low and centre where the floor is */}
@@ -228,24 +272,16 @@ export default function Hero() {
 
       {/* drifting haze — barely there, keeps the room alive */}
       {!reduced && (
-        <motion.div
-          className="absolute inset-0"
+        /* On the compositor, and paused mid-breath once the hero has scrolled
+           away — see `.atmo-loop` in app/globals.css. */
+        <div
+          className="atmo-loop absolute inset-0"
+          data-idle={onScreen ? undefined : "true"}
           style={{
             background:
               "radial-gradient(60% 45% at 50% 72%, rgba(200,164,93,0.2), transparent 70%)",
+            ...breath({ duration: 11, opacity: [0.35, 0.8], rest: 0.6 }),
           }}
-          animate={
-            onScreen
-              ? {
-                  opacity: [0.35, 0.8, 0.35],
-                  transition: {
-                    duration: 11,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  },
-                }
-              : { opacity: 0.6, transition: { duration: 0 } }
-          }
           aria-hidden="true"
         />
       )}
@@ -292,90 +328,23 @@ export default function Hero() {
 
       <h1 className="sr-only">{t("hero.heading")}</h1>
 
-      {/* THE MARK — grand club / plitvice / inđija */}
+      {/* THE MARK — PL▷TWICE / HYPERCLUB, then the town */}
       <div className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-night-ink">
         <div className="flex flex-col items-center">
-          {/* The tagline is signed rather than set, at every width: a script
-              hand above the mark, with its own pair of hairlines — shorter than
-              the town's, so the signature is framed without being announced.
-              The face and the rules are the site's, from components/grand-club.
-
-              The mask has to be cut wide of the script on both sides. Great
-              Vibes carries about 1.5em of ink between its ascent and descent,
-              so an ordinary line box leaves the swashes of the G and the C
-              standing proud of it and the clip shears their tops. The line box
-              is opened up to hold the ink, and the frame is given a head as
-              well as a foot — the script climbs above its ascenders and
-              descends below its baseline. */}
-          <div
-            className="flex items-center justify-center gap-4"
-            aria-hidden="true"
-          >
-            <motion.span
-              initial={false}
-              animate={{ scaleX: revealed ? 1 : 0 }}
-              transition={{
-                duration: d(1.4),
-                delay: d(T_TAGLINE_RULES),
-                ease: EASE,
-              }}
-              className="h-px w-[11vw] max-w-24 origin-right bg-gradient-to-l from-gold/60 to-transparent"
-            />
-            <div className={`overflow-hidden ${SIGNATURE_INK}`}>
-              <motion.p
-                variants={rail}
-                initial={still ? false : "hidden"}
-                animate={revealed ? "show" : "hidden"}
-                custom={d(T_TAGLINE)}
-                className={`${SIGNATURE_FACE} ${SIGNATURE_BOX} text-[clamp(1.5rem,3.2vw,2.5rem)] text-gold-light/85`}
-              >
-                {site.tagline}
-              </motion.p>
-            </div>
-            <motion.span
-              initial={false}
-              animate={{ scaleX: revealed ? 1 : 0 }}
-              transition={{
-                duration: d(1.4),
-                delay: d(T_TAGLINE_RULES),
-                ease: EASE,
-              }}
-              className="h-px w-[11vw] max-w-24 origin-left bg-gradient-to-r from-gold/60 to-transparent"
-            />
-          </div>
-
-          <div className="overflow-hidden py-[0.06em]" aria-hidden="true">
-            <motion.div
-              className="flex"
-              initial={still ? false : "hidden"}
-              animate={revealed ? "show" : "hidden"}
-              variants={{
-                hidden: {},
-                show: {
-                  transition: {
-                    staggerChildren: d(0.07),
-                    delayChildren: d(T_NAME),
-                  },
-                },
-              }}
-            >
-              {LETTERS.map((letter, i) => (
-                <motion.span
-                  key={i}
-                  className="inline-block font-serif text-[clamp(3.25rem,17vw,13rem)] uppercase leading-[1.06] tracking-[0.02em] [text-shadow:0_0_60px_rgba(232,216,168,0.22)]"
-                  variants={{
-                    hidden: { y: "115%" },
-                    show: {
-                      y: "0%",
-                      transition: { duration: still ? 0 : 1.15, ease: EASE },
-                    },
-                  }}
-                >
-                  {letter}
-                </motion.span>
-              ))}
-            </motion.div>
-          </div>
+          {/* The client's lockup, raised the way the name always was — see
+              components/brand/rising-lockup.tsx. The light behind the ink is a
+              desk-only filter: on a phone this is the largest layer on the
+              screen and it is repainted every frame of the rise. */}
+          <RisingLockup
+            id="hero-mark"
+            decorative
+            play={revealed}
+            still={still}
+            delay={T_NAME}
+            lineAt={T_LINE}
+            sweepAt={T_SWEEP}
+            className="w-[min(86vw,60rem)] md:w-[min(76vw,56rem)] md:[filter:drop-shadow(0_0_36px_rgba(232,216,168,0.2))]"
+          />
 
           {/* hairlines draw outward, framing the town rail */}
           <div className="mt-6 flex w-full items-center justify-center gap-5 sm:mt-8">
@@ -409,13 +378,14 @@ export default function Hero() {
       </div>
 
       <div className="absolute inset-x-0 bottom-10 z-10 flex flex-col items-center gap-4 text-gold/80">
+        {/* The invitation to scroll is only made when a scroll is what opens
+            the doors. Under the curtain nothing is asked, and when the curtain
+            has just lifted the mark is already on its way. */}
         <motion.span
           initial={false}
-          animate={{
-            opacity: effectivePhase === "atmosphere" ? [0.35, 0.85, 0.35] : 0,
-          }}
+          animate={{ opacity: invite ? [0.35, 0.85, 0.35] : 0 }}
           transition={
-            effectivePhase === "atmosphere"
+            invite
               ? { duration: 2.8, repeat: Infinity, ease: "easeInOut" }
               : { duration: 0.6 }
           }
@@ -433,4 +403,74 @@ export default function Hero() {
       </div>
     </section>
   );
+}
+
+/* THE ROOM SINKS AS THE PAGE LEAVES IT — 0 to 10% of its own height between
+ * the hero filling the screen and the hero having left it.
+ *
+ * On a desk that is Motion against the section, as it always was. On a phone
+ * the page is scrolled by the compositor, and a transform written from
+ * JavaScript arrives a frame or more after the scroll it answers; on the
+ * largest and most-watched layer on the site that reads as the film juddering
+ * against the type. So a phone that can run scroll-driven animations is given
+ * the same travel on the section's own view timeline (`.hero-host` in
+ * app/globals.css), where it moves in the same frame as the page — and it
+ * never subscribes to the scroll at all. `exit 0%` → `exit 100%` is
+ * Motion's ["start start", "end start"]. */
+const noSubscription = () => () => {};
+
+function Parallax({
+  target,
+  still,
+  children,
+}: {
+  target: React.RefObject<HTMLElement | null>;
+  still: boolean;
+  children: React.ReactNode;
+}) {
+  const coarse = useCoarsePointer();
+  /* false on the server and through hydration, the browser’s answer after */
+  const timeline = useSyncExternalStore(
+    noSubscription,
+    supportsViewTimeline,
+    () => false,
+  );
+  const compositor = !still && coarse && timeline;
+
+  /* ONE ELEMENT WHICHEVER WAY IT IS DRIVEN. The film lives inside this, and
+     swapping the wrapper for another component would build a new <video> —
+     one the film observer in lib/use-film.ts has never seen and would never
+     play. So the driver is a sibling that comes and goes, and the wrapper only
+     changes a class. */
+  const y = useMotionValue("0%");
+  useEffect(() => {
+    if (compositor) y.set("0%");
+  }, [compositor, y]);
+
+  return (
+    <motion.div
+      className={`absolute inset-0 ${compositor ? "hero-parallax" : ""}`}
+      style={still ? undefined : { y }}
+    >
+      {still || compositor ? null : <ScrollDriver target={target} y={y} />}
+      {children}
+    </motion.div>
+  );
+}
+
+function ScrollDriver({
+  target,
+  y,
+}: {
+  target: React.RefObject<HTMLElement | null>;
+  y: MotionValue<string>;
+}) {
+  const { scrollYProgress } = useScroll({
+    target,
+    offset: ["start start", "end start"],
+  });
+  useMotionValueEvent(scrollYProgress, "change", (progress) => {
+    y.set(`${progress * 10}%`);
+  });
+  return null;
 }

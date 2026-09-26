@@ -392,6 +392,10 @@ const DEPTH = 0.075;
 /* The site keeps one media-query hook — see lib/use-media.ts. */
 const useWide = useWideScreen;
 
+/* How far past the frame, in vw, a piece is held once the camera has left it:
+   the frame is 0–100vw, so a piece parks 50vw clear of either edge. */
+const PARKED = 150;
+
 /* ─────────────────────────── the camera itself ─────────────────────── */
 
 /* One piece of the wall.
@@ -422,10 +426,23 @@ function Piece({
   style?: React.CSSProperties;
   children: React.ReactNode;
 }) {
-  const x = useTransform(
-    camera,
-    (c) => `${-c + (c - stop) * depth * DEPTH}vw`,
-  );
+  /* A PIECE OFF CAMERA IS PARKED, NOT CARRIED. The wall is nearly five
+     screens wide and the camera looks at one of them, but every piece used to
+     be handed a new transform on every frame of the journey — a dozen style
+     writes a frame, most of them for things several screens away. Past a
+     generous margin either side of the frame the piece's position is held at
+     that margin instead, so its value stops changing and Motion stops writing
+     it. The margin is wider than anything a piece carries outside its own box,
+     and the stage clips, so a parked piece is exactly as invisible as it was
+     travelling; the moment it comes back within reach it is back on the
+     camera's own line, to the pixel. */
+  const x = useTransform(camera, (c) => {
+    const shift = -c + (c - stop) * depth * DEPTH;
+    const left = at.x + shift;
+    if (left > PARKED) return `${PARKED - at.x}vw`;
+    if (left + at.w < -PARKED + 100) return `${-PARKED + 100 - at.w - at.x}vw`;
+    return `${shift}vw`;
+  });
 
   return (
     <motion.div
@@ -1548,7 +1565,12 @@ function Seams({ progress }: { progress: MotionValue<number> }) {
  * visible instrument. */
 function Rail({ progress }: { progress: MotionValue<number> }) {
   const opacity = useTransform(progress, [0, 0.035, 0.955, 1], [0, 1, 1, 0]);
-  const left = useTransform(progress, (p) => `${p * 100}%`);
+  /* THE TICK IS CARRIED, NOT PLACED. It used to be positioned with `left`,
+     which is a layout property: every frame of the archive's scroll laid the
+     rail out again. It now rides a full-width track moved by transform — a
+     percentage of that track is a percentage of the rail, so the tick stands
+     at exactly the point `left` put it — and the compositor moves it. */
+  const along = useTransform(progress, (p) => `${p * 100}%`);
 
   return (
     <motion.div
@@ -1563,9 +1585,11 @@ function Rail({ progress }: { progress: MotionValue<number> }) {
           className="absolute inset-x-0 top-0 h-px origin-left bg-gold/50"
         />
         <motion.div
-          style={{ left }}
-          className="absolute top-[-2.5px] h-[6px] w-px -translate-x-1/2 bg-gold-light/85"
-        />
+          style={{ x: along }}
+          className="absolute inset-x-0 top-[-2.5px] h-[6px]"
+        >
+          <div className="h-full w-px -translate-x-1/2 bg-gold-light/85" />
+        </motion.div>
       </div>
     </motion.div>
   );

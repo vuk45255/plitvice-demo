@@ -8,6 +8,7 @@ import {
   useTransform,
 } from "framer-motion";
 import { COARSE_QUERY, useMediaQuery } from "@/lib/use-media";
+import { supportsViewTimeline } from "@/lib/scroll-timeline";
 
 /* The word standing in the atmosphere of a single section.
 
@@ -220,13 +221,6 @@ function useTravel(track: RefObject<HTMLDivElement | null>) {
 function useCompositorDrift() {
   const coarse = useMediaQuery(COARSE_QUERY);
   return coarse && supportsViewTimeline();
-}
-
-let viewTimelines: boolean | undefined;
-
-function supportsViewTimeline() {
-  viewTimelines ??= CSS.supports("animation-timeline", "view()");
-  return viewTimelines;
 }
 
 /* Size falls out of the letter count — roughly 0.62em of advance per glyph —

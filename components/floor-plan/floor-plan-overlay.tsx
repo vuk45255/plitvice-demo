@@ -6,10 +6,19 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { EASE } from "@/components/reveal";
 import { BookingPanel } from "@/components/floor-plan/booking-panel";
 import { FloorPlan } from "@/components/floor-plan/floor-plan";
+import { FloorSelector } from "@/components/floor-plan/floor-selector";
 import { FloorPlanTooltip } from "@/components/floor-plan/floor-plan-tooltip";
 import { INK } from "@/components/floor-plan/plan-ink";
 import { useLang } from "@/components/providers/language";
 import { SEAT_KINDS, type SeatType } from "@/lib/floor-plan";
+import {
+  FLOOR_LABELS,
+  FLOOR_PHONE_OPEN,
+  architectureFor,
+  availableFloors,
+  floorOfSeatId,
+  type FloorId,
+} from "@/lib/floors";
 import { useScrollLock } from "@/lib/scroll-lock";
 import {
   applySnapshot,
@@ -95,6 +104,25 @@ export function FloorPlanOverlay({
   const closeRef = useRef<HTMLButtonElement>(null);
 
   const [tooltip, setTooltip] = useState<{ seat: Seat; x: number; y: number }>();
+
+  /* ── WHICH LEVEL IS ON SCREEN ───────────────────────────────────────────
+   *
+   * A view, and nothing more. The reservation does not live here — it lives in
+   * useTableBooking above the map — so changing floors cannot lose a table, a
+   * party size or a half-typed telephone number, and it never touches the
+   * server: the snapshot below already covers the whole building.
+   *
+   * It opens on whichever level the guest's table is already on, so somebody
+   * who closed the room on a second-floor separe and came back finds it lit
+   * rather than having to go looking for it. */
+  /* The levels the club has drawn — one until somebody draws the upstairs in
+     /floor-plan-editor. Not a setting and not a night's option: a level exists
+     when it has tables on it. See lib/floors.ts. */
+  const floors = availableFloors();
+  const [floor, setFloor] = useState<FloorId>(() => {
+    const held = booking.seat ? floorOfSeatId(booking.seat.id) : undefined;
+    return held && floors.includes(held) ? held : (floors[0] ?? 1);
+  });
 
   /* ── THE ROOM AS IT IS THIS SECOND ──────────────────────────────────────
    *
@@ -183,14 +211,29 @@ export function FloorPlanOverlay({
     };
   }, [refresh]);
 
-  /* The plan, coloured by the answer. Geometry is never touched by this — see
-     applySnapshot in lib/floor-availability.ts. */
-  const seats = useMemo(
+  /* The whole building, coloured by the answer. Geometry is never touched by
+     this — see applySnapshot in lib/floor-availability.ts. */
+  const building = useMemo(
     () => applySnapshot(seatsForEvent(slug), snapshot),
     [slug, snapshot],
   );
 
+  /* …and the level being drawn. Filtered here rather than fetched here: one
+     poll answers for both floors, and a guest switching levels must not have
+     to wait four seconds to find out what is free upstairs. */
+  const seats = useMemo(
+    () => building.filter((s) => s.floor === floor && floors.includes(s.floor)),
+    [building, floor, floors],
+  );
+
   const { seat, step } = booking;
+
+  /* THE CHOSEN TABLE IS ALWAYS ON THE LEVEL BEING SHOWN, and that is true by
+     construction rather than by correction: the only way to choose one is to
+     touch it, and the only tables drawn are this level's. A guest who comes
+     back to the room with a table already held opens on its level — see the
+     initial state above — and a guest who then changes level keeps the table
+     they hold, because the reservation lives above this component. */
 
   /* The page underneath is held still while the map has the screen — the same
      hold the header's menu uses. See lib/scroll-lock.ts. */
@@ -229,13 +272,24 @@ export function FloorPlanOverlay({
     >
       {/* the way out, and what the guest is looking at. The legend is a desk
           luxury: a phone needs the floor more than it needs the key to it. */}
-      <div className="flex shrink-0 items-start justify-between gap-6 px-5 pb-3 pt-5 md:px-10 md:pb-6 md:pt-9">
-        <div>
+      <div className="flex shrink-0 items-start justify-between gap-4 px-5 pb-3 pt-5 md:gap-6 md:px-10 md:pb-6 md:pt-9">
+        <div className="min-w-0">
           <p className="rail rail-night">{t("floor.pick")}</p>
           <div className="mt-4 hidden md:block">
             <Legend />
           </div>
         </div>
+
+        {/* The level, then the way out. On a phone the two sit together at the
+            top right, which is the only part of the screen the map is not
+            using and the part a thumb reaches without moving the hand. */}
+        <FloorSelector
+          floor={floor}
+          onChange={setFloor}
+          floors={floors}
+          labels={{ 1: t(FLOOR_LABELS[1]), 2: t(FLOOR_LABELS[2]) }}
+          title={t("floor.levelPick")}
+        />
 
         <button
           ref={closeRef}
@@ -254,7 +308,15 @@ export function FloorPlanOverlay({
       {/* the room takes everything that is left */}
       <div className="relative min-h-0 flex-1">
         <FloorPlan
+          /* A FRESH CAMERA PER LEVEL, and that is what the key is for: the two
+             floors are different rooms, and carrying a zoom and a pan from one
+             into the other drops the guest into a corner of a building they
+             have not seen yet. Remounting opens the new level the way the map
+             always opens — whole on a desk, part-way in on a phone. */
+          key={floor}
           seats={seats}
+          architecture={architectureFor(floor)}
+          phoneOpen={FLOOR_PHONE_OPEN[floor]}
           selectedId={seat?.id}
           onSelect={(chosen) => {
             booking.inspect(chosen);

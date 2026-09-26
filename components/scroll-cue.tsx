@@ -1,7 +1,15 @@
 "use client";
 
-import { motion, useReducedMotion, type MotionValue } from "framer-motion";
+import { useRef, useState } from "react";
+import {
+  motion,
+  useInView,
+  useMotionValueEvent,
+  useMotionValue,
+  type MotionValue,
+} from "framer-motion";
 import { useLang } from "@/components/providers/language";
+import { breath } from "@/lib/atmosphere";
 
 /* THE CUE UNDER A SCREEN THAT LOOKS LIKE THE END OF THE PAGE.
  *
@@ -48,26 +56,26 @@ export function ScrollCue({
   className?: string;
 }) {
   const { t } = useLang();
-  const reduced = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
 
-  /* One slow breath, and a drift of five pixels down into the chevron. Slow
-     enough that it is never caught moving — the hero's cue keeps the same
-     unhurried clock. Reduced motion gets the cue standing still: it is the
-     shape that says "there is more", not the movement. */
-  const breathe = reduced
-    ? undefined
-    : {
-        opacity: [0.55, 1, 0.55],
-        y: [0, 5, 0],
-        transition: {
-          duration: 3.6,
-          repeat: Infinity,
-          ease: "easeInOut" as const,
-        },
-      };
+  /* THE BREATH SLEEPS WHEN NOBODY CAN SEE IT. It used to be a Motion loop
+     that ran for as long as the page was open — on /o-nama there are two of
+     these, and both were rewriting their styles every frame for the whole
+     visit, including the whole of the archive's pinned stage where this one
+     sits at opacity 0. It is CSS on the compositor now (`.atmo-loop`), and it
+     is paused while the cue is off screen or faded out. */
+  const onScreen = useInView(ref);
+  const none = useMotionValue(1);
+  const [shown, setShown] = useState(true);
+  useMotionValueEvent(opacity ?? none, "change", (value) => {
+    const now = value > 0.001;
+    if (now !== shown) setShown(now);
+  });
+  const idle = onScreen && shown ? undefined : "true";
 
   return (
     <motion.div
+      ref={ref}
       style={{ opacity, bottom: FOOT }}
       className={`pointer-events-none absolute inset-x-0 flex flex-col items-center gap-3 text-gold/80 ${className}`}
       aria-hidden="true"
@@ -78,10 +86,15 @@ export function ScrollCue({
         {t("common.scrollOn")}
       </span>
 
-      {/* The line and its head move together — one gesture, not two. */}
-      <motion.span
-        className="flex flex-col items-center gap-1.5"
-        animate={breathe}
+      {/* The line and its head move together — one gesture, not two. One
+          slow breath, and a drift of five pixels down into the chevron. Slow
+          enough that it is never caught moving — the hero's cue keeps the
+          same unhurried clock. Reduced motion gets the cue standing still: it
+          is the shape that says "there is more", not the movement. */}
+      <span
+        className="atmo-loop flex flex-col items-center gap-1.5"
+        data-idle={idle}
+        style={breath({ duration: 3.6, opacity: [0.55, 1], y: [0, 5], rest: 1 })}
       >
         <span
           className="block h-8 w-px bg-gradient-to-b from-transparent to-gold/65 md:h-10"
@@ -98,7 +111,7 @@ export function ScrollCue({
         >
           <path d="M0.5 4 L4 7.5 L7.5 4" />
         </svg>
-      </motion.span>
+      </span>
     </motion.div>
   );
 }

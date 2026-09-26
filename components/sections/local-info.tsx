@@ -5,6 +5,7 @@ import { flushSync } from "react-dom";
 import Link from "next/link";
 import {
   motion,
+  useInView,
   useMotionValue,
   useMotionValueEvent,
   useReducedMotion,
@@ -24,6 +25,7 @@ import {
 } from "@/components/local-info/info-intro";
 import { InfoGrid } from "@/components/local-info/info-grid";
 import { useLang } from "@/components/providers/language";
+import { breath } from "@/lib/atmosphere";
 import { INFO, infoHref } from "@/lib/local-info";
 
 /* The concierge — the last room on the home page, and the only one that is
@@ -176,10 +178,23 @@ export function LocalInfo() {
    * intermediate values simply is not there — the first thing the handler ever
    * sees is `1`, with no history to tell it whether the story was read or
    * merely skipped past. A single subtraction against the track's own box has
-   * no such gap in it. The listener is passive, does two comparisons, and takes
-   * itself off the moment it has fired. */
+   * no such gap in it.
+   *
+   * AND IT IS ASKED ONLY WHEN THE ANSWER CAN HAVE CHANGED. It used to be asked
+   * on every `scroll` event of the visit, and reading the track's box makes
+   * the browser bring style and layout up to date on the spot — which, on a
+   * page whose background layers ride the scroll, meant a full recalculation
+   * forced out of turn on every frame of every scroll, the whole length of the
+   * home page. Profiled, it was a second of main thread in a twenty-second
+   * scroll. The condition it waits for is the track's foot reaching the foot of
+   * the screen, which is precisely a one-pixel box at that foot starting to
+   * intersect the viewport — or, for a page restored or jumped below it, being
+   * above the viewport when first observed. An IntersectionObserver on that
+   * pixel says exactly those things, in the same frame, without forcing
+   * anything; the same two comparisons then run against the real box, once. */
   const [told, setTold] = useState(false);
   const latched = useRef(false);
+  const foot = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (reduced || told) return;
@@ -214,13 +229,22 @@ export function LocalInfo() {
       else window.scrollTo(0, held);
     };
 
-    window.addEventListener("scroll", settle, { passive: true });
+    const watcher = new IntersectionObserver(() => settle());
+    if (foot.current) watcher.observe(foot.current);
+    /* The one move the pixel cannot see: a jump straight over it, from above
+       the section to below it in a single step, where it is off screen before
+       and off screen after. `scrollend` arrives once when any scroll has come
+       to rest — once a gesture, not once a frame — and asks the same question. */
+    window.addEventListener("scrollend", settle, { passive: true });
     /* And once now, on a microtask, for a page restored below the section: the
        story is already behind that visitor and the section should be a section
        rather than five thousand pixels of climb. */
     queueMicrotask(settle);
 
-    return () => window.removeEventListener("scroll", settle);
+    return () => {
+      watcher.disconnect();
+      window.removeEventListener("scrollend", settle);
+    };
   }, [reduced, told, lenis]);
 
   /* Told, or never going to be told: either way the grid is simply present. */
@@ -294,6 +318,13 @@ export function LocalInfo() {
         <div
           id="info-cards"
           className="pointer-events-none absolute inset-x-0 bottom-0 h-[100svh]"
+          aria-hidden="true"
+        />
+        {/* The track's foot, watched for the moment the story is told — see
+            `settle` above. */}
+        <div
+          ref={foot}
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-px"
           aria-hidden="true"
         />
         <div
@@ -499,11 +530,27 @@ function SceneDoor({ index }: { index: number }) {
  * asked for less of it. */
 function SceneCue({ exit }: { exit: MotionValue<number> }) {
   const { t } = useLang();
-  const reduced = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
   const opacity = useTransform(exit, [0, 0.22], [1, 0]);
+
+  /* THE BREATH IS CSS, AND IT SLEEPS. This was a Motion loop, and it was the
+     single busiest element on the home page: the scene is mounted from the
+     first frame, so the loop rewrote its style every frame for the entire
+     visit — at the top of the page, five screens above the scene, measured at
+     one write per display refresh. It runs on the compositor now
+     (`.atmo-loop` in app/globals.css) and only while the cue is both on
+     screen and not yet faded out with the question. */
+  const onScreen = useInView(ref);
+  const [shown, setShown] = useState(true);
+  useMotionValueEvent(opacity, "change", (value) => {
+    const now = value > 0.001;
+    if (now !== shown) setShown(now);
+  });
+  const idle = onScreen && shown ? undefined : "true";
 
   return (
     <motion.div
+      ref={ref}
       style={{ opacity }}
       className="pointer-events-none absolute bottom-0 left-0 z-30 select-none pb-[max(1.75rem,env(safe-area-inset-bottom))] pl-6 md:pb-12 md:pl-12 xl:pl-20"
       aria-hidden="true"
@@ -513,14 +560,10 @@ function SceneCue({ exit }: { exit: MotionValue<number> }) {
           {t("info.cueScroll")}
         </span>
 
-        <motion.span
-          className="flex flex-col items-center gap-1.5"
-          animate={
-            reduced
-              ? undefined
-              : { y: [0, 6, 0], opacity: [0.55, 1, 0.55] }
-          }
-          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+        <span
+          className="atmo-loop flex flex-col items-center gap-1.5"
+          data-idle={idle}
+          style={breath({ duration: 5, opacity: [0.55, 1], y: [0, 6], rest: 1 })}
         >
           <span className="block h-8 w-px bg-gradient-to-b from-gold/55 to-transparent md:h-12" />
           <svg
@@ -536,7 +579,7 @@ function SceneCue({ exit }: { exit: MotionValue<number> }) {
               strokeLinejoin="round"
             />
           </svg>
-        </motion.span>
+        </span>
 
         {/* The second half of it, and only where there is room for a second
             half — a phone gets the direction and nothing else. */}
@@ -556,13 +599,26 @@ function Backdrop({
 }) {
   const opacity = useTransform(enter, [0.14, 0.5], [0, 1]);
 
+  /* THE LAMPS ARE NOT LIT IN A DARK ROOM. This backdrop stands at opacity 0
+     for the whole of the pinned story above it — five screens of scrolling —
+     and its beams used to cross the room the entire time, because the rig
+     only asks whether its box is near the viewport, and a pinned scene always
+     is. It is told instead, off the same value that fades it in: the moment
+     the backdrop is about to be seen the beams are travelling, and they pick
+     up from where they stopped. */
+  const [dark, setDark] = useState(() => enter.get() < 0.14);
+  useMotionValueEvent(enter, "change", (value) => {
+    const now = value < 0.14;
+    if (now !== dark) setDark(now);
+  });
+
   return (
     <motion.div
       style={{ opacity }}
       className="pointer-events-none absolute inset-0"
     >
       <SectionWord word="Inđija" speed={0.72} pinned />
-      <LightLeaks intensity="soft" fadeOut />
+      <LightLeaks intensity="soft" fadeOut paused={dark} />
     </motion.div>
   );
 }

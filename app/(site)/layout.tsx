@@ -4,6 +4,7 @@ import { EntranceProvider } from "@/components/providers/entrance";
 import { LanguageProvider } from "@/components/providers/language";
 import { MixProvider } from "@/components/providers/mix";
 import { VinylPlayer } from "@/components/mix/vinyl-player";
+import { SiteLoader } from "@/components/site-loader";
 
 /* Everything the visitor came for — and everything that costs something.
  *
@@ -31,8 +32,16 @@ export default function SiteLayout({ children }: LayoutProps<"/">) {
               router swaps out, so internal navigation never interrupts what is
               playing. */}
           <MixProvider>
-            <EntranceProvider>{children}</EntranceProvider>
-            <VinylPlayer />
+            {/* The curtain is the first thing in the site, and it lives here
+                for the same reason the mix does: above the router, so it is
+                shown on the first arrival and never on a navigation. The
+                record is inside the entrance too, so that it waits for the
+                curtain before sliding in — see components/site-loader.tsx. */}
+            <EntranceProvider>
+              <SiteLoader />
+              {children}
+              <VinylPlayer />
+            </EntranceProvider>
           </MixProvider>
         </LanguageProvider>
       </SmoothScroll>

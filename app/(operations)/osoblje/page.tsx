@@ -44,7 +44,7 @@ export default async function StaffSignInPage({
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-[24rem] flex-col justify-center px-6 py-16">
       <header className="text-center">
-        <Lockup size="xs" tone="light" />
+        <Lockup size="xs" tone="light" className="mx-auto" />
         <h1 className="mt-9 font-serif text-[clamp(1.375rem,6vw,1.75rem)] leading-tight text-night-ink">
           {t.gateTitle}
         </h1>

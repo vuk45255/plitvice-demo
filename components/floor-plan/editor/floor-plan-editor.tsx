@@ -47,6 +47,12 @@ import {
   type XY,
 } from "@/components/floor-plan/editor/editor-doc";
 import {
+  FLOORS,
+  FLOOR_REFERENCE,
+  seatsOnFloor,
+  type FloorId,
+} from "@/lib/floors";
+import {
   ROW_BAND,
   numberingCounts,
   renumberSeats,
@@ -86,7 +92,6 @@ import {
 import { seatCapacity } from "@/lib/floor-capacity";
 import {
   PLAN,
-  REFERENCE_IMAGE,
   SEAT_KINDS,
   ZONE_MARK,
   type SeatType,
@@ -150,11 +155,31 @@ const ALL_VISIBLE: Visible = {
 export function FloorPlanEditor() {
   const svgRef = useRef<SVGSVGElement>(null);
 
+  /* ═══ WHICH LEVEL OF THE CLUB IS ON THE CANVAS ══════════════════════════
+   *
+   * ONE EDITOR, TWO FLOORS. Every tool, every gesture, every panel here works
+   * on whichever level is open — there is no second editor and no reduced one,
+   * because the drawing problem is identical and a second implementation would
+   * drift from this one within a week.
+   *
+   * WHAT THE LEVEL ACTUALLY CHANGES is three things and no more:
+   *   · which arrays the canvas is loaded from (lib/floor-plan.ts, or
+   *     lib/floor-plan-nivo2.ts — see `loadDoc`),
+   *   · which localStorage keys the draft and the snapshots use, so saving one
+   *     level can never touch the other (see editor-storage.ts),
+   *   · what a new table's id is prefixed with (`L2-` upstairs, nothing on the
+   *     ground floor, where every booking ever taken already lives).
+   *
+   * Switching is `openFloor` below: the level on screen is written to its own
+   * draft first, then the other level is read from its own draft or, failing
+   * that, from code. Nothing is converted and nothing is merged. */
+  const [floor, setFloor] = useState<FloorId>(1);
+
   /* A draft traced before the zone numerals existed has none, and there is no
      way to draw one that is not there — so every document that arrives is
-     given the four defaults if it has none at all. Purely additive: nothing
-     already on the plan is read, moved or replaced. */
-  const [doc, setDoc] = useState<EditorDoc>(() => withZoneMarks(loadDoc()));
+     given that level's defaults if it has none at all. Purely additive:
+     nothing already on the plan is read, moved or replaced. */
+  const [doc, setDoc] = useState<EditorDoc>(() => withZoneMarks(loadDoc(1), 1));
   const [past, setPast] = useState<EditorDoc[]>([]);
   const [future, setFuture] = useState<EditorDoc[]>([]);
   const [sel, setSel] = useState<string[]>([]);
@@ -199,13 +224,13 @@ export function FloorPlanEditor() {
   /* Read once, as the first state rather than as a correction to it — the
      banner is then simply derived from whether a draft exists and whether it
      has been dealt with. */
-  const [draft] = useState<Envelope | null>(() => readDraft());
+  const [draft, setDraft] = useState<Envelope | null>(() => readDraft(1));
   const [draftHandled, setDraftHandled] = useState(false);
   const askRestore = draft !== null && !draftHandled;
-  const [savedAt, setSavedAt] = useState<string | null>(() => readDraft()?.savedAt ?? null);
+  const [savedAt, setSavedAt] = useState<string | null>(() => readDraft(1)?.savedAt ?? null);
   const [dirty, setDirty] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>("idle");
-  const [snapshots, setSnapshots] = useState<Snapshot[]>(() => readSnapshots());
+  const [snapshots, setSnapshots] = useState<Snapshot[]>(() => readSnapshots(1));
   const [importError, setImportError] = useState<string | null>(null);
 
   /* Replacing everything on the canvas, from a draft, a snapshot or a file.
@@ -214,15 +239,94 @@ export function FloorPlanEditor() {
   const adopt = useCallback((next: EditorDoc, at: string | null) => {
     setPast((p) => [...p, doc].slice(-HISTORY_LIMIT));
     setFuture([]);
-    setDoc(withZoneMarks(reseedUids(next)));
+    setDoc(withZoneMarks(reseedUids(next), floor));
     setSel([]);
     setDraftHandled(true);
     if (at) setSavedAt(at);
     setDirty(false);
-  }, [doc]);
+  }, [doc, floor]);
+
+  /* ═══ OPENING THE OTHER LEVEL ═══════════════════════════════════════════
+   *
+   * NOTHING IS MERGED AND NOTHING IS CONVERTED. The level on screen is written
+   * to its own draft key, the other level is read from its own, and the two
+   * never meet. Saving on NIVO 2 cannot touch NIVO 1 because it is a different
+   * key and a different file at the far end of the round trip.
+   *
+   * THE WORK ON SCREEN IS FLUSHED, NOT WARNED ABOUT. The editor autosaves
+   * every 700ms, so a warning here would mostly be a warning about nothing;
+   * writing the draft synchronously on the way out means there is nothing to
+   * warn about at all.
+   *
+   * THE ONE EXCEPTION IS THE RESTORE BANNER. While it is up the canvas shows
+   * the code version and the draft on disk is somebody's work, so autosave is
+   * deliberately held back — and flushing here would do exactly the damage the
+   * banner exists to prevent. That is the only case that asks.
+   *
+   * The other level comes up on its own draft where it has one, because the
+   * guest of this function has just come from somewhere else and preserving
+   * work is the safe direction. A level nobody has drawn opens EMPTY, which is
+   * a real state: it is how the ground floor began. */
+  const openFloor = useCallback(
+    (next: FloorId) => {
+      if (next === floor) return;
+
+      if (askRestore && dirty) {
+        const lose = window.confirm(
+          `You have unsaved changes on NIVO ${floor} and a saved draft waiting. ` +
+            `Switching now discards the changes on screen. Continue?`,
+        );
+        if (!lose) return;
+      } else if (dirty) {
+        writeDraft(doc, floor);
+      }
+
+      const saved = readDraft(next);
+      setFloor(next);
+      setDraft(saved);
+      /* Its draft is loaded rather than offered: nothing is at risk of being
+         overwritten by doing so, and the banner would only be in the way. */
+      setDraftHandled(true);
+      setSavedAt(saved?.savedAt ?? null);
+      setSnapshots(readSnapshots(next));
+      setDoc(withZoneMarks(reseedUids(saved?.floorPlan ?? loadDoc(next)), next));
+
+      setPast([]);
+      setFuture([]);
+      setSel([]);
+      setSegment(null);
+      setChain([]);
+      setGhost(null);
+      setDirty(false);
+      setSaveState("idle");
+    },
+    [askRestore, dirty, doc, floor],
+  );
 
   const moveDelta = useRef<XY>({ x: 0, y: 0 });
   const lastStep = useRef<{ uids: string[]; dx: number; dy: number } | null>(null);
+
+  /* HOW MANY TABLES EACH LEVEL HAS, for the two buttons.
+   *
+   * The open level counts what is ON THE CANVAS, so a table drawn a second ago
+   * is in the number. The other level counts its own DRAFT where it has one,
+   * and the file otherwise — because a level with an hour of unexported work
+   * in it saying "0" would read as an empty floor and invite somebody to start
+   * again over the top of it. */
+  const seatCount = useMemo(
+    () => doc.objects.filter((o) => o.kind === "seat").length,
+    [doc],
+  );
+
+  const otherCount = useCallback(
+    (f: FloorId) => {
+      const saved = readDraft(f);
+      return saved
+        ? saved.floorPlan.objects.filter((o) => o.kind === "seat").length
+        : seatsOnFloor(f).length;
+    },
+    [],
+  );
 
   const selSet = useMemo(() => new Set(sel), [sel]);
   const selected = useMemo(
@@ -271,7 +375,7 @@ export function FloorPlanEditor() {
   useEffect(() => {
     if (!dirty || askRestore) return;
     const id = window.setTimeout(() => {
-      const at = writeDraft(doc);
+      const at = writeDraft(doc, floor);
       if (at) {
         setSavedAt(at);
         setDirty(false);
@@ -281,7 +385,7 @@ export function FloorPlanEditor() {
       }
     }, 700);
     return () => window.clearTimeout(id);
-  }, [askRestore, doc, dirty]);
+  }, [askRestore, doc, dirty, floor]);
 
   useEffect(() => {
     const onLeave = (e: BeforeUnloadEvent) => {
@@ -317,7 +421,15 @@ export function FloorPlanEditor() {
     setDirty(true);
   }, []);
 
-  const copyInto = (d: EditorDoc, sources: EditorObject[], dx: number, dy: number) => {
+  const copyInto = (
+    d: EditorDoc,
+    sources: EditorObject[],
+    dx: number,
+    dy: number,
+    /* Passed rather than closed over: a copy of a table needs a new id, and
+       a new id is namespaced by the level it is being drawn on. */
+    onFloor: FloorId,
+  ) => {
     let working = d;
     const made: string[] = [];
     for (const source of sources) {
@@ -337,7 +449,7 @@ export function FloorPlanEditor() {
         clone = { ...clone, nodes: ids, id: nextObjectId(working, "wall", "wall") };
         working = { ...working, nodes };
       } else if (clone.kind === "seat") {
-        clone = { ...clone, id: nextSeatId(working, clone.type), x: clone.x + dx, y: clone.y + dy };
+        clone = { ...clone, id: nextSeatId(working, clone.type, onFloor), x: clone.x + dx, y: clone.y + dy };
       } else if (clone.kind === "spiral") {
         clone = { ...clone, id: nextObjectId(working, "spiral", "spiral"), cx: clone.cx + dx, cy: clone.cy + dy };
       } else if (clone.kind === "passage") {
@@ -372,11 +484,11 @@ export function FloorPlanEditor() {
     const dy = same ? repeat.dy : 24;
 
     commit();
-    const { doc: next, made } = copyInto(doc, selected, dx, dy);
+    const { doc: next, made } = copyInto(doc, selected, dx, dy, floor);
     setDoc(next);
     setSel(made);
     lastStep.current = { uids: made, dx, dy };
-  }, [commit, doc, sel, selSet, selected]);
+  }, [commit, doc, floor, sel, selSet, selected]);
 
   /* In SEGMENT mode Delete takes the one span, not the room it belongs to. */
   const deleteSelection = useCallback(() => {
@@ -413,7 +525,7 @@ export function FloorPlanEditor() {
       const seat: EditorSeat = {
         uid: newUid(),
         kind: "seat",
-        id: nextSeatId(doc, type),
+        id: nextSeatId(doc, type, floor),
         type,
         zone: 1,
         x: Math.round(centre.x),
@@ -426,7 +538,7 @@ export function FloorPlanEditor() {
       setDoc((d) => ({ ...d, objects: [...d.objects, seat] }));
       setSel([seat.uid]);
     },
-    [commit, doc, view],
+    [commit, doc, floor, view],
   );
 
   /* Everything else that can be dropped on the plan. Each gets its own name,
@@ -734,7 +846,7 @@ export function FloorPlanEditor() {
         e.preventDefault();
         if (clipboard.length === 0) return;
         commit();
-        const { doc: next, made } = copyInto(doc, clipboard, 20, 20);
+        const { doc: next, made } = copyInto(doc, clipboard, 20, 20, floor);
         setDoc(next);
         setSel(made);
         return;
@@ -774,7 +886,7 @@ export function FloorPlanEditor() {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("keyup", onUp);
     };
-  }, [cancelChain, chain, clipboard, commit, deleteSelection, doc, duplicateSelection, finishChain, nudge, redo, selected, undo]);
+  }, [cancelChain, chain, clipboard, commit, deleteSelection, doc, duplicateSelection, finishChain, floor, nudge, redo, selected, undo]);
 
   /* ── dragging ─────────────────────────────────────────────────────────── */
 
@@ -1081,7 +1193,7 @@ export function FloorPlanEditor() {
     commit();
 
     if (e.altKey) {
-      const { doc: next, made } = copyInto(doc, movers, 0, 0);
+      const { doc: next, made } = copyInto(doc, movers, 0, 0, floor);
       setDoc(next);
       setSel(made);
       lastStep.current = { uids: made, dx: 0, dy: 0 };
@@ -1213,7 +1325,7 @@ export function FloorPlanEditor() {
 
   const copyData = async () => {
     try {
-      await navigator.clipboard.writeText(serializeDoc(doc));
+      await navigator.clipboard.writeText(serializeDoc(doc, floor));
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2200);
     } catch {
@@ -1226,6 +1338,9 @@ export function FloorPlanEditor() {
   const taken = reservedSeats("vodka-experience");
   const previewSeats: Seat[] = seatsOf(doc).map((s) => ({
     id: s.id, display: numberOf(s), type: s.type, zone: s.zone, x: s.x, y: s.y, w: s.w, h: s.h,
+    /* Which level the canvas is on, so PREVIEW labels a table the way the
+       guest's map will. See lib/floors.ts. */
+    floor,
     rotation: s.rotation, corner: s.corner, depth: s.depth,
     capacity: seatCapacity(s),
     status: taken.has(s.id) ? "reserved" : "available",
@@ -1310,7 +1425,8 @@ export function FloorPlanEditor() {
           onContinue={() => adopt(draft.floorPlan, draft.savedAt)}
           onLoadCode={() => {
             /* Only ever reached through the confirmation inside the prompt. */
-            clearDraft();
+            clearDraft(floor);
+            setDraft(null);
             setDraftHandled(true);
             setSavedAt(null);
           }}
@@ -1323,6 +1439,32 @@ export function FloorPlanEditor() {
 
       <header className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-neutral-800 px-3 py-2">
         <span className="text-[0.5625rem] uppercase tracking-[0.24em] text-amber-400">Floor plan editor</span>
+
+        {/* ═══ WHICH LEVEL ═══════════════════════════════════════════════════
+            First in the bar, before the tools, because it is the one control
+            that changes what every other control is acting on. Each button
+            says how many tables that level has, so an empty NIVO 2 is a fact
+            on the screen rather than a surprise after the click. */}
+        <div className="flex overflow-hidden border border-amber-700/60">
+          {FLOORS.map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => openFloor(f)}
+              title={`Edit nivo ${f} — its own draft, its own file, its own ids`}
+              className={`px-2.5 py-1.5 text-[0.5625rem] uppercase tracking-[0.12em] ${
+                floor === f
+                  ? "bg-amber-500 text-neutral-950"
+                  : "text-amber-200/70 hover:text-amber-100"
+              }`}
+            >
+              Nivo {f}
+              <span className="ml-1.5 tabular-nums opacity-60">
+                {f === floor ? seatCount : otherCount(f)}
+              </span>
+            </button>
+          ))}
+        </div>
 
         <div className="flex overflow-hidden border border-neutral-700">
           {(["edit", "preview"] as const).map((m) => (
@@ -1522,14 +1664,14 @@ export function FloorPlanEditor() {
             snapshots={snapshots}
             doc={doc}
             onSaveDraft={() => {
-              const at = writeDraft(doc);
+              const at = writeDraft(doc, floor);
               if (at) { setSavedAt(at); setDirty(false); setSaveState("saved"); }
               else setSaveState("failed");
             }}
-            onSnapshot={(label) => setSnapshots(addSnapshot(doc, label))}
+            onSnapshot={(label) => setSnapshots(addSnapshot(doc, label, floor))}
             onRestoreSnapshot={(s) => adopt(s.floorPlan, null)}
-            onDeleteSnapshot={(id) => setSnapshots(removeSnapshot(id))}
-            onDownload={() => downloadBackup(doc)}
+            onDeleteSnapshot={(id) => setSnapshots(removeSnapshot(id, floor))}
+            onDownload={() => downloadBackup(doc, floor)}
             onImport={async (file) => {
               try {
                 const env = await readBackupFile(file);
@@ -1539,7 +1681,7 @@ export function FloorPlanEditor() {
                 setImportError(e instanceof Error ? e.message : "That file could not be read.");
               }
             }}
-            onClearDraft={() => { clearDraft(); setSavedAt(null); setSaveState("idle"); }}
+            onClearDraft={() => { clearDraft(floor); setSavedAt(null); setSaveState("idle"); }}
           />
           <Btn onClick={() => setDataOpen((v) => !v)}>{dataOpen ? "Hide data" : "Show data"}</Btn>
           <button type="button" onClick={copyData}
@@ -1572,7 +1714,7 @@ export function FloorPlanEditor() {
               <g transform={`translate(${view.x} ${view.y}) scale(${view.scale})`}>
                 {showReference ? (
                   <image
-                    href={REFERENCE_IMAGE}
+                    href={FLOOR_REFERENCE[floor]}
                     x={refFit.x} y={refFit.y}
                     width={PLAN.width * refFit.scale} height={PLAN.height * refFit.scale}
                     opacity={opacity} preserveAspectRatio="none" pointerEvents="none"
@@ -2132,7 +2274,7 @@ export function FloorPlanEditor() {
       {dataOpen ? (
         <div className="h-52 shrink-0 border-t border-neutral-800">
           <textarea
-            readOnly value={serializeDoc(doc)} onFocus={(e) => e.currentTarget.select()}
+            readOnly value={serializeDoc(doc, floor)} onFocus={(e) => e.currentTarget.select()}
             className="h-full w-full resize-none bg-neutral-900 p-3 font-mono text-[0.625rem] leading-relaxed text-neutral-300 outline-none"
           />
         </div>

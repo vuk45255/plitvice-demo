@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Great_Vibes, Inter, Playfair_Display } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -14,32 +14,35 @@ const inter = Inter({
   display: "swap",
 });
 
-/* The hand the tagline is signed in, wherever the house mark is set — see
-   components/grand-club.tsx. One weight is all the family ships. */
-const greatVibes = Great_Vibes({
-  subsets: ["latin", "latin-ext"],
-  weight: "400",
-  variable: "--font-great-vibes",
-  display: "swap",
-});
-
 export const metadata: Metadata = {
   metadataBase: new URL("https://plitviceclub.com"),
   title: {
-    default: "Plitvice — Grand Club · Inđija",
+    default: "Plitvice Hyperclub · Inđija",
     template: "%s — Plitvice",
   },
   description:
     "Plitvice — klub u Inđiji. Muzika, svetlo i ljudi u jednoj prostoriji. Pažljivo biran zvuk, rezervisani stolovi, vrata otvorena do jutra. Petkom i subotom od 23h.",
   openGraph: {
-    title: "Plitvice — Grand Club · Inđija",
+    title: "Plitvice Hyperclub · Inđija",
     description:
       "Muzika, svetlo i ljudi u jednoj prostoriji. Pažljivo biran zvuk i rezervisani stolovi u Inđiji.",
     url: "/",
-    siteName: "Plitvice",
+    siteName: "Plitvice Hyperclub",
     locale: "sr_RS",
     type: "website",
-    images: [{ url: "/og.jpg", width: 1200, height: 630 }],
+    images: [
+      {
+        url: "/brand/2026/og.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Plitvice Hyperclub",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Plitvice Hyperclub · Inđija",
+    images: ["/brand/2026/og.jpg"],
   },
   robots: { index: true, follow: true },
 };
@@ -56,7 +59,7 @@ const themeInit = `(function(){try{var t=localStorage.getItem("plitvice-theme");
 
 /* The document, and only the document.
  *
- * <html>, the three families, the theme script that runs before paint and the
+ * <html>, the two families, the theme script that runs before paint and the
  * club’s metadata — the things every route needs whatever it is for. The
  * site’s own chrome (smooth scroll, the entrance, the mix) sits one level down
  * in app/(site)/layout.tsx, so that the ticket and the scanner can be as light
@@ -66,7 +69,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="sr"
-      className={`${playfair.variable} ${inter.variable} ${greatVibes.variable} dark antialiased`}
+      className={`${playfair.variable} ${inter.variable} dark antialiased`}
       suppressHydrationWarning
     >
       <head>

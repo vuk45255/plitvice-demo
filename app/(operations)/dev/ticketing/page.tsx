@@ -54,7 +54,7 @@ export default async function DevTicketingPage() {
   return (
     <main className="mx-auto w-full max-w-[30rem] px-5 pb-20 pt-8">
       <header className="text-center">
-        <Lockup size="xs" tone="light" />
+        <Lockup size="xs" tone="light" className="mx-auto" />
         <p className="rail rail-night rail-center mt-8 text-[0.5625rem]">
           Razvojni režim — test prodaja
         </p>

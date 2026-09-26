@@ -26,7 +26,7 @@ import { site } from "@/lib/site";
  * stage is a single centred box; no word is ever placed by hand.
  *
  * The statement is a brand line, not copy: it stays in English whichever way
- * the language switcher sits, exactly as GRAND CLUB / PLITVICE / INĐIJA does.
+ * the language switcher sits, exactly as the house mark does.
  * The two small gold rails around it are copy, and they do follow the site. */
 
 type HeroWord = {

@@ -1,5 +1,5 @@
 import { findTicketingEvent } from "@/lib/ticketing/events";
-import { SEATS, seatNumber } from "@/lib/floor-plan";
+import { seatById, seatLabel as nameOf } from "@/lib/floors";
 import { officeAddress } from "@/lib/mail/provider";
 import { sendOnce, sendAgain, type SendOutcome } from "@/lib/mail/send";
 import { officeNoticeMail, reservationMail } from "@/lib/mail/templates";
@@ -55,8 +55,10 @@ async function night(eventId: string): Promise<{ title: string; startsAt?: strin
 }
 
 function seatLabel(seatId: string): string {
-  const seat = SEATS.find((s) => s.id === seatId);
-  return seat ? seatNumber(seat) : seatId;
+  const seat = seatById(seatId);
+  /* With its level when it is upstairs — "Nivo 2 · S04" — because both
+     floors print the same numbers. */
+  return seat ? nameOf(seat) : seatId;
 }
 
 /* The guest's own confirmation. Called from the site's own booking, from a

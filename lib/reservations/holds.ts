@@ -1,5 +1,5 @@
 import { tableBookingGate } from "@/lib/reservations/gate";
-import { SEATS } from "@/lib/floor-plan";
+import { seatById } from "@/lib/floors";
 import { reservedSeats } from "@/lib/floor-availability";
 import {
   HOLD_SECONDS,
@@ -112,7 +112,7 @@ export async function acquireHold(input: {
   if (!gate.open) return { ok: false, reason: "unavailable" };
   const event = gate.event;
 
-  const seat = SEATS.find((s) => s.id === input.seatId);
+  const seat = seatById(input.seatId);
   if (!seat) return { ok: false, reason: "unavailable" };
 
   if ((await reservedFor(event.slug)).has(seat.id)) {

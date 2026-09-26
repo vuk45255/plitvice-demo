@@ -264,7 +264,9 @@ export async function addReservation(
   revalidatePath("/admin/rezervacije");
   revalidatePath("/admin/plan");
   revalidatePath("/admin");
-  return { ok: `Upisano: ${result.reservation.number} — ${result.reservation.name}.` };
+  return {
+    ok: `Upisano: nivo ${result.reservation.floor} · ${result.reservation.number} — ${result.reservation.name}.`,
+  };
 }
 
 /* ── the morning after a phone goes missing ─────────────────────────────── */

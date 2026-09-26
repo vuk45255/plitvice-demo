@@ -2,7 +2,8 @@ import { afterResponse } from "@/lib/after-response";
 import { validateField } from "@/lib/booking";
 import { tableBookingGate } from "@/lib/reservations/gate";
 import { seatCapacity } from "@/lib/floor-capacity";
-import { SEATS, seatNumber } from "@/lib/floor-plan";
+import { seatNumber } from "@/lib/floor-plan";
+import { seatById } from "@/lib/floors";
 import { reservedSeats } from "@/lib/floor-availability";
 import { normalizeEmail, normalizePhone } from "@/lib/reservations/identity";
 import { consumeHold, restoreHold } from "@/lib/reservations/holds";
@@ -96,7 +97,7 @@ export async function requestReservation(
 
   /* The table, read off the floor plan. Its kind, its zone and what it seats
      come from here and are never taken from the request. */
-  const seat = SEATS.find((s) => s.id === text(body.seatId));
+  const seat = seatById(text(body.seatId));
   if (!seat) fields.seatId = "unknown";
 
   const guests = Number(body.guests);
@@ -215,7 +216,7 @@ export async function requestReservation(
 export async function reservationLine(eventId: string) {
   const rows = await reservationStore.forEvent(eventId);
   return rows.map((r) => {
-    const seat = SEATS.find((s) => s.id === r.seatId);
+    const seat = seatById(r.seatId);
     return {
       id: r.id,
       number: seat ? seatNumber(seat) : r.seatId,

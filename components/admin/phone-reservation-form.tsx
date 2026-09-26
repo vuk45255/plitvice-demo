@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { addReservation } from "@/app/(operations)/admin/actions";
 import { Field, FormSection } from "@/components/admin/shell";
+import { FLOORS, type FloorId } from "@/lib/floors";
 import type { AdminSeat } from "@/lib/reservations/admin";
 
 /* A BOOKING TAKEN OVER THE TELEPHONE — the fastest form in the building.
@@ -31,7 +32,15 @@ import type { AdminSeat } from "@/lib/reservations/admin";
  * shows the truth; and when it reaches zero nothing here changes — the table is
  * free when the DATABASE says it is, which the next page load asks.
  *
- * Reserved tables are not offered at all: they are gone, not busy. */
+ * Reserved tables are not offered at all: they are gone, not busy.
+ *
+ * ═══ TWO LEVELS, ONE LIST ═════════════════════════════════════════════════
+ *
+ * The club has two floors and both number their halls 1, 2, 3, so a bare table
+ * number does not say where anybody is sitting. The select therefore groups by
+ * level and says so — NIVO 1, NIVO 2 — and every message the form prints about
+ * a table carries the level with it. Somebody reading a number down a
+ * telephone must not have to guess which staircase it is up. */
 
 export function PhoneReservationForm({
   eventId,
@@ -83,7 +92,7 @@ export function PhoneReservationForm({
           <ul className="mt-2 space-y-1">
             {held.map((s) => (
               <li key={s.id} className="text-[0.8125rem] text-[var(--adm-warn)]">
-                Sto {s.number} je privremeno zadržan još{" "}
+                {LEVEL_NAME[s.floor]} · sto {s.number} je privremeno zadržan još{" "}
                 <Countdown until={s.heldUntil} serverNow={serverNow} />
               </li>
             ))}
@@ -110,12 +119,20 @@ export function PhoneReservationForm({
             onChange={(e) => setSeatId(e.target.value)}
             className="adm-field"
           >
-            {offered.map((s) => (
-              <option key={s.id} value={s.id} disabled={s.state === "held"}>
-                {s.number} · {kindOf(s.type)} ({s.capacity.min}–{s.capacity.max})
-                {s.state === "held" ? " — zadržan" : ""}
-              </option>
-            ))}
+            {FLOORS.map((level) => {
+              const onLevel = offered.filter((s) => s.floor === level);
+              if (onLevel.length === 0) return null;
+              return (
+                <optgroup key={level} label={LEVEL_NAME[level]}>
+                  {onLevel.map((s) => (
+                    <option key={s.id} value={s.id} disabled={s.state === "held"}>
+                      {s.number} · {kindOf(s.type)} ({range(s.capacity)})
+                      {s.state === "held" ? " — zadržan" : ""}
+                    </option>
+                  ))}
+                </optgroup>
+              );
+            })}
           </select>
         </Field>
 
@@ -212,6 +229,16 @@ function remaining(
 
 /* The club's own words for the three kinds of place, rather than the column's
    English values. */
+/* The two levels, in the one language the office works in — the operational
+   pages do not carry the site's dictionary. See app/(operations)/layout.tsx. */
+const LEVEL_NAME: Record<FloorId, string> = { 1: "Nivo 1", 2: "Nivo 2" };
+
+/* A range where the club gave one, a single figure where it settled on a
+   number. "6–6 osoba" is not a thing anybody says. */
+function range({ min, max }: AdminSeat["capacity"]): string {
+  return min === max ? String(min) : `${min}–${max}`;
+}
+
 function kindOf(type: AdminSeat["type"]): string {
   return type === "booth" ? "separe" : type === "high" ? "visoki" : "šank";
 }

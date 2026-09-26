@@ -6,8 +6,9 @@ const MAPS_QUERY = "Plitvice+Club+Cara+Du%C5%A1ana+14+In%C4%91ija";
 
 export const site = {
   name: "Plitvice",
-  /* The three rails of the house mark — see components/lockup.tsx. */
-  tagline: "Grand Club",
+  /* The second line of the 2026 lockup (PL▷TWICE / HYPERCLUB) — see
+     components/brand/plitvice-logo.tsx. Said, not drawn: labels and titles. */
+  tagline: "Hyperclub",
   town: "Inđija",
   city: "Inđija, Srbija",
   street: "Cara Dušana 14",
@@ -41,6 +42,9 @@ export const site = {
   /* Hero background. hero.jpg is its first frame and sits underneath as the
      poster, so the opening never shows an empty frame while this loads. */
   heroVideo: "/images/hero-small.mp4",
+  /* The centre 720×1080 of the same film, for a screen held upright — see the
+     <source> in components/hero.tsx. */
+  heroVideoPortrait: "/images/hero-mobile.mp4",
   /* Anything a visitor reads is a dictionary key — see lib/i18n.ts. */
   hours: [
     { days: "hours.saturday", time: "hours.time" } satisfies {

@@ -1,18 +1,28 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { PosterImage } from "@/components/events/poster-image";
 import type { Poster } from "@/lib/club/poster-assets";
 import Link from "next/link";
 import {
   motion,
   useInView,
+  useMotionValue,
+  useMotionValueEvent,
   useReducedMotion,
   useScroll,
   useTransform,
+  type MotionValue,
 } from "framer-motion";
 import { EASE } from "@/components/reveal";
 import { useCoarsePointer } from "@/lib/use-media";
+import { supportsViewTimeline } from "@/lib/scroll-timeline";
 
 /* A window into one part of the club.
  *
@@ -110,19 +120,28 @@ export function Portal({
   /* A window nobody is looking at should cost nothing. */
   const inView = useInView(ref, { margin: "200px" });
 
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start end", "end start"],
-  });
-  const y = useTransform(scrollYProgress, [0, 1], [drift, -drift]);
-
-  /* How far the name has fallen, 0 to 1, over the stretch of the pass named
-     above. Held inside the two ends, so it is pinned at the top before the
-     window arrives and stays put at the bottom once it has. */
-  const fallen = (p: number) => {
-    const t = (p - CARRY[0]) / (CARRY[1] - CARRY[0]);
-    return t < 0 ? 0 : t > 1 ? 1 : t;
-  };
+  /* WHO MOVES THE WINDOW WITH THE SCROLL.
+   *
+   * On a desk, Motion — the `PassDriver` below reads the window's pass through
+   * the screen and writes it to `pass`. On a phone that can run scroll-driven
+   * animations, the browser: the drift and the name's fall are the same two
+   * mappings on the window's own view timeline (`.portal-pass` in
+   * app/globals.css), interpolated where the scrolling happens. That matters
+   * twice over here. A transform written from JavaScript lands a frame behind
+   * a finger; and on a phone this window carries no layer hint, so every one of
+   * those writes was also a repaint of the photograph inside it. A
+   * scroll-driven transform is composited by the browser without being asked.
+   *
+   * The phone never subscribes to the scroll at all: the driver is simply not
+   * mounted. */
+  const timeline = useSyncExternalStore(
+    noSubscription,
+    supportsViewTimeline,
+    () => false,
+  );
+  const compositor = coarse && timeline && !reduced;
+  const pass = useMotionValue(0);
+  const y = useTransform(pass, [0, 1], [drift, -drift]);
 
   /* The fall itself, in two halves and not a pixel measured anywhere.
    *
@@ -134,8 +153,8 @@ export function Portal({
    * at both insets, with nothing to measure and nothing to go stale on a
    * reflow — a percentage transform already knows the size of the thing it is
    * moving. */
-  const down = useTransform(scrollYProgress, (p) => `${fallen(p) * 100}%`);
-  const back = useTransform(scrollYProgress, (p) => `${fallen(p) * -100}%`);
+  const down = useTransform(pass, (p) => `${fallen(p) * 100}%`);
+  const back = useTransform(pass, (p) => `${fallen(p) * -100}%`);
 
   /* The cursor and the press, written straight to their own two nodes. */
   const picture = useRef<HTMLDivElement>(null);
@@ -228,9 +247,14 @@ export function Portal({
   return (
     <motion.div
       ref={ref}
-      className={className}
-      style={{ y: reduced || !drift ? undefined : y }}
+      className={`${className ?? ""} ${compositor ? "portal-pass" : ""}`}
+      style={
+        compositor
+          ? ({ "--portal-drift": `${drift}px` } as React.CSSProperties)
+          : { y: reduced || !drift ? undefined : y }
+      }
     >
+      {reduced || compositor ? null : <PassDriver target={ref} pass={pass} />}
       <motion.div
         initial={reduced ? false : { opacity: 0, y: 28 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -280,12 +304,12 @@ export function Portal({
                   visitor who has asked for less movement simply gets both halves
                   of the fall already at their end. */}
               <motion.div
-                className="pointer-events-none absolute inset-0"
-                style={{ y: reduced ? "100%" : down }}
+                className={`pointer-events-none absolute inset-0 ${compositor ? "portal-fall" : ""}`}
+                style={compositor ? undefined : { y: reduced ? "100%" : down }}
               >
                 <motion.span
                   style={{
-                    y: reduced ? "-100%" : back,
+                    y: compositor ? undefined : reduced ? "-100%" : back,
                     /* One shadow, and it is only there so the caps hold against
                        a bright frame. It used to be three — a warm highlight off
                        the top of the letters and a twelve-pixel spread under
@@ -300,7 +324,7 @@ export function Portal({
                      carried down the frame by the scroll itself, so its
                      transform is written on a phone exactly as it is on a
                      desk. Only the two above are mouse-only. */
-                  className="absolute left-0 top-0 isolate flex items-center gap-3 p-5 text-[0.6875rem] font-medium uppercase leading-none tracking-[0.42em] text-[#f7f0dd] transition-[translate,color] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform group-hover:translate-x-[6px] group-hover:text-gold-light md:p-6"
+                  className={`absolute left-0 top-0 isolate flex items-center gap-3 p-5 text-[0.6875rem] font-medium uppercase leading-none tracking-[0.42em] text-[#f7f0dd] transition-[translate,color] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform group-hover:translate-x-[6px] group-hover:text-gold-light md:p-6 ${compositor ? "portal-rise" : ""}`}
                 >
                   {/* The picture darkening a little exactly where the name is,
                       and nowhere else. It travels with the name rather than
@@ -343,6 +367,36 @@ export function Portal({
 /* Stills, cross-fading on the window's own clock. Pictures are mounted as they
    are needed — the one showing, the one after it, and everything already seen —
    so a ten-poster window costs two images on arrival rather than ten. */
+const noSubscription = () => () => {};
+
+/* How far the name has fallen, 0 to 1, over the stretch of the pass named
+   above. Held inside the two ends, so it is pinned at the top before the
+   window arrives and stays put at the bottom once it has. */
+function fallen(p: number) {
+  const t = (p - CARRY[0]) / (CARRY[1] - CARRY[0]);
+  return t < 0 ? 0 : t > 1 ? 1 : t;
+}
+
+/* The window's pass through the screen, read by Motion and handed to the
+   window — the desk's path. Renders nothing. */
+function PassDriver({
+  target,
+  pass,
+}: {
+  target: React.RefObject<HTMLDivElement | null>;
+  pass: MotionValue<number>;
+}) {
+  const { scrollYProgress } = useScroll({
+    target,
+    offset: ["start end", "end start"],
+  });
+  useMotionValueEvent(scrollYProgress, "change", (p) => pass.set(p));
+  useEffect(() => {
+    pass.set(scrollYProgress.get());
+  }, [pass, scrollYProgress]);
+  return null;
+}
+
 export function PortalStills({
   images,
   sizes,

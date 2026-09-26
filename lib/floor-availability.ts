@@ -1,6 +1,5 @@
 import { seatCapacity } from "@/lib/floor-capacity";
 import {
-  SEATS,
   seatNumber,
   seatSize,
   type CornerSide,
@@ -8,6 +7,7 @@ import {
   type SeatType,
   type ZoneId,
 } from "@/lib/floor-plan";
+import { ALL_SEATS, floorOfSeatId, type FloorId } from "@/lib/floors";
 
 /* Which tables are already gone, for a given night.
  *
@@ -65,6 +65,10 @@ const RESERVED: Record<string, string[]> = {
    what the drawing, the tooltip and the panel all read. */
 export type Seat = {
   id: string;
+  /* Which level this table is on. Read off the id — see lib/floors.ts — and
+     carried on the seat so that nothing downstream has to know the rule. It is
+     what makes a hall number legible: both floors have a zone 2. */
+  floor: FloorId;
   /* The number on the map and in the panel — B12, V04, S07. Resolved once
      here, so nothing downstream has to remember that a table may be called
      something other than its id. */
@@ -126,6 +130,7 @@ function resolve(seat: FloorSeat, taken: ReadonlySet<string>): Seat {
   const { w, h } = seatSize(seat);
   return {
     id: seat.id,
+    floor: floorOfSeatId(seat.id),
     display: seatNumber(seat),
     type: seat.type,
     zone: seat.zone,
@@ -141,10 +146,15 @@ function resolve(seat: FloorSeat, taken: ReadonlySet<string>): Seat {
   };
 }
 
-/* The floor as it stands for one night. */
+/* The building as it stands for one night — BOTH FLOORS, in one list.
+ *
+ * The map draws one level at a time, but the night is one night: a poll, a
+ * hold and a snapshot all speak about the whole building, so filtering by
+ * floor is the drawing's business and happens as late as possible. See
+ * `seatsOnFloor` in lib/floors.ts and the selector in the map overlay. */
 export function seatsForEvent(eventSlug: string): Seat[] {
   const taken = reservedSeats(eventSlug);
-  return SEATS.map((seat) => resolve(seat, taken));
+  return ALL_SEATS.map((seat) => resolve(seat, taken));
 }
 
 export function findSeat(seats: Seat[], id: string | undefined) {

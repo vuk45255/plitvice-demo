@@ -98,6 +98,7 @@ export function BookingLines({
           name={t("reserve.tickets")}
           price={priceLabel}
           lead={t("reserve.ticketsLead")}
+          tables={event.tables.enabled}
         />
       ) : null}
 
@@ -269,10 +270,17 @@ function UnavailableLine({
   name,
   price,
   lead,
+  tables,
 }: {
   name: string;
   price?: string;
   lead: string;
+  /* Whether the night still takes tables. The second line of this notice is
+     the one sentence on the bill that speaks for the OTHER system, so it is
+     read off `tables.enabled` rather than assumed: a night the club neither
+     sells online nor seats says the refusal and stops there, instead of
+     pointing the guest at a table line that is not drawn. */
+  tables: boolean;
 }) {
   const { t } = useLang();
 
@@ -303,9 +311,11 @@ function UnavailableLine({
             <p className="text-[0.6875rem] uppercase leading-[1.8] tracking-[0.24em] text-night-ink/70">
               {t("reserve.ticketsOffline")}
             </p>
-            <p className="mt-2 text-[0.8125rem] leading-relaxed text-night-ink/45">
-              {t("reserve.ticketsOfflineLead")}
-            </p>
+            {tables ? (
+              <p className="mt-2 text-[0.8125rem] leading-relaxed text-night-ink/45">
+                {t("reserve.ticketsOfflineLead")}
+              </p>
+            ) : null}
           </div>
         </div>
       </div>

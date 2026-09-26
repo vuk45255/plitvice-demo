@@ -1,4 +1,5 @@
 import { SEAT_KINDS, type SeatType } from "@/lib/floor-plan";
+import { SEAT_CAPACITY_L2 } from "@/lib/floor-plan-nivo2";
 
 /* What a given table seats, where the club has settled it table by table.
  *
@@ -73,6 +74,15 @@ export const SEAT_CAPACITY: Record<string, { min: number; max: number }> = {
   /* Eight to ten — the two large corner separes on the gallery. */
   S03: { min: 8, max: 10 }, // S52
   S08: { min: 8, max: 10 }, // S58
+
+  /* ── THE SECOND FLOOR ───────────────────────────────────────────────────
+     Folded in whole from lib/floor-plan-nivo2.ts rather than restated here,
+     because upstairs the figures came off the house's drawing of that floor
+     and belong beside it. The keys are namespaced (`L2-…`) and cannot collide
+     with anything above. Everything else about this file — keyed by id, never
+     by the printed number; absent means the kind's own figures — is true of
+     both levels, which is the whole reason there is one `seatCapacity`. */
+  ...SEAT_CAPACITY_L2,
 };
 
 /* What this table seats — its own figures where the club has given it any, its

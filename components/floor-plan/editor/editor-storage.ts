@@ -1,12 +1,14 @@
 import { reseedUids, type EditorDoc } from "@/components/floor-plan/editor/editor-doc";
+import type { FloorId } from "@/lib/floors";
 
 /* Keeping the work safe.
  *
  * DEVELOPMENT ONLY, and deliberately not a backend. This exists so that a
  * reload, a hot module replacement or a week of further work on the editor
  * itself cannot cost somebody a morning of tracing. COPY FLOOR PLAN DATA is
- * still how geometry becomes real in lib/floor-plan.ts; everything here is a
- * net under the tab.
+ * still how geometry becomes real — in lib/floor-plan.ts for the ground floor
+ * and lib/floor-plan-nivo2.ts for the upstairs; everything here is a net under
+ * the tab.
  *
  * TWO RULES THIS FILE EXISTS TO KEEP.
  *
@@ -27,6 +29,22 @@ import { reseedUids, type EditorDoc } from "@/components/floor-plan/editor/edito
 export const DRAFT_KEY = "plitvice-floor-plan-draft";
 export const SNAPSHOT_KEY = "plitvice-floor-plan-snapshots";
 
+/* ── ONE SET OF KEYS PER LEVEL ─────────────────────────────────────────────
+ *
+ * THE FIRST FLOOR KEEPS THE ORIGINAL KEYS, EXACTLY. Somebody has a morning of
+ * tracing in `plitvice-floor-plan-draft` right now; moving the ground floor to
+ * a suffixed key would orphan it in their browser with no warning and no way
+ * back — which is the one rule the top of this file exists to keep. So the
+ * second floor takes a new key and the first floor's is left alone.
+ *
+ * WHICH ALSO MEANS THE TWO CANNOT OVERWRITE EACH OTHER. Saving while NIVO 2 is
+ * open writes the NIVO 2 key and nothing else, and switching levels is reading
+ * the other key rather than converting anything. */
+const FLOOR_SUFFIX: Record<FloorId, string> = { 1: "", 2: "-l2" };
+
+export const draftKey = (floor: FloorId) => `${DRAFT_KEY}${FLOOR_SUFFIX[floor]}`;
+export const snapshotKey = (floor: FloorId) => `${SNAPSHOT_KEY}${FLOOR_SUFFIX[floor]}`;
+
 export const FORMAT_VERSION = 1;
 export const BACKUP_KIND = "plitvice-floor-plan-backup";
 export const SNAPSHOT_LIMIT = 20;
@@ -34,6 +52,10 @@ export const SNAPSHOT_LIMIT = 20;
 export type Envelope = {
   version: number;
   savedAt: string;
+  /* Which level this document is of, where it was written down. Absent on
+     every draft saved before there was a second floor, which is exactly what
+     it should be: they are all the ground floor. */
+  floor?: FloorId;
   floorPlan: EditorDoc;
 };
 
@@ -73,6 +95,7 @@ export function parse(raw: unknown): Envelope | null {
   return {
     version: typeof r.version === "number" ? r.version : 0,
     savedAt,
+    floor: r.floor === 2 ? 2 : r.floor === 1 ? 1 : undefined,
     floorPlan: doc,
   };
 }
@@ -101,25 +124,26 @@ function writeJson(key: string, value: unknown): boolean {
 
 /* ── the draft ──────────────────────────────────────────────────────────── */
 
-export function readDraft(): Envelope | null {
-  return parse(readJson(DRAFT_KEY));
+export function readDraft(floor: FloorId = 1): Envelope | null {
+  return parse(readJson(draftKey(floor)));
 }
 
-export function writeDraft(doc: EditorDoc): string | null {
+export function writeDraft(doc: EditorDoc, floor: FloorId = 1): string | null {
   const savedAt = new Date().toISOString();
-  const ok = writeJson(DRAFT_KEY, {
+  const ok = writeJson(draftKey(floor), {
     version: FORMAT_VERSION,
     savedAt,
+    floor,
     floorPlan: doc,
   } satisfies Envelope);
   return ok ? savedAt : null;
 }
 
-/* Only ever called behind a confirmation. */
-export function clearDraft() {
+/* Only ever called behind a confirmation, and only for the level it names. */
+export function clearDraft(floor: FloorId = 1) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.removeItem(DRAFT_KEY);
+    window.localStorage.removeItem(draftKey(floor));
   } catch {
     /* nothing to do */
   }
@@ -127,8 +151,8 @@ export function clearDraft() {
 
 /* ── snapshots ──────────────────────────────────────────────────────────── */
 
-export function readSnapshots(): Snapshot[] {
-  const raw = readJson(SNAPSHOT_KEY);
+export function readSnapshots(floor: FloorId = 1): Snapshot[] {
+  const raw = readJson(snapshotKey(floor));
   if (!Array.isArray(raw)) return [];
   const out: Snapshot[] = [];
   for (const entry of raw) {
@@ -145,42 +169,46 @@ export function readSnapshots(): Snapshot[] {
 }
 
 /* Newest first, and the newest is never the one that falls off the end. */
-export function addSnapshot(doc: EditorDoc, label?: string): Snapshot[] {
+export function addSnapshot(doc: EditorDoc, label: string | undefined, floor: FloorId = 1): Snapshot[] {
   const savedAt = new Date().toISOString();
   const snapshot: Snapshot = {
     id: `s${Date.now()}`,
     label: label?.trim() || stamp(savedAt),
     version: FORMAT_VERSION,
     savedAt,
+    floor,
     floorPlan: doc,
   };
-  const next = [snapshot, ...readSnapshots()].slice(0, SNAPSHOT_LIMIT);
-  writeJson(SNAPSHOT_KEY, next);
+  const next = [snapshot, ...readSnapshots(floor)].slice(0, SNAPSHOT_LIMIT);
+  writeJson(snapshotKey(floor), next);
   return next;
 }
 
-export function removeSnapshot(id: string): Snapshot[] {
-  const next = readSnapshots().filter((s) => s.id !== id);
-  writeJson(SNAPSHOT_KEY, next);
+export function removeSnapshot(id: string, floor: FloorId = 1): Snapshot[] {
+  const next = readSnapshots(floor).filter((s) => s.id !== id);
+  writeJson(snapshotKey(floor), next);
   return next;
 }
 
 /* ── backup files ───────────────────────────────────────────────────────── */
 
-export function downloadBackup(doc: EditorDoc) {
+export function downloadBackup(doc: EditorDoc, floor: FloorId = 1) {
   if (typeof window === "undefined") return;
   const savedAt = new Date();
   const payload = {
     kind: BACKUP_KIND,
     version: FORMAT_VERSION,
     savedAt: savedAt.toISOString(),
+    /* Stamped with the level it came off, so a file restored a month later
+       cannot be poured onto the wrong floor by accident. */
+    floor,
     floorPlan: doc,
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `plitvice-floor-plan-backup-${savedAt.toISOString().slice(0, 10)}.json`;
+  a.download = `plitvice-floor-plan-nivo${floor}-backup-${savedAt.toISOString().slice(0, 10)}.json`;
   document.body.appendChild(a);
   a.click();
   a.remove();

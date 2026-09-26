@@ -5,13 +5,12 @@ import Link from "next/link";
 import { Reveal } from "@/components/reveal";
 import { ImageReveal } from "@/components/image-reveal";
 import { SectionWord } from "@/components/section-word";
-import { GrandClubSignature } from "@/components/grand-club";
+import { PlitviceLogo } from "@/components/brand/plitvice-logo";
 import { Ambient } from "@/components/ambient";
 import { useLang } from "@/components/providers/language";
 import { ReserveButton } from "@/components/reservation/reserve-button";
 
 import { reserveHref, type PartyEvent } from "@/lib/events";
-import { site } from "@/lib/site";
 import reservationImg from "@/public/images/rezervacija.jpg";
 
 /* The one page that is always night — and the deepest velvet on the site:
@@ -99,16 +98,19 @@ export function Vip({ next }: { next?: PartyEvent }) {
             </Reveal>
             <Reveal delay={0.08}>
               <div className="mt-8">
-                {/* Signed in full here, and only here: the reservation is the
-                    one place on the page where the house gives its whole name.
-                    Composed from the two facts in lib/site rather than written
-                    out, so it cannot drift from the mark in the header. */}
-                <GrandClubSignature
-                  size="md"
-                  tone="light"
-                  rules="right"
-                  text={`${site.tagline} ${site.name}`}
-                />
+                {/* The house puts its name to the table here, and only here:
+                    the lockup, small, with one hairline running on from it
+                    toward the photograph. */}
+                <div className="flex items-center gap-5">
+                  <PlitviceLogo
+                    variant="primary"
+                    className="h-10 w-auto text-night-ink/90 md:h-12"
+                  />
+                  <span
+                    className="h-px w-16 shrink-0 bg-gradient-to-r from-gold/60 to-transparent md:w-24"
+                    aria-hidden="true"
+                  />
+                </div>
               </div>
             </Reveal>
             <Reveal delay={0.16}>

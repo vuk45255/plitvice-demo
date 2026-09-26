@@ -2,7 +2,8 @@ import { afterResponse } from "@/lib/after-response";
 import { validateField } from "@/lib/booking";
 import { tableBookingGate } from "@/lib/reservations/gate";
 import { seatCapacity } from "@/lib/floor-capacity";
-import { SEATS, seatNumber, type FloorSeat } from "@/lib/floor-plan";
+import { seatNumber, type FloorSeat } from "@/lib/floor-plan";
+import { ALL_SEATS, floorOfSeatId, seatById, type FloorId } from "@/lib/floors";
 import { reservedSeats } from "@/lib/floor-availability";
 import { normalizeEmail, normalizePhone } from "@/lib/reservations/identity";
 import { holdStore } from "@/lib/reservations/hold-store";
@@ -63,6 +64,9 @@ import {
 
 export type ReservationLine = {
   id: string;
+  /* Which level the table is on. Read off the seat id, which is where the
+     floor has always lived — see lib/floors.ts. */
+  floor: FloorId;
   /* The number on the map — B12, V04, S07 — not the key the row is filed
      under. This is what staff and guests both say out loud. */
   number: string;
@@ -81,9 +85,10 @@ export type ReservationLine = {
 };
 
 function line(reservation: Reservation): ReservationLine {
-  const seat = SEATS.find((s) => s.id === reservation.seatId);
+  const seat = seatById(reservation.seatId);
   return {
     id: reservation.id,
+    floor: floorOfSeatId(reservation.seatId),
     number: seat ? seatNumber(seat) : reservation.seatId,
     seatId: reservation.seatId,
     guests: reservation.guests,
@@ -135,6 +140,10 @@ export type AdminSeat = {
   id: string;
   number: string;
   type: FloorSeat["type"];
+  /* Which level it stands on, and the hall within that level. THE TWO ARE
+     READ TOGETHER AND NEVER APART: both floors number their halls 1, 2, 3,
+     so a zone on its own says nothing. */
+  floor: FloorId;
   zone: FloorSeat["zone"];
   capacity: { min: number; max: number };
   state: SeatState;
@@ -176,7 +185,7 @@ export async function floorState(eventId: string): Promise<FloorState> {
   );
   const held = new Map(holds.map((hold) => [hold.seatId, hold]));
 
-  const seats: AdminSeat[] = SEATS.map((seat) => {
+  const seats: AdminSeat[] = ALL_SEATS.map((seat) => {
     const reservation = booked.get(seat.id);
     if (reservation) {
       return {
@@ -220,6 +229,7 @@ function shape(seat: FloorSeat) {
     id: seat.id,
     number: seatNumber(seat),
     type: seat.type,
+    floor: floorOfSeatId(seat.id),
     zone: seat.zone,
     capacity: seatCapacity(seat),
   };
@@ -293,7 +303,7 @@ export async function addPhoneReservation(
   if (!gate.open) return { ok: false, reason: "unavailable" };
   const event = gate.event;
 
-  const seat = SEATS.find((s) => s.id === text(input.seatId));
+  const seat = seatById(text(input.seatId));
   if (!seat) fields.seatId = "unknown";
 
   const guests = Number(input.guests);
@@ -450,7 +460,7 @@ export async function editReservation(
     fields.email = "invalid";
   }
 
-  const seat = SEATS.find((s) => s.id === existing.seatId);
+  const seat = seatById(existing.seatId);
   let guests: number | undefined;
   if (input.guests !== undefined) {
     guests = Number(input.guests);
